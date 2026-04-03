@@ -21,11 +21,13 @@ class AI:
     def decide_bid(self, current_bid: int) -> int | None:
         """
         Rozhodne či AI pridá do dražby alebo pasuje.
-        Náhodná AI: vždy pasuje (jednoduchá základná verzia).
+        Ak má povinnosť — zostane na 50 (vráti None = nepridáva ale ani nepasuje).
         Vráti sumu ak dráži, None ak pasuje.
         """
-        # Základná náhodná AI vždy pasuje
-        # Neskôr tu pridáme inteligentnú logiku
+        if self.player.has_obligation:
+            return None  # Povinnosť — AI nepridáva ale automaticky zostáva na 50
+
+        # Ostatní AI hráči vždy pasujú
         return None
 
     # ------------------------------------------------------------------
@@ -36,12 +38,16 @@ class AI:
         """
         Rozhodne ktoré 2 karty zahodí po zobratí talonu.
         Pravidlo: nesmie zahodiť eso ani desiatok.
-        Náhodná AI: zahodí prvé 2 platné karty.
+        Zahodí 2 karty s najnižšou bodovou hodnotou.
         """
         discardable = [
             card for card in hand_cards
             if card.rank not in ("ace", "ten")
         ]
+
+        # Zoradí podľa bodov (najnižšie prvé), pri rovnakých bodoch podľa rank_order
+        discardable.sort(key=lambda c: (c.points, c.rank_order))
+
         return discardable[:2]
 
     # ------------------------------------------------------------------

@@ -23,6 +23,12 @@ class Screen:
         pygame.init()
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.display.set_caption("Tisíc")
+        try:
+            self.table_bg = pygame.image.load("assets/graphics/table.jpg").convert()
+            self.table_bg = pygame.transform.scale(self.table_bg, (SCREEN_WIDTH, SCREEN_HEIGHT))
+        except FileNotFoundError:
+            self.table_bg = None
+
         self.clock = pygame.time.Clock()
         self.debug = debug
 
@@ -48,6 +54,9 @@ class Screen:
         # Navýšenie dražby po talóne
         self.can_raise_bid: bool = False
 
+        self.trick_display_timer: int = 0  # kedy zmiznú karty zo stola
+        self.trick_waiting: bool = False  # čakáme na zobrazenie štichu
+
         self.running = True
 
     # ------------------------------------------------------------------
@@ -62,6 +71,7 @@ class Screen:
         while self.running:
             self.clock.tick(FPS)
             self._handle_events()
+            self._process_waiting_trick()  # ← pridané
             self._handle_ai_turn()
             self._draw()
             pygame.display.flip()
@@ -123,11 +133,13 @@ class Screen:
             done = current_round.process_bid(player_index, new_bid)
             if done:
                 self._after_bidding()
+            return  # ← pridané
 
         if self._button_pass_rect().collidepoint(pos):
             done = current_round.process_bid(player_index, None)
             if done:
                 self._after_bidding()
+            return  # ← pridané
 
     def _handle_talon_click(self, pos: tuple[int, int]):
         """Spracuje klik počas zahadzovania talonu."""
@@ -137,15 +149,24 @@ class Screen:
         if current_round.bidding.winner_index != player_index:
             return
 
-        # Tlačidlo navýšenia dražby
+        # Tlačidlá VŽDY ako prvé — pred kontrolou kariet
         if self.can_raise_bid and self._button_raise_rect().collidepoint(pos):
             new_bid = current_round.bidding.current_bid + 10
             current_round.bidding.current_bid = new_bid
             self.game_state.players[player_index].bid = new_bid
             self._show_message(f"Záväzok navýšený na {new_bid}")
-            return
+            return  # ← return zabraňuje ďalšiemu spracovaniu
 
-        # Klik na kartu v ruke
+        if self._button_confirm_rect().collidepoint(pos):
+            if len(self.selected_discards) == 2:
+                success = current_round.discard_cards(player_index, self.selected_discards)
+                if success:
+                    self.selected_discards = []
+                    self.can_raise_bid = False
+                    current_round.start_trick()
+            return  # ← return aj keď podmienka nesplnená
+
+        # Klik na kartu — len ak neklikol na tlačidlo
         clicked_card = self.card_renderer.get_clicked_card(
             pos,
             self.game_state.players[player_index].hand.cards,
@@ -161,15 +182,6 @@ class Screen:
             elif len(self.selected_discards) < 2:
                 self.selected_discards.append(clicked_card)
 
-        # Tlačidlo potvrdenia zahodenia
-        if self._button_confirm_rect().collidepoint(pos):
-            if len(self.selected_discards) == 2:
-                success = current_round.discard_cards(player_index, self.selected_discards)
-                if success:
-                    self.selected_discards = []
-                    self.can_raise_bid = False
-                    current_round.start_trick()
-
     def _handle_tricks_click(self, pos: tuple[int, int]):
         """Spracuje klik počas štichov."""
         current_round = self.game_state.current_round
@@ -181,7 +193,7 @@ class Screen:
         playable = self.game_state.players[player_index].hand.get_playable_cards(
             current_round.current_trick.lead_suit,
             current_round.trump_suit,
-            current_round.current_trick.played_cards  # ← pridané
+            current_round.current_trick.played_cards
         )
 
         clicked_card = self.card_renderer.get_clicked_card(
@@ -192,20 +204,19 @@ class Screen:
 
         if not clicked_card:
             return
-
         if clicked_card not in playable:
             self._show_message("Túto kartu nemôžeš zahrať!")
             return
-
-        # Skontroluj či karta môže spustiť tromf
         if self._try_declare_trump(player_index, clicked_card):
             return
 
-        # Zahraj kartu
         success = current_round.play_card(player_index, clicked_card)
         if success:
             self.selected_card = None
-            self._check_trick_done()
+            # Ak je štich kompletný — počkáme kým sa nakreslí
+            if current_round.current_trick.is_complete:
+                self.trick_waiting = True
+                self.trick_display_timer = pygame.time.get_ticks() + 1500
 
     # ------------------------------------------------------------------
     # Tromf
@@ -244,13 +255,17 @@ class Screen:
             current_round.play_card(player_index, self.pending_trump_card)
             self.pending_trump_card = None
             self.pending_trump_suit = None
-            self._check_trick_done()
+            if current_round.current_trick.is_complete:
+                self.trick_waiting = True
+                self.trick_display_timer = pygame.time.get_ticks() + 1500
 
         elif self._button_trump_no_rect().collidepoint(pos):
             current_round.play_card(player_index, self.pending_trump_card)
             self.pending_trump_card = None
             self.pending_trump_suit = None
-            self._check_trick_done()
+            if current_round.current_trick.is_complete:
+                self.trick_waiting = True
+                self.trick_display_timer = pygame.time.get_ticks() + 1500
 
     # ------------------------------------------------------------------
     # Koniec štichu
@@ -260,6 +275,9 @@ class Screen:
         """Skontroluje či je štich hotový a spracuje výsledok."""
         current_round = self.game_state.current_round
         if current_round.current_trick and current_round.current_trick.is_complete:
+            # Štich je kompletný — počkáme kým hráč uvidí karty
+            self.trick_waiting = True
+            self.trick_display_timer = pygame.time.get_ticks() + 1500  # 1.5 sekundy
             winner_index = current_round.finish_trick()
             winner_name = self.game_state.players[winner_index].name
             self._show_message(f"{winner_name} vyhral štich!")
@@ -274,6 +292,39 @@ class Screen:
             else:
                 current_round.start_trick()
 
+    def _process_waiting_trick(self):
+        """Spracuje štich po uplynutí zobrazovacieho času."""
+        if not self.trick_waiting:
+            return
+        if pygame.time.get_ticks() < self.trick_display_timer:
+            return
+
+        current_round = self.game_state.current_round
+        if not current_round:
+            self.trick_waiting = False
+            return
+        if not current_round.current_trick:
+            self.trick_waiting = False
+            return
+        if not current_round.current_trick.is_complete:
+            self.trick_waiting = False
+            return
+
+        self.trick_waiting = False
+        winner_index = current_round.finish_trick()
+        winner_name = self.game_state.players[winner_index].name
+        self._show_message(f"{winner_name} vyhral štich!")
+
+        if current_round.phase == "scoring":
+            self.game_state.finish_round()
+            if self.game_state.phase == "game_over":
+                self._show_message(f"{self.game_state.winner.name} vyhral hru!", 5000)
+            else:
+                self.game_state.start_new_round()
+                self.game_state.current_round.start_bidding()
+        else:
+            current_round.start_trick()
+
     # ------------------------------------------------------------------
     # AI ťahy
     # ------------------------------------------------------------------
@@ -282,7 +333,8 @@ class Screen:
         """Spracuje ťah AI hráča ak je na rade."""
         if self.game_state.current_round is None:
             return
-
+        if self.trick_waiting:  # ← pridané
+            return
         current_round = self.game_state.current_round
         phase = current_round.phase
 
@@ -323,7 +375,12 @@ class Screen:
         pygame.time.delay(500)
 
         if phase == "talon":
-            self._ai_discard(current_index, ai)
+            winner_index = self.game_state.current_round.bidding.winner_index
+            if self.game_state.players[winner_index].is_human:
+                return
+            ai = self.ai_players[winner_index]
+            pygame.time.delay(500)
+            self._ai_discard(winner_index, ai)
         elif phase == "tricks":
             self._ai_play_card(current_index, ai)
 
@@ -365,11 +422,11 @@ class Screen:
         playable = player.hand.get_playable_cards(
             current_round.current_trick.lead_suit,
             current_round.trump_suit,
-            current_round.current_trick.played_cards  # ← pridané
+            current_round.current_trick.played_cards
         )
 
         if current_round.trick_number > 0 and \
-           current_round.get_current_player_index() == player_index:
+                current_round.get_current_player_index() == player_index:
             trump_suit = ai.decide_trump(
                 current_round.trick_number,
                 current_round.current_leader_index,
@@ -380,7 +437,12 @@ class Screen:
 
         card = ai.decide_card(playable, current_round.current_trick, current_round.trick_number)
         current_round.play_card(player_index, card)
-        self._check_trick_done()
+
+        # Nekontrolujeme štich tu — hlavná slučka to spracuje cez _process_waiting_trick()
+        # Najprv sa karta nakreslí, až potom sa štich uzavrie
+        if current_round.current_trick.is_complete:
+            self.trick_waiting = True
+            self.trick_display_timer = pygame.time.get_ticks() + 1500
 
     # ------------------------------------------------------------------
     # Po dražbe
@@ -402,8 +464,7 @@ class Screen:
 
     def _draw(self):
         """Nakreslí celú obrazovku."""
-        self.screen.fill(COLOR_BG)
-        self._draw_table()
+        self._draw_table()  # ← musí byť prvé (prekryje všetko)
         self._draw_hands()
         self._draw_current_trick()
         self._draw_talon()
@@ -417,10 +478,15 @@ class Screen:
 
     def _draw_table(self):
         """Nakreslí herný stôl."""
-        pygame.draw.ellipse(
-            self.screen, COLOR_BG_DARK,
-            (TABLE_CENTER_X - 400, TABLE_CENTER_Y - 250, 800, 500)
-        )
+        if self.table_bg:
+            self.screen.blit(self.table_bg, (0, 0))
+        else:
+            # Fallback ak obrázok chýba
+            self.screen.fill(COLOR_BG)
+            pygame.draw.ellipse(
+                self.screen, COLOR_BG_DARK,
+                (TABLE_CENTER_X - 400, TABLE_CENTER_Y - 250, 800, 500)
+            )
 
     def _draw_hands(self):
         """Nakreslí karty všetkých hráčov."""
@@ -548,11 +614,11 @@ class Screen:
     def _button_pass_rect(self) -> pygame.Rect:
         return pygame.Rect(TABLE_CENTER_X + 20, 980, BUTTON_WIDTH, BUTTON_HEIGHT)
 
-    def _button_confirm_rect(self) -> pygame.Rect:
-        return pygame.Rect(TABLE_CENTER_X - 80, 980, BUTTON_WIDTH, BUTTON_HEIGHT)
-
     def _button_raise_rect(self) -> pygame.Rect:
         return pygame.Rect(TABLE_CENTER_X - 180, 980, BUTTON_WIDTH, BUTTON_HEIGHT)
+
+    def _button_confirm_rect(self) -> pygame.Rect:
+        return pygame.Rect(TABLE_CENTER_X + 20, 980, BUTTON_WIDTH, BUTTON_HEIGHT)
 
     def _button_trump_yes_rect(self) -> pygame.Rect:
         return pygame.Rect(TABLE_CENTER_X - 180, 980, BUTTON_WIDTH, BUTTON_HEIGHT)

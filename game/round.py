@@ -52,6 +52,17 @@ class Round:
         Vráti True ak je dražba po tomto ťahu skončená.
         """
         if amount is None:
+            # Hráč s povinnosťou nemôže pasovať ak je jediný aktívny
+            if self.bidding.players[player_index].has_obligation:
+                active_others = sum(
+                    1 for i, active in enumerate(self.bidding.active)
+                    if active and i != player_index
+                )
+                if active_others == 0:
+                    # Nikto iný nie je aktívny — povinnosť vyhrala za 50
+                    self.bidding.finalize()
+                    self.phase = "talon"
+                    return True
             self.bidding.pass_bid(player_index)
         else:
             self.bidding.place_bid(player_index, amount)

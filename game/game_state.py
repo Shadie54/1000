@@ -104,6 +104,13 @@ class GameState:
     @property
     def is_human_turn(self) -> bool:
         """Skontroluje či je na ťahu ľudský hráč."""
+        if self.current_round is None:
+            return False
+        phase = self.current_round.phase
+        if phase == "talon":
+            # Pri talóne záleží kto vyhral dražbu
+            winner_index = self.current_round.bidding.winner_index
+            return self.players[winner_index].is_human
         return self.current_player == self.players[self.human_index]
 
     def get_scores(self) -> dict[str, int]:
