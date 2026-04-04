@@ -32,7 +32,7 @@ class CardRenderer:
         self.hand_configs = {
             0: {"direction": "horizontal", "x": 200, "y": 860, "offset": 100},
             1: {"direction": "vertical", "x": 30, "y": 100, "offset": 50},
-            2: {"direction": "vertical", "x": 1800, "y": 100, "offset": 50},
+            2: {"direction": "vertical", "x": 1600, "y": 100, "offset": 50},
         }
 
     # ------------------------------------------------------------------
@@ -172,6 +172,18 @@ class CardRenderer:
         # Popisok
         font = pygame.font.SysFont(None, 22)
         label = font.render("Talon", True, COLOR_WHITE)
+        self.screen.blit(label, (TALON_X, TALON_Y - 20))
+
+    def draw_talon_debug(self, talon_cards: list):
+        """V debug móde zobrazí talon s lícom kariet."""
+        for i, card in enumerate(talon_cards):
+            img = self._get_card_image(card)
+            x = TALON_X + i * 15
+            y = TALON_Y
+            self.screen.blit(img, (x, y))
+
+        font = pygame.font.SysFont(None, 22)
+        label = font.render("Talon [DEBUG]", True, COLOR_YELLOW)
         self.screen.blit(label, (TALON_X, TALON_Y - 20))
 
     # ------------------------------------------------------------------

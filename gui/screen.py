@@ -13,8 +13,9 @@ from config import (
     COLOR_GREEN,
     FONT_SIZE_MEDIUM, FONT_SIZE_LARGE, FONT_SIZE_SMALL,
     TABLE_CENTER_X, TABLE_CENTER_Y,
-    BUTTON_WIDTH, BUTTON_HEIGHT, BUTTON_RADIUS,
-    NUM_PLAYERS
+    BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT, BUTTON_RADIUS,
+    COLOR_BUTTON_PRIMARY, COLOR_BUTTON_SECONDARY,
+    NUM_PLAYERS, CARD_SIZE_MEDIUM
 )
 
 
@@ -54,9 +55,14 @@ class Screen:
         # Navýšenie dražby po talóne
         self.can_raise_bid: bool = False
 
+        #Krátke zobrazenie celého štychu pred resetom kola
         self.trick_display_timer: int = 0  # kedy zmiznú karty zo stola
         self.trick_waiting: bool = False  # čakáme na zobrazenie štichu
 
+        #Zobrazenie talonu pre ostatných hráčov po dražbe
+        self.talon_reveal_timer: int = 0  # kedy zmiznú karty talonu
+        self.talon_revealing: bool = False  # zobrazujeme talon?
+        self.talon_reveal_cards: list = []  # karty talonu na zobrazenie
         self.running = True
 
     # ------------------------------------------------------------------
@@ -71,6 +77,7 @@ class Screen:
         while self.running:
             self.clock.tick(FPS)
             self._handle_events()
+            self._process_talon_reveal()
             self._process_waiting_trick()  # ← pridané
             self._handle_ai_turn()
             self._draw()
@@ -116,6 +123,22 @@ class Screen:
         elif phase == "tricks":
             self._handle_tricks_click(pos)
 
+    def _process_talon_reveal(self):
+        """Po uplynutí času pridá talon víťazovi."""
+        if not self.talon_revealing:
+            return
+        if pygame.time.get_ticks() < self.talon_reveal_timer:
+            return
+
+        self.talon_revealing = False
+        self.talon_reveal_cards = []
+
+        current_round = self.game_state.current_round
+        current_round.give_talon_to_winner()
+
+        winner = current_round.bidding.winner
+        if winner.is_human:
+            self.can_raise_bid = True
     # ------------------------------------------------------------------
     # Klikanie v jednotlivých fázach
     # ------------------------------------------------------------------
@@ -335,6 +358,8 @@ class Screen:
             return
         if self.trick_waiting:  # ← pridané
             return
+        if self.talon_revealing:  # ← pridané
+            return
         current_round = self.game_state.current_round
         phase = current_round.phase
 
@@ -453,10 +478,11 @@ class Screen:
         current_round = self.game_state.current_round
         winner = current_round.bidding.winner
         self._show_message(f"{winner.name} vydražil za {winner.bid}")
-        current_round.give_talon_to_winner()
 
-        if winner.is_human:
-            self.can_raise_bid = True
+        # Uložíme karty talonu na zobrazenie PRED tým ako ich pridáme
+        self.talon_reveal_cards = current_round.talon.copy()
+        self.talon_revealing = True
+        self.talon_reveal_timer = pygame.time.get_ticks() + 2000  # 2 sekundy
 
     # ------------------------------------------------------------------
     # Kreslenie
@@ -468,7 +494,7 @@ class Screen:
         self._draw_hands()
         self._draw_current_trick()
         self._draw_talon()
-        self._draw_info_panel()
+        self._draw_talon_reveal()
         self.scoreboard.draw(
             self.game_state.players,
             self.game_state.current_round
@@ -520,111 +546,130 @@ class Screen:
         """Nakreslí talon."""
         current_round = self.game_state.current_round
         if current_round and current_round.phase == "bidding":
-            self.card_renderer.draw_talon(len(current_round.talon))
+            if self.debug:
+                # V debug móde ukáž karty talonu
+                self.card_renderer.draw_talon_debug(current_round.talon)
+            else:
+                self.card_renderer.draw_talon(len(current_round.talon))
 
-    def _draw_info_panel(self):
-        """Nakreslí info panel."""
-        current_round = self.game_state.current_round
-        if not current_round:
+    def _draw_talon_reveal(self):
+        """Zobrazí karty talonu v strede obrazovky."""
+        overlay = pygame.Surface((400, 350), pygame.SRCALPHA)
+        overlay.fill((25, 15, 8, 210))
+        if not self.talon_revealing or not self.talon_reveal_cards:
             return
 
-        from config import INFO_PANEL_X, INFO_PANEL_Y, INFO_PANEL_WIDTH, INFO_PANEL_HEIGHT
-        pygame.draw.rect(
-            self.screen, COLOR_PANEL_BG,
-            (INFO_PANEL_X, INFO_PANEL_Y, INFO_PANEL_WIDTH, INFO_PANEL_HEIGHT),
-            border_radius=10
-        )
+        # Pozadie — tmavý obdĺžnik
+        overlay = pygame.Surface((400, 350), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 180))
+        self.screen.blit(overlay, (TABLE_CENTER_X - 200, TABLE_CENTER_Y - 175))
 
-        lines = []
-        if current_round.bidding:
-            winner = current_round.bidding.winner
-            lines.append(f"Dražba: {current_round.bidding.current_bid}")
-            lines.append(f"Dražiteľ: {winner.name}")
-        if current_round.trump_suit:
-            lines.append(f"Tromf: {current_round.trump_suit}")
-        lines.append(f"Štich: {current_round.trick_number + 1}/10")
+        # Popisok
+        label = self.font_large.render("Talon:", True, COLOR_GOLD)
+        label_rect = label.get_rect(center=(TABLE_CENTER_X, TABLE_CENTER_Y - 140))
+        self.screen.blit(label, label_rect)
 
-        for j, line in enumerate(lines):
-            surf = self.font_medium.render(line, True, COLOR_WHITE)
-            self.screen.blit(surf, (INFO_PANEL_X + 10, INFO_PANEL_Y + 10 + j * 30))
+        # Karty vedľa seba v strede
+        card_w = CARD_SIZE_MEDIUM[0]
+        spacing = 20
+        total_width = len(self.talon_reveal_cards) * card_w + spacing
+        x_start = TABLE_CENTER_X - total_width // 2
+
+        for i, card in enumerate(self.talon_reveal_cards):
+            img = self.card_renderer._get_card_image(card)
+            x = x_start + i * (card_w + spacing)
+            y = TABLE_CENTER_Y - CARD_SIZE_MEDIUM[1] // 2
+            self.screen.blit(img, (x, y))
 
     def _draw_buttons(self):
-        """Nakreslí akčné tlačidlá podľa fázy hry."""
         if not self.game_state.is_human_turn:
             return
 
-        # Tlačidlá pre rozhodnutie o tromfe
         if self.pending_trump_card is not None:
             trump_labels = {
-                "heart": "Srdce",
-                "bell": "Zvon",
-                "leaf": "Zeleň",
-                "acorn": "Žaluď"
+                "heart": "Srdce", "bell": "Guľa",
+                "leaf": "Zeleň", "acorn": "Žaluď"
             }
             label = trump_labels.get(self.pending_trump_suit, self.pending_trump_suit)
-            self._draw_button(
-                self._button_trump_yes_rect(),
-                f"Tromf: {label}",
-                COLOR_GOLD
-            )
-            self._draw_button(
-                self._button_trump_no_rect(),
-                "Bez tromfu",
-                COLOR_GRAY
-            )
+            self._draw_button(self._button_trump_yes_rect(), f"Tromf: {label}", COLOR_BUTTON_PRIMARY)
+            self._draw_button(self._button_trump_no_rect(), "bez Tromfu", COLOR_BUTTON_SECONDARY)
             return
 
         phase = self.game_state.current_round.phase if self.game_state.current_round else None
 
         if phase == "bidding":
-            self._draw_button(self._button_bid_rect(), "Pridať +10", COLOR_GOLD)
-            self._draw_button(self._button_pass_rect(), "Pasovať", COLOR_GRAY)
+            self._draw_button(self._button_bid_rect(), "Dám +10", COLOR_BUTTON_PRIMARY)
+            self._draw_button(self._button_pass_rect(), "Dobrý", COLOR_BUTTON_SECONDARY)
         elif phase == "talon":
             if self.can_raise_bid:
                 current_bid = self.game_state.current_round.bidding.current_bid
-                self._draw_button(
-                    self._button_raise_rect(),
-                    f"Navýšiť ({current_bid + 10})",
-                    COLOR_GREEN
-                )
+                self._draw_button(self._button_raise_rect(), f"Navýšiť ({current_bid + 10})", COLOR_BUTTON_PRIMARY)
             if len(self.selected_discards) == 2:
                 self._draw_button(self._button_confirm_rect(), "Potvrdiť", COLOR_GOLD)
 
     def _draw_button(self, rect: pygame.Rect, text: str, color: tuple):
         """Nakreslí jedno tlačidlo."""
-        pygame.draw.rect(self.screen, color, rect, border_radius=BUTTON_RADIUS)
-        surf = self.font_medium.render(text, True, COLOR_BLACK)
+        # Priehľadný overlay
+        overlay = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
+        overlay.fill((*color, 220))
+        self.screen.blit(overlay, (rect.x, rect.y))
+        # Okraj
+        pygame.draw.rect(self.screen, COLOR_GOLD, rect, width=2, border_radius=BUTTON_RADIUS)
+        # Text
+        surf = self.font_medium.render(text, True, COLOR_WHITE)
         text_rect = surf.get_rect(center=rect.center)
         self.screen.blit(surf, text_rect)
 
     def _draw_message(self):
-        """Zobrazí správu pre hráča."""
-        if self.message and pygame.time.get_ticks() < self.message_timer:
-            surf = self.font_large.render(self.message, True, COLOR_YELLOW)
-            rect = surf.get_rect(center=(TABLE_CENTER_X, TABLE_CENTER_Y - 150))
-            self.screen.blit(surf, rect)
+        """Zobrazí správu s priehľadným pozadím tesne nad kartami hráča."""
+        if not self.message or pygame.time.get_ticks() >= self.message_timer:
+            return
+
+        surf = self.font_large.render(self.message, True, COLOR_YELLOW)
+        msg_w = surf.get_width() + 60
+        msg_h = surf.get_height() + 20
+
+        # Pozícia — tesne nad karty hráča (y=860 je HUMAN_HAND_Y)
+        msg_x = TABLE_CENTER_X - msg_w // 2
+        msg_y = 790 - msg_h // 2
+
+        # Priehľadný overlay
+        overlay = pygame.Surface((msg_w, msg_h), pygame.SRCALPHA)
+        overlay.fill((25, 15, 8, 200))
+        self.screen.blit(overlay, (msg_x, msg_y))
+
+        # Zlatý okraj
+        pygame.draw.rect(
+            self.screen, COLOR_GOLD,
+            (msg_x, msg_y, msg_w, msg_h),
+            width=2, border_radius=8
+        )
+
+        # Text
+        text_rect = surf.get_rect(center=(TABLE_CENTER_X, msg_y + msg_h // 2))
+        self.screen.blit(surf, text_rect)
 
     # ------------------------------------------------------------------
     # Rects — tlačidlá
     # ------------------------------------------------------------------
 
     def _button_bid_rect(self) -> pygame.Rect:
-        return pygame.Rect(TABLE_CENTER_X - 180, 980, BUTTON_WIDTH, BUTTON_HEIGHT)
+        return pygame.Rect(TABLE_CENTER_X - 200, BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
 
     def _button_pass_rect(self) -> pygame.Rect:
-        return pygame.Rect(TABLE_CENTER_X + 20, 980, BUTTON_WIDTH, BUTTON_HEIGHT)
+        return pygame.Rect(TABLE_CENTER_X + 20, BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
 
     def _button_raise_rect(self) -> pygame.Rect:
-        return pygame.Rect(TABLE_CENTER_X - 180, 980, BUTTON_WIDTH, BUTTON_HEIGHT)
+        return pygame.Rect(TABLE_CENTER_X - 200, BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
 
     def _button_confirm_rect(self) -> pygame.Rect:
-        return pygame.Rect(TABLE_CENTER_X + 20, 980, BUTTON_WIDTH, BUTTON_HEIGHT)
+        return pygame.Rect(TABLE_CENTER_X + 20, BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
 
     def _button_trump_yes_rect(self) -> pygame.Rect:
-        return pygame.Rect(TABLE_CENTER_X - 180, 980, BUTTON_WIDTH, BUTTON_HEIGHT)
+        return pygame.Rect(TABLE_CENTER_X - 200, BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
 
     def _button_trump_no_rect(self) -> pygame.Rect:
-        return pygame.Rect(TABLE_CENTER_X + 20, 980, BUTTON_WIDTH, BUTTON_HEIGHT)
+        return pygame.Rect(TABLE_CENTER_X + 20, BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
 
     # ------------------------------------------------------------------
     # Pomocné metódy

@@ -15,6 +15,7 @@ FPS = 60
 CARDS_SMALL_PATH = "assets/cards-small"
 CARDS_MEDIUM_PATH = "assets/cards-medium"
 CARDS_LARGE_PATH = "assets/cards-large"
+SUIT_ICONS_PATH = "assets/suit-icons"
 
 # ------------------------------------------------------------------
 # Veľkosti kariet (šírka x výška)
@@ -63,19 +64,23 @@ NUM_PLAYERS = 3
 DEBUG_MODE = False
 
 # ------------------------------------------------------------------
-# GUI - Farby (R, G, B)
+# GUI - Farby — téma: tmavé drevo
 # ------------------------------------------------------------------
-COLOR_BG = (34, 85, 34)
-COLOR_BG_DARK = (20, 60, 20)
-COLOR_WHITE = (255, 255, 255)
-COLOR_BLACK = (0, 0, 0)
-COLOR_YELLOW = (255, 215, 0)
-COLOR_RED = (200, 30, 30)
-COLOR_GREEN = (50, 200, 50)
-COLOR_GRAY = (150, 150, 150)
-COLOR_DARK_GRAY = (80, 80, 80)
-COLOR_GOLD = (212, 175, 55)
-COLOR_PANEL_BG = (20, 50, 20)
+COLOR_BG = (45, 28, 15)                 # tmavá hnedá (fallback ak chýba obrázok)
+COLOR_BG_DARK = (30, 18, 8)            # veľmi tmavá hnedá
+COLOR_WHITE = (255, 248, 235)          # teplá biela (nie studená)
+COLOR_BLACK = (15, 10, 5)              # teplá čierna
+COLOR_YELLOW = (255, 220, 100)         # teplá žltá
+COLOR_RED = (200, 60, 40)              # červená
+COLOR_GREEN = (80, 180, 80)            # zelená
+COLOR_GRAY = (120, 100, 80)            # teplá šedá
+COLOR_DARK_GRAY = (60, 45, 30)         # tmavá teplá šedá
+COLOR_GOLD = (212, 160, 40)            # sýtejšia zlatá — hlavný akcent
+COLOR_TRUMP = (0, 190, 170)            # tyrkysová pre tromfy
+COLOR_PANEL_BG = (25, 15, 8, 200)      # priehľadná tmavá hnedá pre panely
+# Farby tlačidiel
+COLOR_BUTTON_PRIMARY = (180, 110, 45)      # teplá zlatohnedá — hlavné tlačidlo
+COLOR_BUTTON_SECONDARY = (60, 45, 30)      # tmavá hnedá — sekundárne tlačidlo
 
 # ------------------------------------------------------------------
 # GUI - Fonty
@@ -85,6 +90,7 @@ FONT_SIZE_SMALL = 18
 FONT_SIZE_MEDIUM = 24
 FONT_SIZE_LARGE = 32
 FONT_SIZE_XLARGE = 48
+FONT_SIZE_INFO = 28
 
 # ------------------------------------------------------------------
 # GUI - Pozície a rozmery (SCREEN_WIDTH/HEIGHT musia byť definované vyššie)
@@ -107,18 +113,21 @@ TABLE_CENTER_Y = SCREEN_HEIGHT // 2     # 540
 TALON_X = TABLE_CENTER_X - 100
 TALON_Y = 80
 
-SCORE_PANEL_X = 20
+# SKÓRE — pravý horný roh (kde bolo KOLO)
+SCORE_PANEL_WIDTH = 300
+SCORE_PANEL_HEIGHT = 220
+SCORE_PANEL_X = SCREEN_WIDTH //2 - SCORE_PANEL_WIDTH // 2
 SCORE_PANEL_Y = 20
-SCORE_PANEL_WIDTH = 280
-SCORE_PANEL_HEIGHT = 200
 
+# KOLO — pravý dolný roh
 INFO_PANEL_X = SCREEN_WIDTH - 320
-INFO_PANEL_Y = 20
+INFO_PANEL_Y = SCREEN_HEIGHT - 220
 INFO_PANEL_WIDTH = 300
-INFO_PANEL_HEIGHT = 200
+INFO_PANEL_HEIGHT = 300
 
-BUTTON_WIDTH = 160
-BUTTON_HEIGHT = 50
+BUTTON_Y = SCREEN_HEIGHT // 2
+BUTTON_WIDTH = 180                      # trochu širšie
+BUTTON_HEIGHT = 55
 BUTTON_RADIUS = 8
 
 # ------------------------------------------------------------------

@@ -57,14 +57,22 @@ class AI:
     def decide_trump(self, trick_number: int, leader_index: int,
                      player_index: int) -> str | None:
         """
-        Rozhodne či AI zahlási tromf a v akej farbe.
-        Podmienky sú už overené v Round — tu len rozhodujeme či chceme.
-        Náhodná AI: nikdy nehlási tromf.
-        Vráti farbu tromfu alebo None.
+        AI zahlási tromf ak má pár a je leader.
+        Jednoduchá stratégia: zahlási vždy ak môže.
         """
-        # Základná náhodná AI nikdy nehlási tromf
-        # Neskôr tu pridáme inteligentnú logiku
-        return None
+        if trick_number == 0:
+            return None
+        if leader_index != player_index:
+            return None
+
+        available = self.player.hand.get_available_trumps()
+        if not available:
+            return None
+
+        # Zahlási tromf s najvyššou hodnotou
+        from config import TRUMP_POINTS
+        best = max(available, key=lambda s: TRUMP_POINTS[s])
+        return best
 
     # ------------------------------------------------------------------
     # Výber karty
