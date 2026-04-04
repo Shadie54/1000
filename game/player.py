@@ -5,9 +5,10 @@ from game.card import Card
 
 
 class Player:
-    def __init__(self, name: str, is_human: bool = False):
+    def __init__(self, name: str, is_human: bool = False, index: int = 0):
         self.name = name
         self.is_human = is_human
+        self.index = index
         self.hand = Hand()
 
         # Skóre a štatistiky

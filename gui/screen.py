@@ -71,19 +71,29 @@ class Screen:
 
     def run(self):
         """Hlavná herná slučka."""
-        self.game_state.start_new_round()
-        self.game_state.current_round.start_bidding()
+        self._start_round()
 
         while self.running:
             self.clock.tick(FPS)
             self._handle_events()
             self._process_talon_reveal()
-            self._process_waiting_trick()  # ← pridané
+            self._process_waiting_trick()
             self._handle_ai_turn()
             self._draw()
             pygame.display.flip()
 
         pygame.quit()
+
+    def _start_round(self):
+        """Začne nové kolo a inicializuje AI pamäť."""
+        self.game_state.start_new_round()
+        self.game_state.current_round.start_bidding()
+
+        # Reset pamäte + zaznamenaj vlastné karty
+        for i, ai in enumerate(self.ai_players):
+            if ai is not None:
+                ai.reset_memory()
+                ai.record_own_hand(self.game_state.players[i].hand.cards)
 
     # ------------------------------------------------------------------
     # Spracovanie udalostí
@@ -274,6 +284,10 @@ class Screen:
 
         if self._button_trump_yes_rect().collidepoint(pos):
             current_round.declare_trump(player_index, self.pending_trump_suit)
+            # Zaznamená tromf do pamäte všetkých AI
+            for ai in self.ai_players:
+                if ai is not None:
+                    ai.record_trump_declaration(self.pending_trump_suit, player_index)
             self._show_message(f"Tromf: {self.pending_trump_suit}!")
             current_round.play_card(player_index, self.pending_trump_card)
             self.pending_trump_card = None
@@ -310,7 +324,7 @@ class Screen:
                 if self.game_state.phase == "game_over":
                     self._show_message(f"{self.game_state.winner.name} vyhral hru!")
                 else:
-                    self.game_state.start_new_round()
+                    self._start_round()
                     self.game_state.current_round.start_bidding()
             else:
                 current_round.start_trick()
@@ -323,15 +337,24 @@ class Screen:
             return
 
         current_round = self.game_state.current_round
-        if not current_round:
-            self.trick_waiting = False
-            return
-        if not current_round.current_trick:
+        if not current_round or not current_round.current_trick:
             self.trick_waiting = False
             return
         if not current_round.current_trick.is_complete:
             self.trick_waiting = False
             return
+
+        # Zaznamená štich do pamäte všetkých AI
+        trick = current_round.current_trick
+        winner_index = trick.get_winner_index()
+        for ai in self.ai_players:
+            if ai is not None:
+                ai.record_trick(
+                    trick.leader_index,
+                    trick.played_cards,
+                    winner_index,
+                    current_round.trick_number
+                )
 
         self.trick_waiting = False
         winner_index = current_round.finish_trick()
@@ -343,7 +366,7 @@ class Screen:
             if self.game_state.phase == "game_over":
                 self._show_message(f"{self.game_state.winner.name} vyhral hru!", 5000)
             else:
-                self.game_state.start_new_round()
+                self._start_round()
                 self.game_state.current_round.start_bidding()
         else:
             current_round.start_trick()
@@ -432,10 +455,22 @@ class Screen:
             self._after_bidding()
 
     def _ai_discard(self, player_index: int, ai: AI):
-        """AI zahodí 2 karty."""
+        """AI zahodí 2 karty a rozhodne o navýšení."""
         current_round = self.game_state.current_round
         if current_round.bidding.winner_index != player_index:
             return
+
+        # Zaznamená vlastnú ruku
+        ai.record_own_hand(self.game_state.players[player_index].hand.cards)
+
+        # Navýšenie po talóne
+        new_bid = ai.decide_raise_after_talon(current_round.bidding.current_bid)
+        if new_bid:
+            current_round.bidding.current_bid = new_bid
+            self.game_state.players[player_index].bid = new_bid
+            self._show_message(f"{self.game_state.players[player_index].name} navýšil na {new_bid}")
+
+        # Zahodenie
         cards = ai.decide_discard(self.game_state.players[player_index].hand.cards)
         current_round.discard_cards(player_index, cards)
         current_round.start_trick()
@@ -459,6 +494,9 @@ class Screen:
             )
             if trump_suit:
                 current_round.declare_trump(player_index, trump_suit)
+                for ai in self.ai_players:
+                    if ai is not None:
+                        ai.record_trump_declaration(trump_suit, player_index)
 
         card = ai.decide_card(playable, current_round.current_trick, current_round.trick_number)
         current_round.play_card(player_index, card)
@@ -477,12 +515,19 @@ class Screen:
         """Spracuje situáciu po skončení dražby."""
         current_round = self.game_state.current_round
         winner = current_round.bidding.winner
-        self._show_message(f"{winner.name} vydražil za {winner.bid}")
 
-        # Uložíme karty talonu na zobrazenie PRED tým ako ich pridáme
+        # Uložíme karty talonu na zobrazenie
         self.talon_reveal_cards = current_round.talon.copy()
         self.talon_revealing = True
-        self.talon_reveal_timer = pygame.time.get_ticks() + 2000  # 2 sekundy
+        self.talon_reveal_timer = pygame.time.get_ticks() + 2000
+
+        self._show_message(f"{winner.name} vydražil za {winner.bid}")
+
+        # AI víťaz si zapamätá talon
+        winner_index = current_round.bidding.winner_index
+        ai = self.ai_players[winner_index]
+        if ai is not None:
+            ai.record_talon(current_round.talon)
 
     # ------------------------------------------------------------------
     # Kreslenie

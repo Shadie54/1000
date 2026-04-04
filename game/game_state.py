@@ -12,7 +12,7 @@ class GameState:
         human_index: index ľudského hráča (zvyčajne 0)
         """
         self.players: list[Player] = [
-            Player(name, is_human=(i == human_index))
+            Player(name, is_human=(i == human_index), index=i)
             for i, name in enumerate(player_names)
         ]
         self.human_index = human_index
