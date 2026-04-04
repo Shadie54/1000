@@ -1,5 +1,11 @@
 # main.py
 
+import ctypes
+try:
+    ctypes.windll.user32.SetProcessDPIAware()
+except Exception:
+    pass
+
 import pygame
 from game.game_state import GameState
 from game.ai import AI
@@ -8,6 +14,11 @@ from config import DEBUG_MODE
 
 
 def main():
+    # Vypne Windows DPI škálovanie — pygame bude vždy v skutočnom rozlíšení
+    try:
+        ctypes.windll.user32.SetProcessDPIAware()
+    except Exception:
+        pass  # Nefunguje na non-Windows systémoch
     # ------------------------------------------------------------------
     # 1. Nastavenie hráčov
     # ------------------------------------------------------------------

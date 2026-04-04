@@ -1,12 +1,15 @@
 # config.py
 
 import os
+import pygame
 
-# ------------------------------------------------------------------
-# Obrazovka
-# ------------------------------------------------------------------
-SCREEN_WIDTH = 1920
-SCREEN_HEIGHT = 1080
+pygame.init()
+
+# Detekcia rozlíšenia monitora
+_info = pygame.display.Info()
+SCREEN_WIDTH = _info.current_w
+SCREEN_HEIGHT = _info.current_h
+
 FPS = 60
 
 # ------------------------------------------------------------------
