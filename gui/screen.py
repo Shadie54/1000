@@ -15,7 +15,8 @@ from config import (
     TABLE_CENTER_X, TABLE_CENTER_Y,
     BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT, BUTTON_RADIUS,
     COLOR_BUTTON_PRIMARY, COLOR_BUTTON_SECONDARY,
-    NUM_PLAYERS, CARD_SIZE_MEDIUM
+    NUM_PLAYERS, CARD_SIZE_MEDIUM,
+    TALON_X, TALON_Y, CARD_FAN_OFFSET
 )
 
 
@@ -63,6 +64,9 @@ class Screen:
         self.talon_reveal_timer: int = 0  # kedy zmiznú karty talonu
         self.talon_revealing: bool = False  # zobrazujeme talon?
         self.talon_reveal_cards: list = []  # karty talonu na zobrazenie
+
+        self.waiting_for_ai: bool = False  # blokuje klikanie počas AI ťahu
+
         self.running = True
 
     # ------------------------------------------------------------------
@@ -116,6 +120,10 @@ class Screen:
 
     def _handle_click(self, pos: tuple[int, int]):
         """Spracuje klik myši podľa aktuálnej fázy hry."""
+        if self.waiting_for_ai:  # ← pridané
+            return
+        if self.trick_waiting:  # ← pridané
+            return
         if not self.game_state.is_human_turn:
             return
 
@@ -477,6 +485,8 @@ class Screen:
 
     def _ai_play_card(self, player_index: int, ai: AI):
         """AI zahrá kartu."""
+        self.waiting_for_ai = True
+
         current_round = self.game_state.current_round
         player = self.game_state.players[player_index]
         playable = player.hand.get_playable_cards(
@@ -485,27 +495,33 @@ class Screen:
             current_round.current_trick.played_cards
         )
 
-        if current_round.trick_number > 0 and \
-                current_round.get_current_player_index() == player_index:
-            trump_suit = ai.decide_trump(
-                current_round.trick_number,
-                current_round.current_leader_index,
-                player_index
-            )
-            if trump_suit:
-                current_round.declare_trump(player_index, trump_suit)
-                for ai in self.ai_players:
-                    if ai is not None:
-                        ai.record_trump_declaration(trump_suit, player_index)
+        # Vyber kartu NAJPRV
+        card = ai.decide_card(
+            playable, current_round.current_trick, current_round.trick_number
+        )
 
-        card = ai.decide_card(playable, current_round.current_trick, current_round.trick_number)
+        # Skontroluj tromf AŽ PO výbere karty
+        # Tromf možno hlásiť len ak hráme kráľa alebo horníka a sme leader
+        if (current_round.trick_number > 0
+                and current_round.get_current_player_index() == player_index
+                and current_round.current_leader_index == player_index
+                and card.rank in ("over", "king")):
+
+            # Skontroluj či má pár v tejto farbe
+            if player.hand.has_trump_pair(card.suit):
+                trump_suit = card.suit
+                current_round.declare_trump(player_index, trump_suit)
+                for a in self.ai_players:
+                    if a is not None:
+                        a.record_trump_declaration(trump_suit, player_index)
+
         current_round.play_card(player_index, card)
 
-        # Nekontrolujeme štich tu — hlavná slučka to spracuje cez _process_waiting_trick()
-        # Najprv sa karta nakreslí, až potom sa štich uzavrie
         if current_round.current_trick.is_complete:
             self.trick_waiting = True
             self.trick_display_timer = pygame.time.get_ticks() + 1500
+
+        self.waiting_for_ai = False
 
     # ------------------------------------------------------------------
     # Po dražbe
@@ -599,31 +615,13 @@ class Screen:
 
     def _draw_talon_reveal(self):
         """Zobrazí karty talonu v strede obrazovky."""
-        overlay = pygame.Surface((400, 350), pygame.SRCALPHA)
-        overlay.fill((25, 15, 8, 210))
         if not self.talon_revealing or not self.talon_reveal_cards:
             return
 
-        # Pozadie — tmavý obdĺžnik
-        overlay = pygame.Surface((400, 350), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 180))
-        self.screen.blit(overlay, (TABLE_CENTER_X - 200, TABLE_CENTER_Y - 175))
-
-        # Popisok
-        label = self.font_large.render("Talon:", True, COLOR_GOLD)
-        label_rect = label.get_rect(center=(TABLE_CENTER_X, TABLE_CENTER_Y - 140))
-        self.screen.blit(label, label_rect)
-
-        # Karty vedľa seba v strede
-        card_w = CARD_SIZE_MEDIUM[0]
-        spacing = 20
-        total_width = len(self.talon_reveal_cards) * card_w + spacing
-        x_start = TABLE_CENTER_X - total_width // 2
-
         for i, card in enumerate(self.talon_reveal_cards):
             img = self.card_renderer._get_card_image(card)
-            x = x_start + i * (card_w + spacing)
-            y = TABLE_CENTER_Y - CARD_SIZE_MEDIUM[1] // 2
+            x = TALON_X + i * CARD_FAN_OFFSET
+            y = TALON_Y
             self.screen.blit(img, (x, y))
 
     def _draw_buttons(self):

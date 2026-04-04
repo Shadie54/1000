@@ -162,10 +162,10 @@ class CardRenderer:
     # ------------------------------------------------------------------
 
     def draw_talon(self, count: int):
-        """Nakreslí talon (zadná strana, počet kariet)."""
+        """Nakreslí talon (zadná strana kariet)."""
         for i in range(count):
             img = self._get_card_back()
-            x = TALON_X + i * 15
+            x = TALON_X + i * CARD_FAN_OFFSET
             y = TALON_Y
             self.screen.blit(img, (x, y))
 
@@ -178,7 +178,7 @@ class CardRenderer:
         """V debug móde zobrazí talon s lícom kariet."""
         for i, card in enumerate(talon_cards):
             img = self._get_card_image(card)
-            x = TALON_X + i * 15
+            x = TALON_X + i * CARD_FAN_OFFSET
             y = TALON_Y
             self.screen.blit(img, (x, y))
 

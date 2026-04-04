@@ -6,43 +6,53 @@ try:
 except Exception:
     pass
 
+import sys
 import pygame
 from game.game_state import GameState
 from game.ai import AI
 from gui.screen import Screen
+from gui.menu import Menu
 from config import DEBUG_MODE
 
 
 def main():
-    # Vypne Windows DPI škálovanie — pygame bude vždy v skutočnom rozlíšení
-    try:
-        ctypes.windll.user32.SetProcessDPIAware()
-    except Exception:
-        pass  # Nefunguje na non-Windows systémoch
-    # ------------------------------------------------------------------
-    # 1. Nastavenie hráčov
-    # ------------------------------------------------------------------
-    player_names = ["Hráč", "Počítač 1", "Počítač 2"]
-    human_index = 0     # index ľudského hráča
+    pygame.init()
 
-    game_state = GameState(player_names, human_index)
+    # Vytvor okno
+    import config
+    window = pygame.display.set_mode((config.SCREEN_WIDTH, config.SCREEN_HEIGHT))
+    pygame.display.set_caption("Tisíc")
 
-    # ------------------------------------------------------------------
-    # 2. Nastavenie AI
-    # ------------------------------------------------------------------
-    # ai_players[i] = None ak je hráč človek, AI objekt ak je hráč AI
-    ai_players = []
-    for i, player in enumerate(game_state.players):
-        if player.is_human:
-            ai_players.append(None)
-        else:
-            ai_players.append(AI(player))
+    while True:
+        # Zobraz menu
+        menu = Menu(window)
+        action = menu.run()
 
-    # ------------------------------------------------------------------
-    # 3. Spustenie obrazovky
-    # ------------------------------------------------------------------
-    screen = Screen(game_state, ai_players, debug=DEBUG_MODE)
-    screen.run()
+        if action == "quit":
+            pygame.quit()
+            sys.exit()
+
+        elif action == "settings":
+            # Placeholder — zatiaľ nič
+            pass
+
+        elif action == "new_game":
+            # Spusti hru
+            player_names = ["Hráč", "Počítač 1", "Počítač 2"]
+            human_index = 0
+
+            game_state = GameState(player_names, human_index)
+
+            ai_players = []
+            for i, player in enumerate(game_state.players):
+                if player.is_human:
+                    ai_players.append(None)
+                else:
+                    ai_players.append(AI(player, difficulty="hard"))
+
+            screen = Screen(game_state, ai_players, debug=DEBUG_MODE)
+            screen.run()
+            # Po skončení hry sa vrátime do menu
 
 
 if __name__ == "__main__":
