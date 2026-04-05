@@ -3,7 +3,7 @@
 from game.player import Player
 from game.round import Round
 from config import NUM_PLAYERS, WINNING_SCORE
-
+from game.game_logger import GameLogger
 
 class GameState:
     def __init__(self, player_names: list[str], human_index: int = 0):
@@ -21,6 +21,7 @@ class GameState:
         self.current_round: Round | None = None
         self.round_history: list[dict] = [] # história kôl pre scoresheet
         self.phase: str = "setup"           # fázy: setup > playing > game_over
+        self.logger = GameLogger()
 
     # ------------------------------------------------------------------
     # Správa kôl

@@ -36,6 +36,9 @@ class AIMemory:
         # História štichov [(leader, [(player_index, card)])]
         self.trick_history: list[tuple[int, list]] = []
 
+        #Set bidder
+        self.bidder_index: int | None = None
+        self.bid_amount: int = 0
     # ------------------------------------------------------------------
     # Aktualizácia pamäte
     # ------------------------------------------------------------------
@@ -192,6 +195,14 @@ class AIMemory:
         self.declared_trumps = {}
         self.current_trump = None
         self.trick_history = []
+
+    # ------------------------------------------------------------------
+    # Sleduj biddera
+    # ------------------------------------------------------------------
+    def set_bidder(self, player_index: int, bid: int):
+        """Zaznamená dražiteľa a jeho záväzok."""
+        self.bidder_index = player_index
+        self.bid_amount = bid
 
     def __repr__(self) -> str:
         return (f"AIMemory(played={len(self.played_cards)}, "

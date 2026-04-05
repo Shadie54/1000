@@ -10,17 +10,21 @@ from config import NUM_PLAYERS
 
 
 class AI:
-    def __init__(self, player: Player, difficulty: str = "hard"):
+    def __init__(self, player: Player, difficulty: str = "hard", logger=None):
         """
         player: hráč ktorého táto AI ovláda
         difficulty: "easy" / "medium" / "hard"
         """
         self.player = player
         self.difficulty = difficulty
+        self.logger = logger
 
         self.memory = AIMemory(player.index, NUM_PLAYERS)
         self.evaluator = AIEvaluator(self.memory)
-        self.strategy = AIStrategy(self.memory, self.evaluator, difficulty)
+        self.strategy = AIStrategy(
+            self.memory, self.evaluator,
+            difficulty, logger, player.name
+        )
 
     # ------------------------------------------------------------------
     # Dražba

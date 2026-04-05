@@ -14,7 +14,6 @@ from gui.screen import Screen
 from gui.menu import Menu
 from config import DEBUG_MODE
 
-
 def main():
     pygame.init()
 
@@ -48,7 +47,10 @@ def main():
                 if player.is_human:
                     ai_players.append(None)
                 else:
-                    ai_players.append(AI(player, difficulty="hard"))
+                    ai_players.append(
+                        AI(player, difficulty="hard",
+                           logger=game_state.logger)
+                    )
 
             screen = Screen(game_state, ai_players, debug=DEBUG_MODE)
             screen.run()

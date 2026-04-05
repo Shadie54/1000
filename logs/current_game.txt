@@ -1,0 +1,1238 @@
+
+============================================================
+KOLO 1
+============================================================
+Povinnosť: Hráč
+Talon: J● K●
+
+Ruka [Hráč]: 9♥ 7♠ A♠ 8♥ A♣ 10● K♠ K♣ 9● Q♥
+Ruka [Počítač 1]: Q● 10♠ J♥ Q♠ 8♠ J♠ 9♣ J♣ 8♣ 7♣
+Ruka [Počítač 2]: Q♣ A● 9♠ 7● 10♣ A♥ K♥ 7♥ 10♥ 8●
+
+  [AI Počítač 2] S10-BID_ESTIMATE: odhad=60 → bid 60
+  Dražba [Hráč]: 70
+  → Vydražil: Hráč za 70
+
+  Talon zobral: Hráč → J● K●
+  Zahodil [Hráč]: Q♥ J●
+
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(leaf, seven)
+  [AI Počítač 2] S7-PROTECT_TEN: Card(leaf, over)
+  Štich  1: Hráč: A♣  |  Počítač 1: 7♣  |  Počítač 2: Q♣  → Hráč (+14)
+  [AI Počítač 1] S7-PROTECT_TEN: Card(acorn, eight)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(acorn, nine)
+  Štich  2: Hráč: A♠  |  Počítač 1: 8♠  |  Počítač 2: 9♠  → Hráč (+11)
+  [AI Počítač 1] S23-TRACK_BIDDER: Card(acorn, ten)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(bell, seven)
+  Štich  3: Hráč: K♠  |  Počítač 1: 10♠  |  Počítač 2: 7●  → Počítač 1 (+14)
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(acorn, over)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(heart, seven)
+  Štich  4: Počítač 1: Q♠  |  Počítač 2: 7♥  |  Hráč: 7♠  → Počítač 1 (+3)
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(acorn, under)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(bell, eight)
+  Štich  5: Počítač 1: J♠  |  Počítač 2: 8●  |  Hráč: 8♥  → Počítač 1 (+2)
+  [AI Počítač 1] S4-PASSIVE: Card(leaf, eight)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(leaf, ten)
+  Štich  6: Počítač 1: 8♣  |  Počítač 2: 10♣  |  Hráč: K♣  → Počítač 2 (+14)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(bell, ace)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(bell, over)
+  Štich  7: Počítač 2: A●  |  Hráč: 9●  |  Počítač 1: Q●  → Počítač 2 (+14)
+  [AI Počítač 2] S21-ENDGAME: Card(heart, ace)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(heart, under)
+  Štich  8: Počítač 2: A♥  |  Hráč: 9♥  |  Počítač 1: J♥  → Počítač 2 (+13)
+  [AI Počítač 2] S21-ENDGAME: Card(heart, ten)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(leaf, nine)
+  Štich  9: Počítač 2: 10♥  |  Hráč: K●  |  Počítač 1: 9♣  → Počítač 2 (+14)
+  [AI Počítač 2] S21-ENDGAME: Card(heart, king)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(leaf, under)
+  Štich 10: Počítač 2: K♥  |  Hráč: 10●  |  Počítač 1: J♣  → Počítač 2 (+16)
+
+VÝSLEDOK KOLA:
+  Hráč: záväzok 70 → nahral 30 → ✗ nesplnil → celkom: -70
+  Počítač 1: nahral 19 → celkom: 20
+  Počítač 2: nahral 71 → celkom: 70
+
+============================================================
+KOLO 2
+============================================================
+Povinnosť: Počítač 1
+Talon: Q♠ 8♣
+
+Ruka [Hráč]: 7♣ K♣ J● K● 9♠ 9♣ K♠ J♠ 8● K♥
+Ruka [Počítač 1]: 10♥ A♥ 10● 8♥ J♥ 10♠ 7♠ 10♣ Q♥ Q●
+Ruka [Počítač 2]: 7● A♣ A● 8♠ 9♥ 9● A♠ J♣ 7♥ Q♣
+
+  Dražba [Hráč]: PAS
+  → Vydražil: Počítač 1 za 50
+
+  Talon zobral: Počítač 1 → Q♠ 8♣
+  [AI Počítač 1] S13-SMART_DISCARD: zahodí: ['Card(heart, over)', 'Card(bell, over)']
+  Zahodil [Počítač 1]: Q♥ Q●
+
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(heart, ace)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(heart, seven)
+  Štich  1: Počítač 1: A♥  |  Počítač 2: 7♥  |  Hráč: K♥  → Počítač 1 (+15)
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(heart, ten)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(heart, nine)
+  Štich  2: Počítač 1: 10♥  |  Počítač 2: 9♥  |  Hráč: K♣  → Počítač 1 (+14)
+  [AI Počítač 1] S4-PASSIVE: Card(acorn, seven)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(acorn, eight)
+  Štich  3: Počítač 1: 7♠  |  Počítač 2: 8♠  |  Hráč: K♠  → Hráč (+4)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(bell, ten)
+  [AI Počítač 2] S23-TRACK_BIDDER: Card(bell, ace)
+  Štich  4: Hráč: 8●  |  Počítač 1: 10●  |  Počítač 2: A●  → Počítač 2 (+21)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(leaf, ace)
+  [AI Počítač 1] S7-PROTECT_TEN: Card(leaf, eight)
+  Štich  5: Počítač 2: A♣  |  Hráč: 7♣  |  Počítač 1: 8♣  → Počítač 2 (+11)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(acorn, ace)
+  [AI Počítač 1] S7-PROTECT_TEN: Card(acorn, over)
+  Štich  6: Počítač 2: A♠  |  Hráč: 9♠  |  Počítač 1: Q♠  → Počítač 2 (+14)
+  [AI Počítač 2] S4-PASSIVE: Card(bell, seven)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(heart, eight)
+  Štich  7: Počítač 2: 7●  |  Hráč: K●  |  Počítač 1: 8♥  → Hráč (+4)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(heart, under)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(bell, nine)
+  Štich  8: Hráč: J●  |  Počítač 1: J♥  |  Počítač 2: 9●  → Hráč (+4)
+  [AI Počítač 1] S23-TRACK_BIDDER: Card(acorn, ten)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(leaf, under)
+  Štich  9: Hráč: J♠  |  Počítač 1: 10♠  |  Počítač 2: J♣  → Počítač 1 (+14)
+  [AI Počítač 1] S21-ENDGAME: Card(leaf, ten)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(leaf, over)
+  Štich 10: Počítač 1: 10♣  |  Počítač 2: Q♣  |  Hráč: 9♣  → Počítač 1 (+13)
+
+VÝSLEDOK KOLA:
+  Hráč: nahral 12 → celkom: -60
+  Počítač 1: záväzok 50 → nahral 62 → ✓ splnil → celkom: 70
+  Počítač 2: nahral 46 → celkom: 120
+
+============================================================
+KOLO 3
+============================================================
+Povinnosť: Počítač 2
+Talon: A♥ Q♥
+
+Ruka [Hráč]: 7♣ J● 8♥ A♠ Q♣ K♥ 9♥ K♠ 9♣ 7♠
+Ruka [Počítač 1]: 9♠ J♣ Q♠ J♠ 10♠ 10♣ K● 10● 8♠ A●
+Ruka [Počítač 2]: 8♣ A♣ 8● K♣ J♥ Q● 10♥ 9● 7● 7♥
+
+  Dražba [Hráč]: PAS
+  → Vydražil: Počítač 2 za 50
+
+  Talon zobral: Počítač 2 → A♥ Q♥
+  [AI Počítač 2] S13-SMART_DISCARD: zahodí: ['Card(leaf, eight)', 'Card(bell, eight)']
+  Zahodil [Počítač 2]: 8♣ 8●
+
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(leaf, ace)
+  [AI Počítač 1] S7-PROTECT_TEN: Card(leaf, under)
+  Štich  1: Počítač 2: A♣  |  Hráč: 7♣  |  Počítač 1: J♣  → Počítač 2 (+13)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(heart, ace)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(acorn, eight)
+  Štich  2: Počítač 2: A♥  |  Hráč: 9♥  |  Počítač 1: 8♠  → Počítač 2 (+11)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(heart, ten)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(acorn, nine)
+  Štich  3: Počítač 2: 10♥  |  Hráč: 8♥  |  Počítač 1: 9♠  → Počítač 2 (+10)
+  [AI Počítač 2] S4-PASSIVE: Card(bell, seven)
+  [AI Počítač 1] S23-TRACK_BIDDER: Card(bell, king)
+  Štich  4: Počítač 2: 7●  |  Hráč: J●  |  Počítač 1: K●  → Počítač 1 (+6)
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(bell, ace)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(bell, nine)
+  Štich  5: Počítač 1: A●  |  Počítač 2: 9●  |  Hráč: 9♣  → Počítač 1 (+11)
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(leaf, ten)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(leaf, king)
+  Štich  6: Počítač 1: 10♣  |  Počítač 2: K♣  |  Hráč: Q♣  → Počítač 1 (+17)
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(bell, ten)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(bell, over)
+  Štich  7: Počítač 1: 10●  |  Počítač 2: Q●  |  Hráč: 7♠  → Počítač 1 (+13)
+  [AI Počítač 1] S21-ENDGAME: Card(acorn, under)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(heart, seven)
+  Štich  8: Počítač 1: J♠  |  Počítač 2: 7♥  |  Hráč: A♠  → Hráč (+13)
+  [AI Počítač 1] S23-TRACK_BIDDER: Card(acorn, ten)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(heart, under)
+  Štich  9: Hráč: K♠  |  Počítač 1: 10♠  |  Počítač 2: J♥  → Počítač 1 (+16)
+  [AI Počítač 1] S21-ENDGAME: Card(acorn, over)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(heart, over)
+  Štich 10: Počítač 1: Q♠  |  Počítač 2: Q♥  |  Hráč: K♥  → Počítač 1 (+10)
+
+VÝSLEDOK KOLA:
+  Hráč: nahral 13 → celkom: -50
+  Počítač 1: nahral 73 → celkom: 140
+  Počítač 2: záväzok 50 → nahral 34 → ✗ nesplnil → celkom: 70
+
+============================================================
+KOLO 4
+============================================================
+Povinnosť: Hráč
+Talon: A♣ K♠
+
+Ruka [Hráč]: A♠ 10♥ 7● J● 10♠ Q♥ 8♣ 8♠ 7♥ 9♣
+Ruka [Počítač 1]: A♥ K♥ 9● A● Q♠ J♥ Q● 9♠ K♣ J♠
+Ruka [Počítač 2]: 9♥ Q♣ 10● K● 7♣ J♣ 10♣ 8● 7♠ 8♥
+
+  → Vydražil: Hráč za 50
+
+  Talon zobral: Hráč → A♣ K♠
+  Zahodil [Hráč]: J● Q♥
+
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(acorn, nine)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(acorn, seven)
+  Štich  1: Hráč: A♠  |  Počítač 1: 9♠  |  Počítač 2: 7♠  → Hráč (+11)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(acorn, under)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(leaf, seven)
+  Štich  2: Hráč: K♠  |  Počítač 1: J♠  |  Počítač 2: 7♣  → Hráč (+6)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(acorn, over)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(bell, eight)
+  Štich  3: Hráč: 10♠  |  Počítač 1: Q♠  |  Počítač 2: 8●  → Hráč (+13)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(bell, nine)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(heart, eight)
+  Štich  4: Hráč: 8♠  |  Počítač 1: 9●  |  Počítač 2: 8♥  → Hráč (+0)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(bell, over)
+  [AI Počítač 2] S23-TRACK_BIDDER: Card(bell, king)
+  Štich  5: Hráč: 7●  |  Počítač 1: Q●  |  Počítač 2: K●  → Počítač 2 (+7)
+  [AI Počítač 2] S4-PASSIVE: Card(heart, nine)
+  [AI Počítač 1] S23-TRACK_BIDDER: Card(heart, ace)
+  Štich  6: Počítač 2: 9♥  |  Hráč: 10♥  |  Počítač 1: A♥  → Počítač 1 (+21)
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(bell, ace)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(bell, ten)
+  Štich  7: Počítač 1: A●  |  Počítač 2: 10●  |  Hráč: 7♥  → Počítač 1 (+21)
+  [AI Počítač 1] S21-ENDGAME: Card(heart, king)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(leaf, under)
+  Štich  8: Počítač 1: K♥  |  Počítač 2: J♣  |  Hráč: 8♣  → Počítač 1 (+6)
+  [AI Počítač 1] S21-ENDGAME: Card(heart, under)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(leaf, over)
+  Štich  9: Počítač 1: J♥  |  Počítač 2: Q♣  |  Hráč: 9♣  → Počítač 1 (+5)
+  [AI Počítač 1] S21-ENDGAME: Card(leaf, king)
+  [AI Počítač 2] S23-TRACK_BIDDER: Card(leaf, ten)
+  Štich 10: Počítač 1: K♣  |  Počítač 2: 10♣  |  Hráč: A♣  → Hráč (+25)
+
+VÝSLEDOK KOLA:
+  Hráč: záväzok 50 → nahral 60 → ✓ splnil → celkom: 0
+  Počítač 1: nahral 53 → celkom: 190
+  Počítač 2: nahral 7 → celkom: 80
+
+============================================================
+KOLO 5
+============================================================
+Povinnosť: Počítač 1
+Talon: 9● A♣
+
+Ruka [Hráč]: 7♠ 10♠ 8♠ Q♣ 10● K● 7♣ Q♥ K♠ J♣
+Ruka [Počítač 1]: J♠ A● 9♥ J♥ Q● 7● 9♠ K♥ J● 7♥
+Ruka [Počítač 2]: 10♥ Q♠ A♠ 8♥ K♣ 9♣ 8♣ A♥ 8● 10♣
+
+  Dražba [Hráč]: 60
+  → Vydražil: Hráč za 60
+
+  Talon zobral: Hráč → 9● A♣
+  Zahodil [Hráč]: K♠ Q♥
+
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(acorn, nine)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(acorn, over)
+  Štich  1: Hráč: 7♠  |  Počítač 1: 9♠  |  Počítač 2: Q♠  → Počítač 2 (+3)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(acorn, ace)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(acorn, under)
+  Štich  2: Počítač 2: A♠  |  Hráč: 8♠  |  Počítač 1: J♠  → Počítač 2 (+13)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(heart, ace)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(heart, seven)
+  Štich  3: Počítač 2: A♥  |  Hráč: 9●  |  Počítač 1: 7♥  → Počítač 2 (+11)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(heart, ten)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(heart, nine)
+  Štich  4: Počítač 2: 10♥  |  Hráč: 7♣  |  Počítač 1: 9♥  → Počítač 2 (+10)
+  [AI Počítač 2] S3-FORCING: Card(leaf, king) → chráni Card(leaf, ten) (p=30%, backup=3)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(bell, seven)
+  Štich  5: Počítač 2: K♣  |  Hráč: A♣  |  Počítač 1: 7●  → Hráč (+15)
+  [AI Počítač 1] S23-TRACK_BIDDER: Card(bell, ace)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(bell, eight)
+  Štich  6: Hráč: K●  |  Počítač 1: A●  |  Počítač 2: 8●  → Počítač 1 (+15)
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(heart, king)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(heart, eight)
+  Štich  7: Počítač 1: K♥  |  Počítač 2: 8♥  |  Hráč: J♣  → Počítač 1 (+6)
+  [AI Počítač 1] S21-ENDGAME: Card(heart, under)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(leaf, eight)
+  Štich  8: Počítač 1: J♥  |  Počítač 2: 8♣  |  Hráč: Q♣  → Počítač 1 (+5)
+  [AI Počítač 1] S21-ENDGAME: Card(bell, under)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(leaf, nine)
+  Štich  9: Počítač 1: J●  |  Počítač 2: 9♣  |  Hráč: 10●  → Hráč (+12)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(bell, over)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(leaf, ten)
+  Štich 10: Hráč: 10♠  |  Počítač 1: Q●  |  Počítač 2: 10♣  → Hráč (+23)
+
+VÝSLEDOK KOLA:
+  Hráč: záväzok 60 → nahral 57 → ✗ nesplnil → celkom: -60
+  Počítač 1: nahral 26 → celkom: 220
+  Počítač 2: nahral 37 → celkom: 120
+
+============================================================
+KOLO 6
+============================================================
+Povinnosť: Počítač 2
+Talon: J● 10♣
+
+Ruka [Hráč]: K♣ Q♥ 8● J♥ 8♣ Q● Q♣ J♣ 9♣ 10♠
+Ruka [Počítač 1]: 7♣ K♥ 7● 9♠ A♠ 10♥ 8♥ A♥ A● 10●
+Ruka [Počítač 2]: A♣ 9♥ K● 7♠ K♠ Q♠ 8♠ J♠ 9● 7♥
+
+  Dražba [Hráč]: PAS
+  [AI Počítač 1] S10-BID_ESTIMATE: odhad=80 → bid 60
+  [AI Počítač 2] S10-BID_ESTIMATE: odhad=120 → bid 70
+  [AI Počítač 1] S10-BID_ESTIMATE: odhad=80 → bid 80
+  [AI Počítač 2] S10-BID_ESTIMATE: odhad=120 → bid 90
+  → Vydražil: Počítač 2 za 90
+
+  Talon zobral: Počítač 2 → J● 10♣
+  [AI Počítač 2] S12-RAISE_AFTER_TALON: po talóne navýšenie na 120
+  [AI Počítač 2] S13-SMART_DISCARD: zahodí: ['Card(heart, nine)', 'Card(bell, nine)']
+  Zahodil [Počítač 2]: 9♥ 9●
+
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(leaf, ace)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(leaf, seven)
+  Štich  1: Počítač 2: A♣  |  Hráč: 8♣  |  Počítač 1: 7♣  → Počítač 2 (+11)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(leaf, ten)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(bell, seven)
+  Štich  2: Počítač 2: 10♣  |  Hráč: 9♣  |  Počítač 1: 7●  → Počítač 2 (+10)
+  [AI Počítač 2] S5-TRUMP_DECLARE: Card(acorn, king) → zahlási tromf acorn
+  *** TROMF [Počítač 2]: acorn (+100 bodov)
+  [AI Počítač 1] S23-TRACK_BIDDER: Card(acorn, ace)
+  Štich  3: Počítač 2: K♠  |  Hráč: 10♠  |  Počítač 1: A♠  → Počítač 1 (+25)
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(heart, ace)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(heart, seven)
+  Štich  4: Počítač 1: A♥  |  Počítač 2: 7♥  |  Hráč: J♥  → Počítač 1 (+13)
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(bell, ace)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(bell, under)
+  Štich  5: Počítač 1: A●  |  Počítač 2: J●  |  Hráč: 8●  → Počítač 1 (+13)
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(heart, ten)
+  [AI Počítač 2] S23-TRACK_BIDDER: Card(acorn, seven)
+  Štich  6: Počítač 1: 10♥  |  Počítač 2: 7♠  |  Hráč: Q♥  → Počítač 2 (+13)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(acorn, over)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(acorn, nine)
+  Štich  7: Počítač 2: Q♠  |  Hráč: J♣  |  Počítač 1: 9♠  → Počítač 2 (+5)
+  [AI Počítač 2] S21-ENDGAME: Card(acorn, under)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(heart, eight)
+  Štich  8: Počítač 2: J♠  |  Hráč: Q●  |  Počítač 1: 8♥  → Počítač 2 (+5)
+  [AI Počítač 2] S21-ENDGAME: Card(acorn, eight)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(heart, king)
+  Štich  9: Počítač 2: 8♠  |  Hráč: Q♣  |  Počítač 1: K♥  → Počítač 2 (+7)
+  [AI Počítač 2] S21-ENDGAME: Card(bell, king)
+  [AI Počítač 1] S23-TRACK_BIDDER: Card(bell, ten)
+  Štich 10: Počítač 2: K●  |  Hráč: K♣  |  Počítač 1: 10●  → Počítač 1 (+18)
+
+VÝSLEDOK KOLA:
+  Hráč: nahral 0 → celkom: -60
+  Počítač 1: nahral 69 → celkom: 290
+  Počítač 2: záväzok 120 → nahral 151 → ✓ splnil → celkom: 240
+
+============================================================
+KOLO 7
+============================================================
+Povinnosť: Hráč
+Talon: 8♠ K♣
+
+Ruka [Hráč]: J● 10♣ 10♠ J♣ 10● 9♠ 8♣ Q● 7♣ K♠
+Ruka [Počítač 1]: 7♠ 8♥ Q♠ 7♥ A● 9● K● A♠ A♥ K♥
+Ruka [Počítač 2]: 9♣ 8● 10♥ 9♥ A♣ J♥ J♠ Q♣ Q♥ 7●
+
+  → Vydražil: Hráč za 50
+
+  Talon zobral: Hráč → 8♠ K♣
+  Zahodil [Hráč]: K♣ K♠
+
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(acorn, seven)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(leaf, nine)
+  Štich  1: Hráč: 7♣  |  Počítač 1: 7♠  |  Počítač 2: 9♣  → Počítač 2 (+0)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(leaf, ace)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(heart, seven)
+  Štich  2: Počítač 2: A♣  |  Hráč: 8♣  |  Počítač 1: 7♥  → Počítač 2 (+11)
+  [AI Počítač 2] S3-FORCING: Card(heart, over) → chráni Card(heart, ten) (p=30%, backup=3)
+  [AI Počítač 1] S23-TRACK_BIDDER: Card(heart, king)
+  Štich  3: Počítač 2: Q♥  |  Hráč: 9♠  |  Počítač 1: K♥  → Počítač 1 (+7)
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(bell, ace)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(bell, seven)
+  Štich  4: Počítač 1: A●  |  Počítač 2: 7●  |  Hráč: Q●  → Počítač 1 (+14)
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(acorn, ace)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(acorn, under)
+  Štich  5: Počítač 1: A♠  |  Počítač 2: J♠  |  Hráč: 8♠  → Počítač 1 (+13)
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(heart, ace)
+  [AI Počítač 2] S7-PROTECT_TEN: Card(heart, nine)
+  Štich  6: Počítač 1: A♥  |  Počítač 2: 9♥  |  Hráč: J♣  → Počítač 1 (+13)
+  [AI Počítač 1] S4-PASSIVE: Card(heart, eight)
+  [AI Počítač 2] S7-PROTECT_TEN: Card(heart, under)
+  Štich  7: Počítač 1: 8♥  |  Počítač 2: J♥  |  Hráč: J●  → Počítač 2 (+4)
+  [AI Počítač 2] S21-ENDGAME: Card(heart, ten)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(bell, nine)
+  Štich  8: Počítač 2: 10♥  |  Hráč: 10●  |  Počítač 1: 9●  → Počítač 2 (+20)
+  [AI Počítač 2] S21-ENDGAME: Card(bell, eight)
+  [AI Počítač 1] S23-TRACK_BIDDER: Card(bell, king)
+  Štich  9: Počítač 2: 8●  |  Hráč: 10♠  |  Počítač 1: K●  → Počítač 1 (+14)
+  [AI Počítač 1] S21-ENDGAME: Card(acorn, over)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(leaf, over)
+  Štich 10: Počítač 1: Q♠  |  Počítač 2: Q♣  |  Hráč: 10♣  → Počítač 1 (+16)
+
+VÝSLEDOK KOLA:
+  Hráč: záväzok 50 → nahral 8 → ✗ nesplnil → celkom: -110
+  Počítač 1: nahral 77 → celkom: 370
+  Počítač 2: nahral 35 → celkom: 280
+
+============================================================
+KOLO 8
+============================================================
+Povinnosť: Počítač 1
+Talon: 7♥ Q●
+
+Ruka [Hráč]: K♠ 10● 10♣ 7♣ J♥ Q♠ 7● A♥ A● 7♠
+Ruka [Počítač 1]: A♠ J♠ 8♥ Q♣ 8● J♣ Q♥ K● J● 10♥
+Ruka [Počítač 2]: 9♣ 9♥ 9● K♣ 8♣ K♥ 8♠ A♣ 10♠ 9♠
+
+  Dražba [Hráč]: 60
+  → Vydražil: Hráč za 60
+
+  Talon zobral: Hráč → 7♥ Q●
+  Zahodil [Hráč]: J♥ 7♥
+
+  [AI Počítač 1] S7-PROTECT_TEN: Card(heart, eight)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(heart, nine)
+  Štich  1: Hráč: A♥  |  Počítač 1: 8♥  |  Počítač 2: 9♥  → Hráč (+11)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(bell, eight)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(bell, nine)
+  Štich  2: Hráč: A●  |  Počítač 1: 8●  |  Počítač 2: 9●  → Hráč (+11)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(bell, under)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(leaf, eight)
+  Štich  3: Hráč: 10●  |  Počítač 1: J●  |  Počítač 2: 8♣  → Hráč (+12)
+  [AI Počítač 1] S23-TRACK_BIDDER: Card(bell, king)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(acorn, eight)
+  Štich  4: Hráč: Q●  |  Počítač 1: K●  |  Počítač 2: 8♠  → Počítač 1 (+7)
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(acorn, ace)
+  [AI Počítač 2] S7-PROTECT_TEN: Card(acorn, nine)
+  Štich  5: Počítač 1: A♠  |  Počítač 2: 9♠  |  Hráč: 7♠  → Počítač 1 (+11)
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(heart, ten)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(heart, king)
+  Štich  6: Počítač 1: 10♥  |  Počítač 2: K♥  |  Hráč: 7●  → Počítač 1 (+14)
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(heart, over)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(leaf, nine)
+  Štich  7: Počítač 1: Q♥  |  Počítač 2: 9♣  |  Hráč: 7♣  → Počítač 1 (+3)
+  [AI Počítač 1] S21-ENDGAME: Card(acorn, under)
+  [AI Počítač 2] S23-TRACK_BIDDER: Card(acorn, ten)
+  Štich  8: Počítač 1: J♠  |  Počítač 2: 10♠  |  Hráč: K♠  → Počítač 2 (+16)
+  [AI Počítač 2] S21-ENDGAME: Card(leaf, ace)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(leaf, under)
+  Štich  9: Počítač 2: A♣  |  Hráč: 10♣  |  Počítač 1: J♣  → Počítač 2 (+23)
+  [AI Počítač 2] S21-ENDGAME: Card(leaf, king)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(leaf, over)
+  Štich 10: Počítač 2: K♣  |  Hráč: Q♠  |  Počítač 1: Q♣  → Počítač 2 (+10)
+
+VÝSLEDOK KOLA:
+  Hráč: záväzok 130 → nahral 36 → ✗ nesplnil → celkom: -240
+  Počítač 1: nahral 35 → celkom: 410
+  Počítač 2: nahral 49 → celkom: 330
+
+============================================================
+KOLO 9
+============================================================
+Povinnosť: Počítač 2
+Talon: 7♠ 8♣
+
+Ruka [Hráč]: K♣ A♣ 8♠ 9♣ 7♣ 7♥ 9♥ 10♠ 8♥ J●
+Ruka [Počítač 1]: Q♣ K♠ J♥ K● 10♥ Q● 9♠ 10♣ J♣ Q♥
+Ruka [Počítač 2]: A♠ A♥ 10● A● 8● J♠ 7● 9● K♥ Q♠
+
+  Dražba [Hráč]: PAS
+  [AI Počítač 1] S10-BID_ESTIMATE: odhad=80 → bid 60
+  [AI Počítač 2] S10-BID_ESTIMATE: odhad=70 → bid 70
+  [AI Počítač 1] S10-BID_ESTIMATE: odhad=80 → bid 80
+  → Vydražil: Počítač 1 za 80
+
+  Talon zobral: Počítač 1 → 7♠ 8♣
+  [AI Počítač 1] S13-SMART_DISCARD: zahodí: ['Card(acorn, nine)', 'Card(acorn, seven)']
+  Zahodil [Počítač 1]: 9♠ 7♠
+
+  [AI Počítač 1] S3-FORCING: Card(leaf, over) → chráni Card(leaf, ten) (p=30%, backup=3)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(bell, seven)
+  Štich  1: Počítač 1: Q♣  |  Počítač 2: 7●  |  Hráč: K♣  → Hráč (+7)
+  [AI Počítač 1] S23-TRACK_BIDDER: Card(bell, over)
+  [AI Počítač 2] S23-TRACK_BIDDER: Card(bell, ten)
+  Štich  2: Hráč: J●  |  Počítač 1: Q●  |  Počítač 2: 10●  → Počítač 2 (+15)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(acorn, ace)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(acorn, king)
+  Štich  3: Počítač 2: A♠  |  Hráč: 8♠  |  Počítač 1: K♠  → Počítač 2 (+15)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(heart, ace)
+  [AI Počítač 1] S7-PROTECT_TEN: Card(heart, under)
+  Štich  4: Počítač 2: A♥  |  Hráč: 7♥  |  Počítač 1: J♥  → Počítač 2 (+13)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(bell, ace)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(bell, king)
+  Štich  5: Počítač 2: A●  |  Hráč: 9♥  |  Počítač 1: K●  → Počítač 2 (+15)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(bell, eight)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(leaf, eight)
+  Štich  6: Počítač 2: 8●  |  Hráč: 8♥  |  Počítač 1: 8♣  → Počítač 2 (+0)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(bell, nine)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(leaf, under)
+  Štich  7: Počítač 2: 9●  |  Hráč: 7♣  |  Počítač 1: J♣  → Počítač 2 (+2)
+  [AI Počítač 2] S21-ENDGAME: Card(acorn, under)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(heart, over)
+  Štich  8: Počítač 2: J♠  |  Hráč: 10♠  |  Počítač 1: Q♥  → Hráč (+15)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(leaf, ten)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(acorn, over)
+  Štich  9: Hráč: A♣  |  Počítač 1: 10♣  |  Počítač 2: Q♠  → Hráč (+24)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(heart, ten)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(heart, king)
+  Štich 10: Hráč: 9♣  |  Počítač 1: 10♥  |  Počítač 2: K♥  → Hráč (+14)
+
+VÝSLEDOK KOLA:
+  Hráč: nahral 60 → celkom: -180
+  Počítač 1: záväzok 80 → nahral 0 → ✗ nesplnil → celkom: 330
+  Počítač 2: nahral 60 → celkom: 390
+
+============================================================
+KOLO 10
+============================================================
+Povinnosť: Hráč
+Talon: J♣ 10♠
+
+Ruka [Hráč]: A♣ 10♣ 10♥ 9● A♠ 7● J♠ 9♥ Q♠ A●
+Ruka [Počítač 1]: 9♣ 7♥ 10● 7♠ 9♠ Q♣ A♥ 8♥ J♥ K♣
+Ruka [Počítač 2]: K● 7♣ K♠ 8♠ J● Q● 8♣ 8● K♥ Q♥
+
+  [AI Počítač 1] S11-PASS_FOR_TRUMP: silné hlášky, slabé štichy → pas
+  [AI Počítač 2] S11-PASS_FOR_TRUMP: silné hlášky, slabé štichy → pas
+  → Vydražil: Hráč za 50
+
+  Talon zobral: Hráč → J♣ 10♠
+  Zahodil [Hráč]: J♣ 9●
+
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(bell, ten)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(bell, eight)
+  Štich  1: Hráč: A●  |  Počítač 1: 10●  |  Počítač 2: 8●  → Hráč (+21)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(heart, seven)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(bell, under)
+  Štich  2: Hráč: 7●  |  Počítač 1: 7♥  |  Počítač 2: J●  → Počítač 2 (+2)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(bell, king)
+  *** TROMF [Počítač 2]: bell (+60 bodov)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(acorn, seven)
+  Štich  3: Počítač 2: K●  |  Hráč: J♠  |  Počítač 1: 7♠  → Počítač 2 (+6)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(bell, over)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(acorn, nine)
+  Štich  4: Počítač 2: Q●  |  Hráč: Q♠  |  Počítač 1: 9♠  → Počítač 2 (+6)
+  [AI Počítač 2] S5-TRUMP_DECLARE: Card(heart, king) → zahlási tromf heart
+  *** TROMF [Počítač 2]: heart (+40 bodov)
+  [AI Počítač 1] S23-TRACK_BIDDER: Card(heart, ace)
+  Štich  5: Počítač 2: K♥  |  Hráč: 10♥  |  Počítač 1: A♥  → Počítač 1 (+25)
+  [AI Počítač 1] S5-TRUMP_DECLARE: Card(leaf, over) → zahlási tromf leaf
+  *** TROMF [Počítač 1]: leaf (+80 bodov)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(leaf, seven)
+  Štich  6: Počítač 1: Q♣  |  Počítač 2: 7♣  |  Hráč: 10♣  → Hráč (+13)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(leaf, nine)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(leaf, eight)
+  Štich  7: Hráč: A♣  |  Počítač 1: 9♣  |  Počítač 2: 8♣  → Hráč (+11)
+  [AI Počítač 1] S23-TRACK_BIDDER: Card(leaf, king)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(acorn, eight)
+  Štich  8: Hráč: A♠  |  Počítač 1: K♣  |  Počítač 2: 8♠  → Počítač 1 (+15)
+  [AI Počítač 1] S21-ENDGAME: Card(heart, eight)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(heart, over)
+  Štich  9: Počítač 1: 8♥  |  Počítač 2: Q♥  |  Hráč: 9♥  → Počítač 2 (+3)
+  [AI Počítač 2] S21-ENDGAME: Card(acorn, king)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(heart, under)
+  Štich 10: Počítač 2: K♠  |  Hráč: 10♠  |  Počítač 1: J♥  → Hráč (+16)
+
+VÝSLEDOK KOLA:
+  Hráč: záväzok 50 → nahral 63 → ✓ splnil → celkom: -130
+  Počítač 1: nahral 120 → celkom: 450
+  Počítač 2: nahral 117 → celkom: 510
+
+============================================================
+KOLO 11
+============================================================
+Povinnosť: Počítač 1
+Talon: 9♠ 9♣
+
+Ruka [Hráč]: 7● 10♠ 9● 10♣ A♥ K♣ J♥ 8♠ 8♥ A♠
+Ruka [Počítač 1]: K♥ 7♥ K♠ 7♠ J♣ A♣ Q● 10♥ A● J●
+Ruka [Počítač 2]: Q♥ 8♣ J♠ 8● 9♥ 10● Q♠ K● Q♣ 7♣
+
+  Dražba [Hráč]: PAS
+  → Vydražil: Počítač 1 za 50
+
+  Talon zobral: Počítač 1 → 9♠ 9♣
+  [AI Počítač 1] S13-SMART_DISCARD: zahodí: ['Card(acorn, seven)', 'Card(acorn, nine)']
+  Zahodil [Počítač 1]: 7♠ 9♠
+
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(leaf, ace)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(leaf, seven)
+  Štich  1: Počítač 1: A♣  |  Počítač 2: 7♣  |  Hráč: K♣  → Počítač 1 (+15)
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(bell, ace)
+  [AI Počítač 2] S7-PROTECT_TEN: Card(bell, eight)
+  Štich  2: Počítač 1: A●  |  Počítač 2: 8●  |  Hráč: 9●  → Počítač 1 (+11)
+  [AI Počítač 1] S4-PASSIVE: Card(heart, seven)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(heart, nine)
+  Štich  3: Počítač 1: 7♥  |  Počítač 2: 9♥  |  Hráč: J♥  → Hráč (+2)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(acorn, king)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(acorn, under)
+  Štich  4: Hráč: A♠  |  Počítač 1: K♠  |  Počítač 2: J♠  → Hráč (+17)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(leaf, nine)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(acorn, over)
+  Štich  5: Hráč: 10♠  |  Počítač 1: 9♣  |  Počítač 2: Q♠  → Hráč (+13)
+  [AI Počítač 1] S7-PROTECT_TEN: Card(heart, king)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(heart, over)
+  Štich  6: Hráč: A♥  |  Počítač 1: K♥  |  Počítač 2: Q♥  → Hráč (+18)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(bell, under)
+  [AI Počítač 2] S23-TRACK_BIDDER: Card(bell, king)
+  Štich  7: Hráč: 7●  |  Počítač 1: J●  |  Počítač 2: K●  → Počítač 2 (+6)
+  [AI Počítač 2] S21-ENDGAME: Card(bell, ten)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(bell, over)
+  Štich  8: Počítač 2: 10●  |  Hráč: 8♠  |  Počítač 1: Q●  → Počítač 2 (+13)
+  [AI Počítač 2] S21-ENDGAME: Card(leaf, eight)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(leaf, under)
+  Štich  9: Počítač 2: 8♣  |  Hráč: 10♣  |  Počítač 1: J♣  → Hráč (+12)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(heart, ten)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(leaf, over)
+  Štich 10: Hráč: 8♥  |  Počítač 1: 10♥  |  Počítač 2: Q♣  → Počítač 1 (+13)
+
+VÝSLEDOK KOLA:
+  Hráč: nahral 62 → celkom: -70
+  Počítač 1: záväzok 50 → nahral 39 → ✗ nesplnil → celkom: 400
+  Počítač 2: nahral 19 → celkom: 530
+
+============================================================
+KOLO 12
+============================================================
+Povinnosť: Počítač 2
+Talon: K♣ K♥
+
+Ruka [Hráč]: 7● Q♣ A● 9● A♣ 8♣ K● 7♠ J♥ 7♣
+Ruka [Počítač 1]: A♠ A♥ 8♥ 9♠ J♠ Q● 9♥ 10● K♠ 10♥
+Ruka [Počítač 2]: 10♠ Q♠ J♣ 8● 8♠ 9♣ J● Q♥ 7♥ 10♣
+
+  Dražba [Hráč]: PAS
+  [AI Počítač 1] S10-BID_ESTIMATE: odhad=60 → bid 60
+  → Vydražil: Počítač 1 za 60
+
+  Talon zobral: Počítač 1 → K♣ K♥
+  [AI Počítač 1] S13-SMART_DISCARD: zahodí: ['Card(leaf, king)', 'Card(acorn, nine)']
+  Zahodil [Počítač 1]: K♣ 9♠
+
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(acorn, ace)
+  [AI Počítač 2] S7-PROTECT_TEN: Card(acorn, eight)
+  Štich  1: Počítač 1: A♠  |  Počítač 2: 8♠  |  Hráč: 7♠  → Počítač 1 (+11)
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(heart, ace)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(heart, seven)
+  Štich  2: Počítač 1: A♥  |  Počítač 2: 7♥  |  Hráč: J♥  → Počítač 1 (+13)
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(heart, ten)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(heart, over)
+  Štich  3: Počítač 1: 10♥  |  Počítač 2: Q♥  |  Hráč: 9●  → Počítač 1 (+13)
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(heart, king)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(bell, eight)
+  Štich  4: Počítač 1: K♥  |  Počítač 2: 8●  |  Hráč: 7●  → Počítač 1 (+4)
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(heart, eight)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(leaf, nine)
+  Štich  5: Počítač 1: 8♥  |  Počítač 2: 9♣  |  Hráč: 8♣  → Počítač 1 (+0)
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(heart, nine)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(leaf, under)
+  Štich  6: Počítač 1: 9♥  |  Počítač 2: J♣  |  Hráč: 7♣  → Počítač 1 (+2)
+  [AI Počítač 1] S4-PASSIVE: Card(acorn, under)
+  [AI Počítač 2] S23-TRACK_BIDDER: Card(acorn, over)
+  Štich  7: Počítač 1: J♠  |  Počítač 2: Q♠  |  Hráč: Q♣  → Počítač 2 (+8)
+  [AI Počítač 2] S21-ENDGAME: Card(acorn, ten)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(acorn, king)
+  Štich  8: Počítač 2: 10♠  |  Hráč: K●  |  Počítač 1: K♠  → Počítač 2 (+18)
+  [AI Počítač 2] S21-ENDGAME: Card(bell, under)
+  [AI Počítač 1] S7-PROTECT_TEN: Card(bell, over)
+  Štich  9: Počítač 2: J●  |  Hráč: A●  |  Počítač 1: Q●  → Hráč (+16)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(bell, ten)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(leaf, ten)
+  Štich 10: Hráč: A♣  |  Počítač 1: 10●  |  Počítač 2: 10♣  → Hráč (+31)
+
+VÝSLEDOK KOLA:
+  Hráč: nahral 47 → celkom: -20
+  Počítač 1: záväzok 60 → nahral 47 → ✗ nesplnil → celkom: 340
+  Počítač 2: nahral 26 → celkom: 560
+
+============================================================
+KOLO 13
+============================================================
+Povinnosť: Hráč
+Talon: 10♠ 7♥
+
+Ruka [Hráč]: K● J♥ A● K♣ 9♣ 10● K♥ 8♣ Q♠ A♣
+Ruka [Počítač 1]: J● 10♥ 9♠ 7♠ J♣ 7♣ 8♥ Q♥ 8● Q♣
+Ruka [Počítač 2]: Q● A♥ 9● 10♣ 9♥ J♠ 7● A♠ K♠ 8♠
+
+  → Vydražil: Hráč za 50
+
+  Talon zobral: Hráč → 10♠ 7♥
+  Zahodil [Hráč]: K♥ J♥
+
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(bell, eight)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(bell, seven)
+  Štich  1: Hráč: A●  |  Počítač 1: 8●  |  Počítač 2: 7●  → Hráč (+11)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(bell, under)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(bell, nine)
+  Štich  2: Hráč: 10●  |  Počítač 1: J●  |  Počítač 2: 9●  → Hráč (+12)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(acorn, seven)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(bell, over)
+  Štich  3: Hráč: K●  |  Počítač 1: 7♠  |  Počítač 2: Q●  → Hráč (+7)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(acorn, nine)
+  [AI Počítač 2] S23-TRACK_BIDDER: Card(acorn, king)
+  Štich  4: Hráč: Q♠  |  Počítač 1: 9♠  |  Počítač 2: K♠  → Počítač 2 (+7)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(heart, ace)
+  [AI Počítač 1] S7-PROTECT_TEN: Card(heart, eight)
+  Štich  5: Počítač 2: A♥  |  Hráč: 7♥  |  Počítač 1: 8♥  → Počítač 2 (+11)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(acorn, ace)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(leaf, seven)
+  Štich  6: Počítač 2: A♠  |  Hráč: 10♠  |  Počítač 1: 7♣  → Počítač 2 (+21)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(acorn, under)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(leaf, under)
+  Štich  7: Počítač 2: J♠  |  Hráč: 8♣  |  Počítač 1: J♣  → Počítač 2 (+4)
+  [AI Počítač 2] S21-ENDGAME: Card(acorn, eight)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(heart, over)
+  Štich  8: Počítač 2: 8♠  |  Hráč: 9♣  |  Počítač 1: Q♥  → Počítač 2 (+3)
+  [AI Počítač 2] S21-ENDGAME: Card(heart, nine)
+  [AI Počítač 1] S23-TRACK_BIDDER: Card(heart, ten)
+  Štich  9: Počítač 2: 9♥  |  Hráč: K♣  |  Počítač 1: 10♥  → Počítač 1 (+14)
+  [AI Počítač 1] S21-ENDGAME: Card(leaf, over)
+  [AI Počítač 2] S23-TRACK_BIDDER: Card(leaf, ten)
+  Štich 10: Počítač 1: Q♣  |  Počítač 2: 10♣  |  Hráč: A♣  → Hráč (+24)
+
+VÝSLEDOK KOLA:
+  Hráč: záväzok 50 → nahral 60 → ✓ splnil → celkom: 30
+  Počítač 1: nahral 14 → celkom: 350
+  Počítač 2: nahral 46 → celkom: 610
+
+============================================================
+KOLO 14
+============================================================
+Povinnosť: Počítač 1
+Talon: K♥ 7♣
+
+Ruka [Hráč]: 8● 9♣ K♠ Q♠ 7♠ Q♣ 7● K● 9♥ 10●
+Ruka [Počítač 1]: J● 9♠ K♣ 9● 10♣ Q♥ A♠ J♣ 8♠ A♣
+Ruka [Počítač 2]: Q● A♥ 8♥ 7♥ A● 10♥ 8♣ J♠ J♥ 10♠
+
+  Dražba [Hráč]: 60
+  → Vydražil: Hráč za 60
+
+  Talon zobral: Hráč → K♥ 7♣
+  Zahodil [Hráč]: 9♥ K♥
+
+  [AI Počítač 1] S23-TRACK_BIDDER: Card(leaf, king)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(leaf, eight)
+  Štich  1: Hráč: Q♣  |  Počítač 1: K♣  |  Počítač 2: 8♣  → Počítač 1 (+7)
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(acorn, ace)
+  [AI Počítač 2] S7-PROTECT_TEN: Card(acorn, under)
+  Štich  2: Počítač 1: A♠  |  Počítač 2: J♠  |  Hráč: 7♠  → Počítač 1 (+13)
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(leaf, ace)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(heart, seven)
+  Štich  3: Počítač 1: A♣  |  Počítač 2: 7♥  |  Hráč: 7♣  → Počítač 1 (+11)
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(leaf, ten)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(heart, eight)
+  Štich  4: Počítač 1: 10♣  |  Počítač 2: 8♥  |  Hráč: 9♣  → Počítač 1 (+10)
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(leaf, under)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(heart, under)
+  Štich  5: Počítač 1: J♣  |  Počítač 2: J♥  |  Hráč: 7●  → Počítač 1 (+4)
+  [AI Počítač 1] S4-PASSIVE: Card(acorn, eight)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(acorn, ten)
+  Štich  6: Počítač 1: 8♠  |  Počítač 2: 10♠  |  Hráč: Q♠  → Počítač 2 (+13)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(heart, ace)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(heart, over)
+  Štich  7: Počítač 2: A♥  |  Hráč: 8●  |  Počítač 1: Q♥  → Počítač 2 (+14)
+  [AI Počítač 2] S21-ENDGAME: Card(bell, ace)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(bell, nine)
+  Štich  8: Počítač 2: A●  |  Hráč: K●  |  Počítač 1: 9●  → Počítač 2 (+15)
+  [AI Počítač 2] S21-ENDGAME: Card(heart, ten)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(acorn, nine)
+  Štich  9: Počítač 2: 10♥  |  Hráč: K♠  |  Počítač 1: 9♠  → Počítač 2 (+14)
+  [AI Počítač 2] S21-ENDGAME: Card(bell, over)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(bell, under)
+  Štich 10: Počítač 2: Q●  |  Hráč: 10●  |  Počítač 1: J●  → Hráč (+15)
+
+VÝSLEDOK KOLA:
+  Hráč: záväzok 60 → nahral 19 → ✗ nesplnil → celkom: -30
+  Počítač 1: nahral 45 → celkom: 400
+  Počítač 2: nahral 56 → celkom: 670
+
+============================================================
+KOLO 15
+============================================================
+Povinnosť: Počítač 2
+Talon: Q♥ A●
+
+Ruka [Hráč]: 7♥ 7♠ 9♠ Q♠ J♣ 8♠ Q● J● 10♠ K♠
+Ruka [Počítač 1]: 7♣ 10● 8♥ K♣ 9♥ K♥ 8♣ A♠ Q♣ 9●
+Ruka [Počítač 2]: 9♣ 10♥ A♥ A♣ 10♣ J♥ 7● K● 8● J♠
+
+  Dražba [Hráč]: 60
+  [AI Počítač 1] S11-PASS_FOR_TRUMP: silné hlášky, slabé štichy → pas
+  → Vydražil: Hráč za 60
+
+  Talon zobral: Hráč → Q♥ A●
+  Zahodil [Hráč]: 7♥ Q♥
+
+  [AI Počítač 1] S7-PROTECT_TEN: Card(bell, nine)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(bell, seven)
+  Štich  1: Hráč: A●  |  Počítač 1: 9●  |  Počítač 2: 7●  → Hráč (+11)
+  *** TROMF [Hráč]: acorn (+100 bodov)
+  [AI Počítač 1] S23-TRACK_BIDDER: Card(acorn, ace)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(acorn, under)
+  Štich  2: Hráč: Q♠  |  Počítač 1: A♠  |  Počítač 2: J♠  → Počítač 1 (+16)
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(bell, ten)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(bell, eight)
+  Štich  3: Počítač 1: 10●  |  Počítač 2: 8●  |  Hráč: J●  → Počítač 1 (+12)
+  [AI Počítač 1] S5-TRUMP_DECLARE: Card(leaf, king) → zahlási tromf leaf
+  *** TROMF [Počítač 1]: leaf (+80 bodov)
+  [AI Počítač 2] S23-TRACK_BIDDER: Card(leaf, ten)
+  Štich  4: Počítač 1: K♣  |  Počítač 2: 10♣  |  Hráč: J♣  → Počítač 2 (+16)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(heart, ace)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(heart, eight)
+  Štich  5: Počítač 2: A♥  |  Hráč: Q●  |  Počítač 1: 8♥  → Počítač 2 (+14)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(leaf, ace)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(leaf, seven)
+  Štich  6: Počítač 2: A♣  |  Hráč: K♠  |  Počítač 1: 7♣  → Počítač 2 (+15)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(heart, ten)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(heart, nine)
+  Štich  7: Počítač 2: 10♥  |  Hráč: 10♠  |  Počítač 1: 9♥  → Počítač 2 (+20)
+  [AI Počítač 2] S21-ENDGAME: Card(bell, king)
+  [AI Počítač 1] S23-TRACK_BIDDER: Card(leaf, eight)
+  Štich  8: Počítač 2: K●  |  Hráč: 8♠  |  Počítač 1: 8♣  → Počítač 1 (+4)
+  [AI Počítač 1] S21-ENDGAME: Card(heart, king)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(heart, under)
+  Štich  9: Počítač 1: K♥  |  Počítač 2: J♥  |  Hráč: 9♠  → Počítač 1 (+6)
+  [AI Počítač 1] S21-ENDGAME: Card(leaf, over)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(leaf, nine)
+  Štich 10: Počítač 1: Q♣  |  Počítač 2: 9♣  |  Hráč: 7♠  → Počítač 1 (+3)
+
+VÝSLEDOK KOLA:
+  Hráč: záväzok 140 → nahral 114 → ✗ nesplnil → celkom: -170
+  Počítač 1: nahral 121 → celkom: 520
+  Počítač 2: nahral 65 → celkom: 740
+
+============================================================
+KOLO 16
+============================================================
+Povinnosť: Hráč
+Talon: 9♣ K●
+
+Ruka [Hráč]: 8● 10♣ J♣ 7● A♠ 10♥ 10● A♥ 7♣ J♠
+Ruka [Počítač 1]: 9♠ J♥ 9● A● 8♥ Q♣ Q● 10♠ K♣ Q♥
+Ruka [Počítač 2]: A♣ 7♥ K♠ J● 9♥ 8♠ Q♠ 7♠ K♥ 8♣
+
+  [AI Počítač 1] S14-SECURE_TRUMP_BID: plonkový tromf → bid 60
+  [AI Počítač 2] S11-PASS_FOR_TRUMP: silné hlášky, slabé štichy → pas
+  Dražba [Hráč]: PAS
+  → Vydražil: Počítač 1 za 60
+
+  Talon zobral: Počítač 1 → 9♣ K●
+  [AI Počítač 1] S12-RAISE_AFTER_TALON: po talóne navýšenie na 150
+  [AI Počítač 1] S13-SMART_DISCARD: zahodí: ['Card(heart, eight)', 'Card(heart, under)']
+  Zahodil [Počítač 1]: 8♥ J♥
+
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(bell, ace)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(bell, under)
+  Štich  1: Počítač 1: A●  |  Počítač 2: J●  |  Hráč: 7●  → Počítač 1 (+13)
+  [AI Počítač 1] S5-TRUMP_DECLARE: Card(bell, over) → zahlási tromf bell
+  *** TROMF [Počítač 1]: bell (+60 bodov)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(heart, seven)
+  Štich  2: Počítač 1: Q●  |  Počítač 2: 7♥  |  Hráč: 10●  → Hráč (+13)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(heart, over)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(heart, nine)
+  Štich  3: Hráč: A♥  |  Počítač 1: Q♥  |  Počítač 2: 9♥  → Hráč (+14)
+  [AI Počítač 1] S23-TRACK_BIDDER: Card(bell, nine)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(heart, king)
+  Štich  4: Hráč: 10♥  |  Počítač 1: 9●  |  Počítač 2: K♥  → Počítač 1 (+14)
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(bell, king)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(acorn, seven)
+  Štich  5: Počítač 1: K●  |  Počítač 2: 7♠  |  Hráč: 8●  → Počítač 1 (+4)
+  [AI Počítač 1] S5-TRUMP_DECLARE: Card(leaf, over) → zahlási tromf leaf
+  *** TROMF [Počítač 1]: leaf (+80 bodov)
+  [AI Počítač 2] S23-TRACK_BIDDER: Card(leaf, ace)
+  Štich  6: Počítač 1: Q♣  |  Počítač 2: A♣  |  Hráč: 7♣  → Počítač 2 (+14)
+  [AI Počítač 2] S5-TRUMP_DECLARE: Card(acorn, king) → zahlási tromf acorn
+  *** TROMF [Počítač 2]: acorn (+100 bodov)
+  [AI Počítač 1] S7-PROTECT_TEN: Card(acorn, nine)
+  Štich  7: Počítač 2: K♠  |  Hráč: A♠  |  Počítač 1: 9♠  → Hráč (+15)
+  [AI Počítač 1] S23-TRACK_BIDDER: Card(leaf, king)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(leaf, eight)
+  Štich  8: Hráč: J♣  |  Počítač 1: K♣  |  Počítač 2: 8♣  → Počítač 1 (+6)
+  [AI Počítač 1] S21-ENDGAME: Card(acorn, ten)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(acorn, eight)
+  Štich  9: Počítač 1: 10♠  |  Počítač 2: 8♠  |  Hráč: J♠  → Počítač 1 (+12)
+  [AI Počítač 1] S21-ENDGAME: Card(leaf, nine)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(acorn, over)
+  Štich 10: Počítač 1: 9♣  |  Počítač 2: Q♠  |  Hráč: 10♣  → Počítač 2 (+13)
+
+VÝSLEDOK KOLA:
+  Hráč: nahral 42 → celkom: -130
+  Počítač 1: záväzok 150 → nahral 191 → ✓ splnil → celkom: 670
+  Počítač 2: nahral 127 → celkom: 870
+
+============================================================
+KOLO 17
+============================================================
+Povinnosť: Počítač 1
+Talon: J● K●
+
+Ruka [Hráč]: 9● 7♠ J♠ A♠ 9♥ 8♥ 10● 9♠ 8♠ Q●
+Ruka [Počítač 1]: Q♣ A♥ K♥ 10♥ 10♠ 8● J♣ Q♠ 7♥ J♥
+Ruka [Počítač 2]: 7● A● K♣ 9♣ A♣ 7♣ 8♣ Q♥ K♠ 10♣
+
+  [AI Počítač 2] S10-BID_ESTIMATE: odhad=60 → bid 60
+  Dražba [Hráč]: PAS
+  → Vydražil: Počítač 2 za 60
+
+  Talon zobral: Počítač 2 → J● K●
+  [AI Počítač 2] S13-SMART_DISCARD: zahodí: ['Card(heart, over)', 'Card(acorn, king)']
+  Zahodil [Počítač 2]: Q♥ K♠
+
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(bell, ace)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(bell, eight)
+  Štich  1: Počítač 2: A●  |  Hráč: 9●  |  Počítač 1: 8●  → Počítač 2 (+11)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(leaf, ace)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(leaf, under)
+  Štich  2: Počítač 2: A♣  |  Hráč: 8♥  |  Počítač 1: J♣  → Počítač 2 (+13)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(leaf, ten)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(leaf, over)
+  Štich  3: Počítač 2: 10♣  |  Hráč: 8♠  |  Počítač 1: Q♣  → Počítač 2 (+13)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(leaf, king)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(heart, seven)
+  Štich  4: Počítač 2: K♣  |  Hráč: 9♠  |  Počítač 1: 7♥  → Počítač 2 (+4)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(leaf, nine)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(heart, under)
+  Štich  5: Počítač 2: 9♣  |  Hráč: J♠  |  Počítač 1: J♥  → Počítač 2 (+4)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(leaf, seven)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(acorn, over)
+  Štich  6: Počítač 2: 7♣  |  Hráč: 7♠  |  Počítač 1: Q♠  → Počítač 2 (+3)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(leaf, eight)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(heart, king)
+  Štich  7: Počítač 2: 8♣  |  Hráč: 9♥  |  Počítač 1: K♥  → Počítač 2 (+4)
+  [AI Počítač 2] S21-ENDGAME: Card(bell, seven)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(heart, ten)
+  Štich  8: Počítač 2: 7●  |  Hráč: Q●  |  Počítač 1: 10♥  → Hráč (+13)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(acorn, ten)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(bell, under)
+  Štich  9: Hráč: A♠  |  Počítač 1: 10♠  |  Počítač 2: J●  → Hráč (+23)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(heart, ace)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(bell, king)
+  Štich 10: Hráč: 10●  |  Počítač 1: A♥  |  Počítač 2: K●  → Hráč (+25)
+
+VÝSLEDOK KOLA:
+  Hráč: nahral 61 → celkom: -70
+  Počítač 1: nahral 0 → celkom: 670
+  Počítač 2: záväzok 60 → nahral 59 → ✗ nesplnil → celkom: 810
+
+============================================================
+KOLO 18
+============================================================
+Povinnosť: Počítač 2
+Talon: 9♠ K●
+
+Ruka [Hráč]: 10● A● Q♠ 10♠ K♣ 10♣ A♠ K♠ 7● A♥
+Ruka [Počítač 1]: A♣ 7♠ 9♥ K♥ 8♣ Q♥ J● J♠ 8♠ 7♣
+Ruka [Počítač 2]: 10♥ Q♣ 8● 9♣ 9● 8♥ J♣ J♥ 7♥ Q●
+
+  Dražba [Hráč]: 60
+  → Vydražil: Hráč za 60
+
+  Talon zobral: Hráč → 9♠ K●
+  Zahodil [Hráč]: 7● 9♠
+
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(heart, nine)
+  [AI Počítač 2] S7-PROTECT_TEN: Card(heart, seven)
+  Štich  1: Hráč: A♥  |  Počítač 1: 9♥  |  Počítač 2: 7♥  → Hráč (+11)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(bell, under)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(bell, eight)
+  Štich  2: Hráč: A●  |  Počítač 1: J●  |  Počítač 2: 8●  → Hráč (+13)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(acorn, seven)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(bell, nine)
+  Štich  3: Hráč: 10●  |  Počítač 1: 7♠  |  Počítač 2: 9●  → Hráč (+10)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(leaf, seven)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(bell, over)
+  Štich  4: Hráč: K●  |  Počítač 1: 7♣  |  Počítač 2: Q●  → Hráč (+7)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(acorn, eight)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(heart, eight)
+  Štich  5: Hráč: A♠  |  Počítač 1: 8♠  |  Počítač 2: 8♥  → Hráč (+11)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(acorn, under)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(leaf, nine)
+  Štich  6: Hráč: 10♠  |  Počítač 1: J♠  |  Počítač 2: 9♣  → Hráč (+12)
+  *** TROMF [Hráč]: acorn (+100 bodov)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(leaf, eight)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(leaf, under)
+  Štich  7: Hráč: Q♠  |  Počítač 1: 8♣  |  Počítač 2: J♣  → Hráč (+5)
+  [AI Počítač 1] S23-TRACK_BIDDER: Card(leaf, ace)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(leaf, over)
+  Štich  8: Hráč: K♣  |  Počítač 1: A♣  |  Počítač 2: Q♣  → Počítač 1 (+18)
+  [AI Počítač 1] S21-ENDGAME: Card(heart, over)
+  *** TROMF [Počítač 1]: heart (+40 bodov)
+  [AI Počítač 2] S23-TRACK_BIDDER: Card(heart, ten)
+  Štich  9: Počítač 1: Q♥  |  Počítač 2: 10♥  |  Hráč: K♠  → Počítač 2 (+17)
+  [AI Počítač 2] S21-ENDGAME: Card(heart, under)
+  [AI Počítač 1] S23-TRACK_BIDDER: Card(heart, king)
+  Štich 10: Počítač 2: J♥  |  Hráč: 10♣  |  Počítač 1: K♥  → Počítač 1 (+16)
+
+VÝSLEDOK KOLA:
+  Hráč: záväzok 180 → nahral 169 → ✗ nesplnil → celkom: -250
+  Počítač 1: nahral 74 → celkom: 740
+  Počítač 2: nahral 17 → celkom: 830
+
+============================================================
+KOLO 19
+============================================================
+Povinnosť: Hráč
+Talon: 8♥ 10♠
+
+Ruka [Hráč]: A♠ 9♣ K♥ Q● A♥ 7♠ J● 7♥ 7♣ 8♣
+Ruka [Počítač 1]: 9♠ K♣ Q♥ 7● A● 9♥ 10♥ J♣ 8♠ 8●
+Ruka [Počítač 2]: Q♠ K● K♠ J♠ 10♣ Q♣ J♥ 10● A♣ 9●
+
+  [AI Počítač 2] S11-PASS_FOR_TRUMP: silné hlášky, slabé štichy → pas
+  → Vydražil: Hráč za 50
+
+  Talon zobral: Hráč → 8♥ 10♠
+  Zahodil [Hráč]: 7♣ 7♥
+
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(acorn, eight)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(acorn, under)
+  Štich  1: Hráč: 10♠  |  Počítač 1: 8♠  |  Počítač 2: J♠  → Hráč (+12)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(acorn, nine)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(acorn, over)
+  Štich  2: Hráč: 7♠  |  Počítač 1: 9♠  |  Počítač 2: Q♠  → Počítač 2 (+3)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(leaf, ace)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(leaf, under)
+  Štich  3: Počítač 2: A♣  |  Hráč: 9♣  |  Počítač 1: J♣  → Počítač 2 (+13)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(leaf, ten)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(leaf, king)
+  Štich  4: Počítač 2: 10♣  |  Hráč: 8♣  |  Počítač 1: K♣  → Počítač 2 (+14)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(leaf, over)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(bell, seven)
+  Štich  5: Počítač 2: Q♣  |  Hráč: A♥  |  Počítač 1: 7●  → Počítač 2 (+14)
+  [AI Počítač 2] S4-PASSIVE: Card(bell, nine)
+  [AI Počítač 1] S23-TRACK_BIDDER: Card(bell, ace)
+  Štich  6: Počítač 2: 9●  |  Hráč: Q●  |  Počítač 1: A●  → Počítač 1 (+14)
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(heart, ten)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(heart, under)
+  Štich  7: Počítač 1: 10♥  |  Počítač 2: J♥  |  Hráč: 8♥  → Počítač 1 (+12)
+  [AI Počítač 1] S21-ENDGAME: Card(bell, eight)
+  [AI Počítač 2] S7-PROTECT_TEN: Card(bell, king)
+  Štich  8: Počítač 1: 8●  |  Počítač 2: K●  |  Hráč: J●  → Počítač 2 (+6)
+  [AI Počítač 2] S21-ENDGAME: Card(bell, ten)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(heart, nine)
+  Štich  9: Počítač 2: 10●  |  Hráč: K♥  |  Počítač 1: 9♥  → Počítač 2 (+14)
+  [AI Počítač 2] S21-ENDGAME: Card(acorn, king)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(heart, over)
+  Štich 10: Počítač 2: K♠  |  Hráč: A♠  |  Počítač 1: Q♥  → Hráč (+18)
+
+VÝSLEDOK KOLA:
+  Hráč: záväzok 590 → nahral 30 → ✗ nesplnil → celkom: -840
+  Počítač 1: nahral 26 → celkom: 770
+  Počítač 2: nahral 64 → celkom: 890
+
+============================================================
+KOLO 20
+============================================================
+Povinnosť: Počítač 1
+Talon: 7♠ K♣
+
+Ruka [Hráč]: K♥ A● 10● J♥ A♣ J♣ 10♣ 8♥ 7♥ J♠
+Ruka [Počítač 1]: 9♣ 10♥ K● 9● 9♥ A♥ 9♠ K♠ Q● 7♣
+Ruka [Počítač 2]: 8● A♠ 8♣ J● Q♠ Q♣ 7● 10♠ Q♥ 8♠
+
+  Dražba [Hráč]: PAS
+  → Vydražil: Počítač 1 za 50
+
+  Talon zobral: Počítač 1 → 7♠ K♣
+  [AI Počítač 1] S12-RAISE_AFTER_TALON: po talóne navýšenie na 80
+  [AI Počítač 1] S13-SMART_DISCARD: zahodí: ['Card(leaf, nine)', 'Card(acorn, nine)']
+  Zahodil [Počítač 1]: 9♣ 9♠
+
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(heart, ace)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(heart, over)
+  Štich  1: Počítač 1: A♥  |  Počítač 2: Q♥  |  Hráč: J♥  → Počítač 1 (+16)
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(heart, ten)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(bell, seven)
+  Štich  2: Počítač 1: 10♥  |  Počítač 2: 7●  |  Hráč: K♥  → Počítač 1 (+14)
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(heart, nine)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(bell, eight)
+  Štich  3: Počítač 1: 9♥  |  Počítač 2: 8●  |  Hráč: 7♥  → Počítač 1 (+0)
+  [AI Počítač 1] S5-TRUMP_DECLARE: Card(bell, king) → zahlási tromf bell
+  *** TROMF [Počítač 1]: bell (+60 bodov)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(bell, under)
+  Štich  4: Počítač 1: K●  |  Počítač 2: J●  |  Hráč: A●  → Hráč (+17)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(bell, nine)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(leaf, eight)
+  Štich  5: Hráč: 10●  |  Počítač 1: 9●  |  Počítač 2: 8♣  → Hráč (+10)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(leaf, seven)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(leaf, over)
+  Štich  6: Hráč: A♣  |  Počítač 1: 7♣  |  Počítač 2: Q♣  → Hráč (+14)
+  [AI Počítač 1] S23-TRACK_BIDDER: Card(leaf, king)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(acorn, eight)
+  Štich  7: Hráč: J♣  |  Počítač 1: K♣  |  Počítač 2: 8♠  → Počítač 1 (+6)
+  [AI Počítač 1] S21-ENDGAME: Card(bell, over)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(acorn, over)
+  Štich  8: Počítač 1: Q●  |  Počítač 2: Q♠  |  Hráč: 10♣  → Počítač 1 (+16)
+  [AI Počítač 1] S21-ENDGAME: Card(acorn, seven)
+  [AI Počítač 2] S7-PROTECT_TEN: Card(acorn, ace)
+  Štich  9: Počítač 1: 7♠  |  Počítač 2: A♠  |  Hráč: J♠  → Počítač 2 (+13)
+  [AI Počítač 2] S21-ENDGAME: Card(acorn, ten)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(acorn, king)
+  Štich 10: Počítač 2: 10♠  |  Hráč: 8♥  |  Počítač 1: K♠  → Počítač 2 (+14)
+
+VÝSLEDOK KOLA:
+  Hráč: nahral 41 → celkom: -800
+  Počítač 1: záväzok 80 → nahral 112 → ✓ splnil → celkom: 850
+  Počítač 2: nahral 27 → celkom: 920
+
+============================================================
+KOLO 21
+============================================================
+Povinnosť: Počítač 2
+Talon: 8♥ K♣
+
+Ruka [Hráč]: A♣ J♠ J♥ 10♣ A♠ K♥ 8♣ 9♠ 8● K●
+Ruka [Počítač 1]: 9♥ 10♥ Q♥ Q♠ 7♠ J● J♣ A● A♥ Q♣
+Ruka [Počítač 2]: 7● 8♠ 10● 7♥ 9♣ 10♠ 9● 7♣ Q● K♠
+
+  Dražba [Hráč]: 60
+  → Vydražil: Hráč za 60
+
+  Talon zobral: Hráč → 8♥ K♣
+  Zahodil [Hráč]: K♥ K●
+
+  [AI Počítač 1] S7-PROTECT_TEN: Card(heart, nine)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(heart, seven)
+  Štich  1: Hráč: 8♥  |  Počítač 1: 9♥  |  Počítač 2: 7♥  → Počítač 1 (+0)
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(bell, ace)
+  [AI Počítač 2] S7-PROTECT_TEN: Card(bell, seven)
+  Štich  2: Počítač 1: A●  |  Počítač 2: 7●  |  Hráč: 8●  → Počítač 1 (+11)
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(heart, ace)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(leaf, seven)
+  Štich  3: Počítač 1: A♥  |  Počítač 2: 7♣  |  Hráč: J♥  → Počítač 1 (+13)
+  [AI Počítač 1] S1-CERTAIN_TRICK: Card(heart, ten)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(leaf, nine)
+  Štich  4: Počítač 1: 10♥  |  Počítač 2: 9♣  |  Hráč: 8♣  → Počítač 1 (+10)
+  [AI Počítač 1] S4-PASSIVE: Card(acorn, seven)
+  [AI Počítač 2] S7-PROTECT_TEN: Card(acorn, eight)
+  Štich  5: Počítač 1: 7♠  |  Počítač 2: 8♠  |  Hráč: A♠  → Hráč (+11)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(leaf, under)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(bell, nine)
+  Štich  6: Hráč: A♣  |  Počítač 1: J♣  |  Počítač 2: 9●  → Hráč (+13)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(leaf, over)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(bell, over)
+  Štich  7: Hráč: K♣  |  Počítač 1: Q♣  |  Počítač 2: Q●  → Hráč (+10)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(bell, under)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(acorn, king)
+  Štich  8: Hráč: 10♣  |  Počítač 1: J●  |  Počítač 2: K♠  → Hráč (+16)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(acorn, over)
+  [AI Počítač 2] S23-TRACK_BIDDER: Card(acorn, ten)
+  Štich  9: Hráč: 9♠  |  Počítač 1: Q♠  |  Počítač 2: 10♠  → Počítač 2 (+13)
+  [AI Počítač 2] S21-ENDGAME: Card(bell, ten)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(heart, over)
+  Štich 10: Počítač 2: 10●  |  Hráč: J♠  |  Počítač 1: Q♥  → Počítač 2 (+15)
+
+VÝSLEDOK KOLA:
+  Hráč: záväzok 80 → nahral 58 → ✗ nesplnil → celkom: -880
+  Počítač 1: nahral 34 → celkom: 880
+  Počítač 2: nahral 28 → celkom: 950
+
+============================================================
+KOLO 22
+============================================================
+Povinnosť: Hráč
+Talon: K♥ 9♥
+
+Ruka [Hráč]: 10● 9♠ 8♣ A♥ J♣ 8♥ K♣ A● Q● Q♥
+Ruka [Počítač 1]: J♠ 10♠ 8♠ Q♠ K♠ K● A♣ 7♥ 7♠ 8●
+Ruka [Počítač 2]: J♥ Q♣ 10♣ A♠ J● 10♥ 7● 9● 7♣ 9♣
+
+  [AI Počítač 1] S11-PASS_FOR_TRUMP: silné hlášky, slabé štichy → pas
+  → Vydražil: Hráč za 50
+
+  Talon zobral: Hráč → K♥ 9♥
+  Zahodil [Hráč]: 9♠ K♣
+
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(heart, seven)
+  [AI Počítač 2] S7-PROTECT_TEN: Card(heart, under)
+  Štich  1: Hráč: A♥  |  Počítač 1: 7♥  |  Počítač 2: J♥  → Hráč (+13)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(bell, eight)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(bell, seven)
+  Štich  2: Hráč: A●  |  Počítač 1: 8●  |  Počítač 2: 7●  → Hráč (+11)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(bell, king)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(bell, nine)
+  Štich  3: Hráč: 10●  |  Počítač 1: K●  |  Počítač 2: 9●  → Hráč (+14)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(acorn, seven)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(bell, under)
+  Štich  4: Hráč: Q●  |  Počítač 1: 7♠  |  Počítač 2: J●  → Hráč (+5)
+  *** TROMF [Hráč]: heart (+40 bodov)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(acorn, eight)
+  [AI Počítač 2] S23-TRACK_BIDDER: Card(heart, ten)
+  Štich  5: Hráč: Q♥  |  Počítač 1: 8♠  |  Počítač 2: 10♥  → Počítač 2 (+13)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(acorn, ace)
+  [AI Počítač 1] S7-PROTECT_TEN: Card(acorn, under)
+  Štich  6: Počítač 2: A♠  |  Hráč: 9♥  |  Počítač 1: J♠  → Hráč (+13)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(acorn, over)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(leaf, seven)
+  Štich  7: Hráč: K♥  |  Počítač 1: Q♠  |  Počítač 2: 7♣  → Hráč (+7)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(leaf, ace)
+  [AI Počítač 2] S7-PROTECT_TEN: Card(leaf, nine)
+  Štich  8: Hráč: 8♣  |  Počítač 1: A♣  |  Počítač 2: 9♣  → Počítač 1 (+11)
+  [AI Počítač 1] S21-ENDGAME: Card(acorn, ten)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(leaf, over)
+  Štich  9: Počítač 1: 10♠  |  Počítač 2: Q♣  |  Hráč: 8♥  → Hráč (+13)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(acorn, king)
+  [AI Počítač 2] S23-TRACK_BIDDER: Card(leaf, ten)
+  Štich 10: Hráč: J♣  |  Počítač 1: K♠  |  Počítač 2: 10♣  → Počítač 2 (+16)
+
+VÝSLEDOK KOLA:
+  Hráč: záväzok 50 → nahral 120 → ✓ splnil → celkom: -830
+  Počítač 1: nahral 11 → celkom: 890
+  Počítač 2: nahral 29 → celkom: 980
+
+============================================================
+KOLO 23
+============================================================
+Povinnosť: Počítač 1
+Talon: 7♣ 7●
+
+Ruka [Hráč]: Q● A♠ 10♥ A● J♥ Q♥ 10♣ Q♣ 8♣ A♣
+Ruka [Počítač 1]: 7♥ K♣ A♥ 8♠ J♣ Q♠ K♠ 9♥ 7♠ 9♣
+Ruka [Počítač 2]: K♥ 10♠ 9● 10● J● 8♥ 9♠ K● J♠ 8●
+
+  Dražba [Hráč]: 60
+  [AI Počítač 1] S10-BID_ESTIMATE: odhad=120 → bid 70
+  Dražba [Hráč]: 80
+  [AI Počítač 1] S10-BID_ESTIMATE: odhad=120 → bid 90
+  Dražba [Hráč]: 100
+  [AI Počítač 1] S10-BID_ESTIMATE: odhad=120 → bid 110
+  Dražba [Hráč]: 120
+  → Vydražil: Hráč za 120
+
+  Talon zobral: Hráč → 7♣ 7●
+  Zahodil [Hráč]: 7● J♥
+
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(heart, seven)
+  [AI Počítač 2] S7-PROTECT_TEN: Card(bell, eight)
+  Štich  1: Hráč: A●  |  Počítač 1: 7♥  |  Počítač 2: 8●  → Hráč (+11)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(leaf, nine)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(heart, eight)
+  Štich  2: Hráč: A♣  |  Počítač 1: 9♣  |  Počítač 2: 8♥  → Hráč (+11)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(leaf, under)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(bell, nine)
+  Štich  3: Hráč: 10♣  |  Počítač 1: J♣  |  Počítač 2: 9●  → Hráč (+12)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(acorn, seven)
+  [AI Počítač 2] S7-PROTECT_TEN: Card(acorn, nine)
+  Štich  4: Hráč: A♠  |  Počítač 1: 7♠  |  Počítač 2: 9♠  → Hráč (+11)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(acorn, eight)
+  [AI Počítač 2] S23-TRACK_BIDDER: Card(bell, king)
+  Štich  5: Hráč: Q●  |  Počítač 1: 8♠  |  Počítač 2: K●  → Počítač 2 (+7)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(acorn, ten)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(acorn, over)
+  Štich  6: Počítač 2: 10♠  |  Hráč: 7♣  |  Počítač 1: Q♠  → Počítač 2 (+13)
+  [AI Počítač 2] S1-CERTAIN_TRICK: Card(bell, ten)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(heart, nine)
+  Štich  7: Počítač 2: 10●  |  Hráč: 8♣  |  Počítač 1: 9♥  → Počítač 2 (+10)
+  [AI Počítač 2] S21-ENDGAME: Card(bell, under)
+  [AI Počítač 1] S9-SAFE_DISCARD: Card(leaf, king)
+  Štich  8: Počítač 2: J●  |  Hráč: Q♣  |  Počítač 1: K♣  → Počítač 2 (+9)
+  [AI Počítač 2] S21-ENDGAME: Card(acorn, under)
+  [AI Počítač 1] S23-TRACK_BIDDER: Card(acorn, king)
+  Štich  9: Počítač 2: J♠  |  Hráč: Q♥  |  Počítač 1: K♠  → Počítač 1 (+9)
+  [AI Počítač 1] S21-ENDGAME: Card(heart, ace)
+  [AI Počítač 2] S9-SAFE_DISCARD: Card(heart, king)
+  Štich 10: Počítač 1: A♥  |  Počítač 2: K♥  |  Hráč: 10♥  → Počítač 1 (+25)
+
+VÝSLEDOK KOLA:
+  Hráč: záväzok 120 → nahral 47 → ✗ nesplnil → celkom: -950
+  Počítač 1: nahral 34 → celkom: 920
+  Počítač 2: nahral 39 → celkom: 1020

@@ -70,16 +70,22 @@ class AIEvaluator:
     # ------------------------------------------------------------------
 
     def get_probable_tricks(self, hand: list[Card],
-                             trump_suit: str | None,
-                             guaranteed: list[Card]) -> list[Card]:
+                            trump_suit: str | None,
+                            guaranteed: list[Card]) -> list[Card]:
         """
         Vráti karty ktoré sú pravdepodobný štych (nie istý ale vysoká šanca).
+        Nikdy nevracia desiatky — tie nie sú pravdepodobný štych ak eso nepadlo.
         """
         probable = []
         guaranteed_set = set(id(c) for c in guaranteed)
 
         for card in hand:
             if id(card) in guaranteed_set:
+                continue
+
+            # Desiatka nikdy nie je pravdepodobný štych ako leader
+            # (eso je vždy vyššie)
+            if card.rank == "ten":
                 continue
 
             higher = self.memory.get_higher_unplayed(card)
@@ -173,40 +179,61 @@ class AIEvaluator:
         return result
 
     def get_forcing_opportunities(self, hand: list[Card],
-                                   trump_suit: str | None) -> list[dict]:
-        """
-        Nájde príležitosti na forcing.
-        Vracia zoznam {forcing_card, protected_card, probability}
-        zoradený od najvyššej pravdepodobnosti.
-        """
+                                  trump_suit: str | None) -> list[dict]:
+        from game.card import Card as CardClass
         opportunities = []
-        protected_tens = self.get_protected_tens(hand)
 
-        for suit, is_protected in protected_tens.items():
-            ten = next((c for c in hand if c.suit == suit and c.rank == "ten"), None)
+        for suit in SUITS:
+            ten = next(
+                (c for c in hand if c.suit == suit and c.rank == "ten"), None
+            )
             if not ten:
                 continue
 
-            # Hľadaj karty v tej istej farbe ktorými môžeme forcovať
-            same_suit_cards = [
+            # Išlo už eso? → forcing nepotrebný
+            ace_card = CardClass(suit, "ace")
+            if self.memory.is_played(ace_card):
+                continue
+
+            # Má eso v ruke? → 10 krytá esom → forcing nepotrebný
+            if any(c.suit == suit and c.rank == "ace" for c in hand):
+                continue
+
+            # Všetky karty tej farby okrem desiatky
+            same_suit = [
                 c for c in hand
                 if c.suit == suit and c.rank != "ten"
-                and c.rank_order > ten.rank_order
             ]
+            if not same_suit:
+                continue
 
-            for forcing_card in same_suit_cards:
-                prob = self.memory.calculate_forcing_probability(
-                    forcing_card, ten, hand
-                )
-                if prob > 0.3:
-                    opportunities.append({
-                        "forcing_card": forcing_card,
-                        "protected_card": ten,
-                        "probability": prob,
-                        "suit": suit
-                    })
+            # Počet záložných kariet — čím viac, tým bezpečnejší forcing
+            backup_count = len(same_suit)
 
-        # Zoraď od najvyššej pravdepodobnosti
+            # Vyber NAJVYŠŠIU kartu ako forcing kartu
+            # (vyššia = vyššia pravdepodobnosť vylákania esa)
+            # Záložné karty ostanú na krytie 10
+            best_forcing = max(same_suit, key=lambda c: c.rank_order)
+
+            prob = self.memory.calculate_forcing_probability(
+                best_forcing, ten, hand
+            )
+
+            # Bonus za počet záložných kariet
+            # Každá záloha navyše zvyšuje bezpečnosť forcingu
+            safety_bonus = (backup_count - 1) * 0.15
+            adjusted_prob = min(prob + safety_bonus, 1.0)
+
+            if adjusted_prob >= 0.3:
+                opportunities.append({
+                    "forcing_card": best_forcing,
+                    "protected_card": ten,
+                    "probability": adjusted_prob,
+                    "base_probability": prob,
+                    "backup_count": backup_count,
+                    "suit": suit
+                })
+
         opportunities.sort(key=lambda x: x["probability"], reverse=True)
         return opportunities
 
@@ -247,19 +274,52 @@ class AIEvaluator:
     # ------------------------------------------------------------------
 
     def calculate_bid_estimate(self, hand: list[Card],
-                                trump_suit: str | None) -> int:
-        """
-        Vypočíta odporúčaný bid na základe sily ruky.
-        Zaokrúhli na desiatky.
-        """
+                               trump_suit: str | None) -> int:
         strength = self.estimate_hand_strength(hand, trump_suit)
         estimated = strength["estimated_total"]
 
-        # Zaokrúhli na desiatky nadol (konzervatívny odhad)
-        rounded = int(estimated // 10) * 10
+        # S16 — bonus za dlhú farbu
+        long_suit_bonus = self.get_long_suit_bid_bonus(hand)
+        estimated += long_suit_bonus
 
-        # Minimálny bid je 50
+        for suit in SUITS:
+            has_over = any(c.suit == suit and c.rank == "over" for c in hand)
+            has_king = any(c.suit == suit and c.rank == "king" for c in hand)
+            if has_over and has_king:
+                trump_val = TRUMP_POINTS[suit]
+                estimated = max(estimated, trump_val + 20)
+
+        rounded = int(estimated // 10) * 10
         return max(50, rounded)
+
+    def get_long_suit_bid_bonus(self, hand: list[Card]) -> int:
+        """
+        S16 — Bonus za dlhú farbu pri biddingu.
+        4 karty + eso + 10 → +30
+        5 kariet + eso → +25
+        6 kariet + eso → +30
+        7 kariet → +45
+        """
+        bonus = 0
+        for suit in SUITS:
+            suit_cards = [c for c in hand if c.suit == suit]
+            count = len(suit_cards)
+            if count < 4:
+                continue
+
+            has_ace = any(c.rank == "ace" for c in suit_cards)
+            has_ten = any(c.rank == "ten" for c in suit_cards)
+
+            if count == 4 and has_ace and has_ten:
+                bonus += 30
+            elif count == 5 and has_ace:
+                bonus += 25
+            elif count == 6 and has_ace:
+                bonus += 30
+            elif count >= 7:
+                bonus += 45
+
+        return bonus
 
     def should_pass_for_trumps(self, hand: list[Card],
                                 current_bid: int) -> bool:
@@ -285,18 +345,41 @@ class AIEvaluator:
         return False
 
     def should_raise_after_talon(self, hand: list[Card],
-                                  current_bid: int,
-                                  trump_suit: str | None) -> int | None:
+                                 current_bid: int,
+                                 trump_suit: str | None) -> int | None:
         """
         Rozhodne či navýšiť bid po zobratí talonu.
-        Vracia nový bid alebo None ak nenavyšuje.
+        Bez limitu navýšenia — zohľadní celú silu ruky.
         """
-        new_estimate = self.calculate_bid_estimate(hand, trump_suit)
+        # Istý štych body
+        guaranteed = self.get_guaranteed_tricks(hand, trump_suit)
+        guaranteed_points = sum(c.points for c in guaranteed)
 
-        # Navýši len ak nový odhad výrazne prekonáva aktuálny bid
-        if new_estimate >= current_bid + 10:
-            # Navýši na odhadovanú hodnotu (zaokrúhlená na desiatky)
-            return min(new_estimate, current_bid + 30)  # max +30 naraz
+        # 100% zahlásiteľné hlášky
+        guaranteed_trump_points = 0
+        for suit in SUITS:
+            has_over = any(c.suit == suit and c.rank == "over" for c in hand)
+            has_king = any(c.suit == suit and c.rank == "king" for c in hand)
+            if has_over and has_king:
+                guaranteed_trump_points += TRUMP_POINTS[suit]
+
+        # Pravdepodobné štichy
+        probable = self.get_probable_tricks(hand, trump_suit, guaranteed)
+        probable_points = sum(c.points for c in probable) * 0.6
+
+        # Celkový odhad
+        total_estimate = (
+                guaranteed_points +
+                guaranteed_trump_points +
+                probable_points
+        )
+
+        # Zaokrúhli na desiatky nadol (konzervatívne)
+        total_rounded = int(total_estimate // 10) * 10
+        total_rounded = max(50, total_rounded)
+
+        if total_rounded >= current_bid + 10:
+            return total_rounded  # ← bez limitu
 
         return None
 
