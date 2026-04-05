@@ -96,6 +96,16 @@ class Hand:
                     best = card.rank_order
         return best
 
+    def sort_hand(self):
+        """Zoradí karty zostupne podľa farby a hodnoty."""
+        from config import SUIT_ORDER
+        self.cards.sort(
+            key=lambda c: (
+                SUIT_ORDER.index(c.suit),
+                -c.rank_order
+            )
+        )
+
     @property
     def total_points(self) -> int:
         """Celkové body kariet v ruke (pre výpočet na konci hry)."""

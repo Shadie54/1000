@@ -6,6 +6,7 @@ from game.game_state import GameState
 from game.ai import AI
 from gui.card_renderer import CardRenderer
 from gui.scoreboard import Scoreboard
+from gui.deal_animation import DealAnimation
 from config import (
     SCREEN_WIDTH, SCREEN_HEIGHT, FPS, DEBUG_MODE,
     COLOR_BG, COLOR_BG_DARK, COLOR_YELLOW, COLOR_GRAY,
@@ -14,6 +15,7 @@ from config import (
     FONT_SIZE_MEDIUM, FONT_SIZE_LARGE, FONT_SIZE_SMALL,
     TABLE_CENTER_X, TABLE_CENTER_Y,
     BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT, BUTTON_RADIUS,
+    BUTTON_SORT_X, BUTTON_SORT_Y, BUTTON_SORT_WIDTH, BUTTON_SORT_HEIGHT,
     COLOR_BUTTON_PRIMARY, COLOR_BUTTON_SECONDARY,
     NUM_PLAYERS, CARD_SIZE_MEDIUM,
     TALON_X, TALON_Y, CARD_FAN_OFFSET, TRUMP_POINTS
@@ -27,10 +29,11 @@ class Screen:
         pygame.display.set_caption("Tisíc")
         try:
             self.table_bg = pygame.image.load("assets/graphics/table.jpg").convert()
-            self.table_bg = pygame.transform.scale(self.table_bg, (SCREEN_WIDTH, SCREEN_HEIGHT))
+            self.table_bg = pygame.transform.scale(
+                self.table_bg, (SCREEN_WIDTH, SCREEN_HEIGHT)
+            )
         except FileNotFoundError:
             self.table_bg = None
-
         self.clock = pygame.time.Clock()
         self.debug = debug
 
@@ -66,6 +69,9 @@ class Screen:
         self.talon_reveal_cards: list = []  # karty talonu na zobrazenie
 
         self.waiting_for_ai: bool = False  # blokuje klikanie počas AI ťahu
+        # animácia rozdávania
+        self.deal_animation: DealAnimation | None = None
+        self.dealing: bool = False
 
         self.running = True
 
@@ -79,21 +85,48 @@ class Screen:
 
         while self.running:
             self.clock.tick(FPS)
-            self._handle_events()
-            self._process_talon_reveal()
-            self._process_waiting_trick()
-            self._handle_ai_turn()
-            self._draw()
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.running = False
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_F1:
+                        self.debug = not self.debug
+                        self.card_renderer.debug = self.debug
+                if self.dealing and self.deal_animation:
+                    self.deal_animation.handle_event(event)
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    if event.button == 1:
+                        self._handle_click(event.pos)
+
+            if self.dealing and self.deal_animation:
+                self.deal_animation.update()
+                self.deal_animation.draw(self.table_bg)
+                if self.deal_animation.done:
+                    self.dealing = False
+                    self.deal_animation = None
+            else:
+                self._process_talon_reveal()  # ← pridané
+                self._process_waiting_trick()  # ← pridané
+                self._handle_ai_turn()
+                self._draw()
+
             pygame.display.flip()
 
         pygame.quit()
 
     def _start_round(self):
-
         """Začne nové kolo a inicializuje AI pamäť."""
         self.game_state.start_new_round()
         self.game_state.current_round.start_bidding()
 
+        # Reset pamäte + zaznamenaj vlastné karty
+        for i, ai in enumerate(self.ai_players):
+            if ai is not None:
+                ai.reset_memory()
+                ai.record_own_hand(self.game_state.players[i].hand.cards)
+
+        # Log — AŽ PO rozdaní kariet
         current_round = self.game_state.current_round
         hands = {
             p.name: p.hand.cards
@@ -106,11 +139,10 @@ class Screen:
             current_round.talon
         )
 
-        # Reset pamäte + zaznamenaj vlastné karty
-        for i, ai in enumerate(self.ai_players):
-            if ai is not None:
-                ai.reset_memory()
-                ai.record_own_hand(self.game_state.players[i].hand.cards)
+        # Spusti animáciu rozdávania
+        self.deal_animation = DealAnimation(self.screen, self.card_renderer)
+        self.deal_animation.start(current_round.obligation_index)
+        self.dealing = True
 
     # ------------------------------------------------------------------
     # Spracovanie udalostí
@@ -133,6 +165,11 @@ class Screen:
 
     def _handle_click(self, pos: tuple[int, int]):
         """Spracuje klik myši podľa aktuálnej fázy hry."""
+        # Tlačidlo zoradenia — kedykoľvek
+        if self._button_sort_rect().collidepoint(pos):
+            self.game_state.players[self.game_state.human_index].hand.sort_hand()
+            return
+
         if self.waiting_for_ai:  # ← pridané
             return
         if self.trick_waiting:  # ← pridané
@@ -731,6 +768,15 @@ class Screen:
             if len(self.selected_discards) == 2:
                 self._draw_button(self._button_confirm_rect(), "Potvrdiť", COLOR_GOLD)
 
+        # Tlačidlo zoradenia — vždy viditeľné počas štichov
+        if (self.game_state.current_round and
+                self.game_state.current_round.phase == "tricks"):
+            self._draw_button(
+                self._button_sort_rect(),
+                "Zoradiť karty",
+                COLOR_BUTTON_SECONDARY
+            )
+
     def _draw_button(self, rect: pygame.Rect, text: str, color: tuple):
         """Nakreslí jedno tlačidlo."""
         # Priehľadný overlay
@@ -794,6 +840,10 @@ class Screen:
 
     def _button_trump_no_rect(self) -> pygame.Rect:
         return pygame.Rect(TABLE_CENTER_X + 20, BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
+
+    def _button_sort_rect(self) -> pygame.Rect:
+        from config import BUTTON_SORT_X, BUTTON_SORT_Y, BUTTON_SORT_WIDTH, BUTTON_SORT_HEIGHT
+        return pygame.Rect(BUTTON_SORT_X, BUTTON_SORT_Y, BUTTON_SORT_WIDTH, BUTTON_SORT_HEIGHT)
 
     # ------------------------------------------------------------------
     # Pomocné metódy

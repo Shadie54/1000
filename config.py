@@ -50,6 +50,8 @@ TRUMP_POINTS = {
     "leaf": 80,
     "acorn": 100,
 }
+# Poradie farieb pre zoradenie kariet (zostupne)
+SUIT_ORDER = ["acorn", "leaf", "bell", "heart"]
 
 # ------------------------------------------------------------------
 # Herné pravidlá
@@ -132,7 +134,11 @@ BUTTON_Y = SCREEN_HEIGHT // 2
 BUTTON_WIDTH = 180                      # trochu širšie
 BUTTON_HEIGHT = 55
 BUTTON_RADIUS = 8
-
+# SORT - tlačidlo na usporiadanie
+BUTTON_SORT_X = INFO_PANEL_X - 220
+BUTTON_SORT_Y = INFO_PANEL_Y
+BUTTON_SORT_WIDTH = 200
+BUTTON_SORT_HEIGHT = 50
 # ------------------------------------------------------------------
 # GUI - Animácie
 # ------------------------------------------------------------------
