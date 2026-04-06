@@ -132,7 +132,7 @@ class Scoreboard:
             "dealing": "Rozdávanie",
             "bidding": "Dražba",
             "talon": "Talon",
-            "tricks": "Štichy",
+            "tricks": "Štychy",
             "scoring": "Bodovanie",
             "done": "Koniec kola"
         }
@@ -144,7 +144,7 @@ class Scoreboard:
         if current_round.bidding:
             winner = current_round.bidding.winner
             bid_val = str(current_round.bidding.current_bid)
-            self._draw_info_row("Záväzok:", f"{winner.name} / {bid_val}", y, COLOR_YELLOW)
+            self._draw_info_row("Povinnosť:", f"{winner.name} / {bid_val}", y, COLOR_YELLOW)
             y += line_h
 
             # Body zatiaľ — progress bar záväzku (len pre dražiteľa)
@@ -157,7 +157,7 @@ class Scoreboard:
         # Štich
         if current_round.phase == "tricks":
             self._draw_info_row(
-                "Štich:",
+                "Štych:",
                 f"{current_round.trick_number + 1} / 10",
                 y, COLOR_WHITE
             )
@@ -209,7 +209,7 @@ class Scoreboard:
             # Slovenský názov farby
             trump_labels = {
                 "heart": "Srdce",
-                "bell": "Zvon",
+                "bell": "Guľa",
                 "leaf": "Zeleň",
                 "acorn": "Žaluď"
             }

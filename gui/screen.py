@@ -10,6 +10,7 @@ from gui.deal_animation import DealAnimation
 from gui.trick_animation import TrickAnimation
 from gui.speech_bubble import SpeechBubble
 from gui.bid_slider import BidSlider
+from gui.game_over_screen import GameOverScreen
 from config import (
     SCREEN_WIDTH, SCREEN_HEIGHT, FPS, DEBUG_MODE,
     COLOR_BG, COLOR_BG_DARK, COLOR_YELLOW, COLOR_GRAY,
@@ -65,6 +66,7 @@ class Screen:
         #Krátke zobrazenie celého štychu pred resetom kola
         self.trick_display_timer: int = 0  # kedy zmiznú karty zo stola
         self.trick_waiting: bool = False  # čakáme na zobrazenie štichu
+        self.game_over_timer: int = 0    # kedy ukončiť hru po výhre
 
         #Zobrazenie talonu pre ostatných hráčov po dražbe
         self.talon_reveal_timer: int = 0  # kedy zmiznú karty talonu
@@ -89,14 +91,18 @@ class Screen:
     # Hlavná slučka
     # ------------------------------------------------------------------
 
-    def run(self):
+    def run(self) -> str:
         """Hlavná herná slučka."""
         self._start_round()
 
         while self.running:
             self.clock.tick(FPS)
 
-            self._handle_events()  # ← nahradí celý for event blok
+            if self.game_over_timer and pygame.time.get_ticks() >= self.game_over_timer:
+                self.running = False
+                break
+
+            self._handle_events()
 
             if self.dealing and self.deal_animation:
                 self.deal_animation.update()
@@ -112,8 +118,7 @@ class Screen:
                 self._draw()
 
             pygame.display.flip()
-
-        pygame.quit()
+        return "game_over"
 
     def _start_round(self):
         """Začne nové kolo a inicializuje AI pamäť."""
@@ -138,6 +143,10 @@ class Screen:
             hands,
             current_round.talon
         )
+
+        # Log povinnosti — automatické 50
+        obligation_player = self.game_state.players[current_round.obligation_index]
+        self.game_state.logger.log_bid(obligation_player.name, 50)
 
         # Spusti animáciu rozdávania
         self.deal_animation = DealAnimation(self.screen, self.card_renderer)
@@ -281,6 +290,11 @@ class Screen:
                             min_value=current_round.bidding.current_bid,
                             current_value=current_round.bidding.current_bid
                         )
+                        # Bublina pre slider
+                        self.speech_bubble.show_instruction(
+                            player_index,
+                            "Navýšim povinnosť?"
+                        )
                     else:
                         self.can_raise_bid = False
                         current_round.start_trick()
@@ -295,7 +309,7 @@ class Screen:
 
         if clicked_card:
             if clicked_card.rank in ("ace", "ten"):
-                self._show_message("Eso a desiatok sa nedajú zahodiť!")
+                self._show_message("Eso a desiatku nemôžeš zahodiť!")
                 return
             if clicked_card in self.selected_discards:
                 self.selected_discards.remove(clicked_card)
@@ -414,7 +428,7 @@ class Screen:
             self.trick_display_timer = pygame.time.get_ticks() + 1500  # 1.5 sekundy
             winner_index = current_round.finish_trick()
             winner_name = self.game_state.players[winner_index].name
-            self._show_message(f"{winner_name} vyhral štich!")
+            self._show_message(f"{winner_name} vyhral štych!")
 
             if current_round.phase == "scoring":
                 self.game_state.finish_round()
@@ -486,13 +500,32 @@ class Screen:
 
         winner_index = current_round.finish_trick()
         winner_name = self.game_state.players[winner_index].name
-        self._show_message(f"{winner_name} vyhral štich!")
+        self._show_message(f"{winner_name} vyhral štych!")
 
         if current_round.phase == "scoring":
             self.game_state.finish_round()
+
+            # Log výsledku kola
+            results = {}
+            for player in self.game_state.players:
+                results[player.name] = {
+                    "is_bidder": player.is_bidder,
+                    "bid": player.bid,
+                    "round_points": player.round_points,
+                    "total_score": player.total_score,
+                    "fulfilled": (
+                        player.round_points >= player.bid
+                        if player.is_bidder else True
+                    )
+                }
+            self.game_state.logger.log_round_result(results)
             self.game_state.logger.save_round()
+
             if self.game_state.phase == "game_over":
-                self._show_message(f"{self.game_state.winner.name} vyhral hru!", 5000)
+                self._show_message(
+                    f"{self.game_state.winner.name} vyhral hru!", 5000
+                )
+                self.game_over_timer = pygame.time.get_ticks() + 3000
             else:
                 self._start_round()
         else:
@@ -657,7 +690,6 @@ class Screen:
     # ------------------------------------------------------------------
 
     def _confirm_raise_bid(self):
-        """Potvrdí navýšenie bidu zo slidera."""
         current_round = self.game_state.current_round
         player_index = self.game_state.human_index
         new_bid = self.bid_slider.current_value
@@ -665,15 +697,16 @@ class Screen:
         if new_bid > current_round.bidding.current_bid:
             current_round.bidding.current_bid = new_bid
             self.game_state.players[player_index].bid = new_bid
-            self._show_message(f"Záväzok navýšený na {new_bid}")
+            self._show_message(f"Povinnosť navýšená na {new_bid}")
             self.game_state.logger.log_raise(
                 self.game_state.players[player_index].name,
                 new_bid
             )
 
+        self.speech_bubble.hide_instruction(player_index)  # ← pridané
         self.bid_slider.hide()
         self.can_raise_bid = False
-        current_round.start_trick()  # ← spusti hru po potvrdení
+        current_round.start_trick()
 
     def _after_bidding(self):
         """Spracuje situáciu po skončení dražby."""

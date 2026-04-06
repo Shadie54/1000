@@ -68,7 +68,7 @@ class GameLogger:
             for name, card in played
         )
         self.entries.append(
-            f"  Štich {trick_number:2d}: {cards_str}"
+            f"  Štych {trick_number:2d}: {cards_str}"
             f"  → {winner} (+{trick_points})"
         )
 
