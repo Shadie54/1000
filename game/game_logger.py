@@ -1,17 +1,23 @@
 # game/game_logger.py
 
 import os
+from pathlib import Path
 from datetime import datetime
 from game.card import Card
 
 
 class GameLogger:
-    def __init__(self, log_dir: str = "logs"):
-        self.log_dir = log_dir
+    def __init__(self, log_dir: str = None):
+        if log_dir is None:
+            # Zapisuj do Documents/Tisic/logs
+            documents = Path.home() / "Documents" / "Tisic" / "logs"
+            self.log_dir = str(documents)
+        else:
+            self.log_dir = log_dir
+
         self.entries: list[str] = []
         self.round_number = 0
-
-        os.makedirs(log_dir, exist_ok=True)
+        os.makedirs(self.log_dir, exist_ok=True)
 
     # ------------------------------------------------------------------
     # Logging
