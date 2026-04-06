@@ -1,6 +1,6 @@
 # game/bidding.py
 
-from config import MIN_BID, BID_STEP
+from config import MIN_BID, BID_STEP, MAX_BID
 
 
 class Bidding:
@@ -33,6 +33,8 @@ class Bidding:
         if amount != self.current_bid + BID_STEP:
             return False
         if amount % BID_STEP != 0:
+            return False
+        if amount > MAX_BID:  # ← pridané
             return False
 
         self.current_bid = amount

@@ -62,7 +62,7 @@ WINNING_SCORE = 1000
 TALON_SIZE = 2
 ROUND_ROUNDING = 5
 NUM_PLAYERS = 3
-
+MAX_BID = 400       # maximálny možný záväzok
 # ------------------------------------------------------------------
 # Debug režim
 # ------------------------------------------------------------------
@@ -130,7 +130,7 @@ INFO_PANEL_Y = SCREEN_HEIGHT - 220
 INFO_PANEL_WIDTH = 300
 INFO_PANEL_HEIGHT = 300
 
-BUTTON_Y = SCREEN_HEIGHT // 2
+BUTTON_Y = TABLE_CENTER_Y + CARD_SIZE_MEDIUM[1] // 2 + 18  # zhoduje sa so sliderom
 BUTTON_WIDTH = 180                      # trochu širšie
 BUTTON_HEIGHT = 55
 BUTTON_RADIUS = 8

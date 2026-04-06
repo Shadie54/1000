@@ -12,18 +12,24 @@ from game.game_state import GameState
 from game.ai import AI
 from gui.screen import Screen
 from gui.menu import Menu
+from gui.settings_screen import SettingsScreen
 from config import DEBUG_MODE
+
 
 def main():
     pygame.init()
 
-    # Vytvor okno
     import config
     window = pygame.display.set_mode((config.SCREEN_WIDTH, config.SCREEN_HEIGHT))
     pygame.display.set_caption("Tisíc")
 
+    # Predvolené nastavenia
+    settings = {
+        "ai1_difficulty": "hard",
+        "ai2_difficulty": "hard"
+    }
+
     while True:
-        # Zobraz menu
         menu = Menu(window)
         action = menu.run()
 
@@ -32,11 +38,10 @@ def main():
             sys.exit()
 
         elif action == "settings":
-            # Placeholder — zatiaľ nič
-            pass
+            settings_screen = SettingsScreen(window, settings)
+            settings = settings_screen.run()
 
         elif action == "new_game":
-            # Spusti hru
             player_names = ["Hráč", "Počítač 1", "Počítač 2"]
             human_index = 0
 
@@ -47,15 +52,18 @@ def main():
                 if player.is_human:
                     ai_players.append(None)
                 else:
+                    # Použi obtiažnosť z nastavení
+                    difficulty = (
+                        settings["ai1_difficulty"] if i == 1
+                        else settings["ai2_difficulty"]
+                    )
                     ai_players.append(
-                        AI(player, difficulty="hard",
+                        AI(player, difficulty=difficulty,
                            logger=game_state.logger)
                     )
 
             screen = Screen(game_state, ai_players, debug=DEBUG_MODE)
             screen.run()
-            # Po skončení hry sa vrátime do menu
-
 
 if __name__ == "__main__":
     main()
