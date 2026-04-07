@@ -82,6 +82,10 @@ class GameState:
         """Skontroluje či niekto dosiahol 1000 bodov."""
         return any(player.total_score >= WINNING_SCORE for player in self.players)
 
+    def is_in_progress(self) -> bool:
+        """Skontroluje či hra prebieha."""
+        return self.round_number > 0 and self.phase == "playing"
+
     # ------------------------------------------------------------------
     # Pomocné metódy
     # ------------------------------------------------------------------

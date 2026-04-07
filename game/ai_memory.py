@@ -39,6 +39,8 @@ class AIMemory:
         #Set bidder
         self.bidder_index: int | None = None
         self.bid_amount: int = 0
+
+        self.claim_lead_active: bool = False
     # ------------------------------------------------------------------
     # Aktualizácia pamäte
     # ------------------------------------------------------------------

@@ -15,12 +15,13 @@ class TrickAnimation:
         self.cards_in_flight: list[dict] = []
         self.done: bool = True
         self.card_speed: float = 40.0       # rýchla animácia
+        self._talon_anim_started: bool = False
 
         # Cieľové pozície pre každého hráča (stred ruky)
         self.target_positions = {
             0: (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 50),    # človek — dole
-            1: (50, SCREEN_HEIGHT // 2),                    # ľavý AI
-            2: (SCREEN_WIDTH - 50, SCREEN_HEIGHT // 2),    # pravý AI
+            1: (50, SCREEN_HEIGHT // 4),                    # ľavý AI
+            2: (SCREEN_WIDTH - 50, SCREEN_HEIGHT // 4),    # pravý AI
         }
 
     def start(self, played_cards: list[tuple[int, object]],
@@ -85,6 +86,33 @@ class TrickAnimation:
         if all(c["arrived"] for c in self.cards_in_flight):
             self.done = True
             self.cards_in_flight = []
+
+    def start_talon(self, talon_cards: list, winner_index: int):
+        """
+        Spustí animáciu talonu — karty letia zo stredu k víťazovi.
+        """
+        self.cards_in_flight = []
+        self.done = False
+
+        target_x, target_y = self.target_positions[winner_index]
+
+        # Štartové pozície — tam kde sú talon karty zobrazené
+        from config import TALON_X, TALON_Y, CARD_FAN_OFFSET
+        for i, card in enumerate(talon_cards):
+            sx = TALON_X + i * CARD_FAN_OFFSET
+            sy = TALON_Y
+            self.cards_in_flight.append({
+                "card": card,
+                "player_index": winner_index,
+                "x": float(sx),
+                "y": float(sy),
+                "target_x": float(target_x),
+                "target_y": float(target_y),
+                "arrived": False,
+                "delay": i * 150
+            })
+
+        self._start_time = pygame.time.get_ticks()
 
     def draw(self):
         """Nakreslí karty v lete."""

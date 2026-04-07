@@ -4,7 +4,7 @@ import pygame
 import os
 from config import (
     TABLE_CENTER_X, TABLE_CENTER_Y,
-    COLOR_WHITE, COLOR_BLACK, COLOR_GOLD, COLOR_YELLOW,
+    COLOR_WHITE, COLOR_BLACK, COLOR_GOLD, COLOR_YELLOW, COLOR_GREEN, COLOR_RED,
     FONT_SIZE_LARGE, FONT_SIZE_MEDIUM,
     SUIT_ICONS_PATH, SCREEN_WIDTH, SCREEN_HEIGHT
 )
@@ -218,6 +218,28 @@ class SpeechBubble:
             except FileNotFoundError:
                 self._icon_cache[key] = None
         return self._icon_cache[key]
+
+    def show_round_result(self, player_index: int, points: int,
+                          is_bidder: bool, fulfilled: bool = True):
+        """Zobrazí výsledok kola ako bublinu."""
+        if is_bidder:
+            if fulfilled:
+                text = f"+{points}"
+                color = COLOR_GREEN
+            else:
+                text = f"-{points}"
+                color = COLOR_RED
+        else:
+            text = f"+{points}"
+            color = COLOR_GREEN
+
+        self._add_bubble(
+            player_index=player_index,
+            text=text,
+            suit=None,
+            duration_ms=3000,
+            color=color
+        )
 
     def __repr__(self) -> str:
         return f"SpeechBubble(active={len(self.bubbles)})"

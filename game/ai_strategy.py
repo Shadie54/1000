@@ -44,6 +44,7 @@ class AIStrategy:
         if self.difficulty == "hard" and not has_obligation:
             if self._check_passive_bid(hand, current_bid):
                 self._log(SC.PASSIVE_BID, "2+ esá + tromfy → pasuj")
+                self.memory.claim_lead_active = True  # ← aktivuj S28
                 return None
 
         # S11 — PASS_FOR_TRUMP
@@ -121,7 +122,7 @@ class AIStrategy:
         return result
 
     # ------------------------------------------------------------------
-    # Zahadzovaie
+    # Zahadzovanie
     # ------------------------------------------------------------------
 
     def decide_discard(self, hand: list[Card]) -> list[Card]:
@@ -146,10 +147,15 @@ class AIStrategy:
         if not is_leader or trick_number == 0:
             return None
 
+        # Deaktivuj S28 keď sme leader ← pridané
+        if self.memory.claim_lead_active:
+            self.memory.claim_lead_active = False
+            self._log(SC.CLAIM_LEAD, "lead získaný → deaktivujem S28")
+
         available = [
             suit for suit in SUITS
             if any(c.suit == suit and c.rank == "over" for c in hand)
-            and any(c.suit == suit and c.rank == "king" for c in hand)
+               and any(c.suit == suit and c.rank == "king" for c in hand)
         ]
         if not available:
             return None
@@ -162,7 +168,7 @@ class AIStrategy:
         best = self._choose_best_trump(hand, available, current_trump)
         if best:
             self._log(SC.TRUMP_DECLARE,
-                     f"tromf: {best} ({TRUMP_POINTS[best]} bodov)")
+                      f"tromf: {best} ({TRUMP_POINTS[best]} bodov)")
         return best
 
     def _choose_best_trump(self, hand: list[Card], available: list[str],
@@ -248,13 +254,6 @@ class AIStrategy:
                                   f"{trump_card} → zahlási tromf {suit}")
                         return trump_card
 
-        # S18 — EXHAUST_SUIT (dlhá farba)
-        if self.difficulty in ("medium", "hard"):
-            exhaust = self._get_exhaust_suit_card(hand, playable)
-            if exhaust:
-                self._log(SC.EXHAUST_SUIT, f"{exhaust}")
-                return exhaust
-
         # S3 — FORCING
         if self.difficulty == "hard":
             forcing = self.evaluator.get_forcing_opportunities(hand, trump_suit)
@@ -308,6 +307,12 @@ class AIStrategy:
     def _decide_as_follower(self, hand: list[Card], playable: list[Card],
                             trick: Trick) -> Card:
         current_best = self._get_current_best_card(trick)
+
+        # S28 — CLAIM_LEAD (len ak aktívna po S27)
+        if self.memory.claim_lead_active:
+            claim = self._claim_lead(hand, playable, trick)
+            if claim:
+                return claim
 
         # S23 — TRACK_BIDDER (sleduj dražiteľa)
         if self.difficulty == "hard":
@@ -372,42 +377,6 @@ class AIStrategy:
             if idx == winner_idx:
                 return card
         return None
-
-    def _get_exhaust_suit_card(self, hand: list[Card],
-                               playable: list[Card]) -> Card | None:
-        """
-        S18 — Vyčerpanie dlhej farby.
-        Ak mám 4+ kariet farby s esom → hraj od najvyššej.
-        Najprv hraj iné istý štichy, potom dlhú farbu.
-        """
-        best_suit = None
-        best_count = 0
-
-        for suit in SUITS:
-            suit_cards = [c for c in hand if c.suit == suit]
-            count = len(suit_cards)
-            if count < 3:
-                continue
-
-            has_ace = any(c.rank == "ace" for c in suit_cards)
-            if not has_ace:
-                continue
-
-            if count > best_count:
-                best_count = count
-                best_suit = suit
-
-        if not best_suit:
-            return None
-
-        # Hraj najvyššiu kartu dlhej farby ktorá je hrateľná
-        suit_playable = [
-            c for c in playable if c.suit == best_suit
-        ]
-        if not suit_playable:
-            return None
-
-        return max(suit_playable, key=lambda c: c.rank_order)
 
     def _check_passive_bid(self, hand: list[Card], current_bid: int) -> bool:
         """
@@ -487,6 +456,50 @@ class AIStrategy:
         # a štich má aspoň nejaké body
         if trick.total_points >= 2:
             return min(can_beat, key=lambda c: c.rank_order)
+
+        return None
+
+    def _claim_lead(self, hand: list[Card], playable: list[Card],
+                    trick: Trick) -> Card | None:
+        """
+        S28 — CLAIM_LEAD
+        Aktivuje sa len po S27. Cieľ: dostať sa na lead čo najrýchlejšie.
+        """
+        if not self.memory.claim_lead_active:
+            return None
+
+        played_count = len(trick.played_cards)
+
+        # Som 2. v poradí — potrebujem istý štych
+        if played_count == 1:
+            lead_suit = trick.lead_suit
+            same_suit = [c for c in playable if c.suit == lead_suit]
+
+            if not same_suit:
+                return None
+
+            # Hľadaj kartu ktorá je 100% istá (najvyššia nezahraná)
+            for card in sorted(same_suit, key=lambda c: c.rank_order, reverse=True):
+                if self.memory.is_highest_in_suit(card, hand):
+                    self._log(SC.CLAIM_LEAD,
+                              f"{card} → istý štych (2. v poradí)")
+                    return card
+
+            # Nemám istú → nič nerobím
+            return None
+
+        # Som 3. v poradí — stačí prebiť čímkoľvek
+        if played_count == 2:
+            current_best = self._get_current_best_card(trick)
+            can_beat = [
+                c for c in playable
+                if self._beats_current(c, current_best, trick)
+            ]
+            if can_beat:
+                card = min(can_beat, key=lambda c: c.rank_order)
+                self._log(SC.CLAIM_LEAD,
+                          f"{card} → prebijem (3. v poradí)")
+                return card
 
         return None
 

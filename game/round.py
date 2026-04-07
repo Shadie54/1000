@@ -25,7 +25,7 @@ class Round:
         self.current_leader_index: int = 0
         self.trick_number: int = 0          # aktuálne číslo štichu (0-9)
         self.phase: str = "dealing"         # fázy: dealing > bidding > talon > tricks > scoring
-
+        self.trump_declarer: str | None = None #slúži na zobrazenie aktuálneho tromfu do scoreboardu
     # ------------------------------------------------------------------
     # FÁZA 1: Rozdávanie
     # ------------------------------------------------------------------
@@ -131,6 +131,7 @@ class Round:
             return False
 
         self.trump_suit = suit
+        self.trump_declarer = self.players[player_index].name  # ← pridané
         points = self.players[player_index].declare_trump(suit)
         # Aktualizujeme tromf aj v aktuálnom štichu
         if self.current_trick:

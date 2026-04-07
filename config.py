@@ -134,11 +134,18 @@ BUTTON_Y = TABLE_CENTER_Y + CARD_SIZE_MEDIUM[1] // 2 + 18  # zhoduje sa so slide
 BUTTON_WIDTH = 180                      # trochu širšie
 BUTTON_HEIGHT = 55
 BUTTON_RADIUS = 8
+
 # SORT - tlačidlo na usporiadanie
-BUTTON_SORT_X = INFO_PANEL_X - 220
+BUTTON_SORT_X = INFO_PANEL_X
 BUTTON_SORT_Y = INFO_PANEL_Y
 BUTTON_SORT_WIDTH = 200
 BUTTON_SORT_HEIGHT = 50
+
+#MENU - tlačidlo počas hry
+BUTTON_MENU_X = BUTTON_SORT_X
+BUTTON_MENU_Y = BUTTON_SORT_Y + BUTTON_SORT_HEIGHT + 10
+BUTTON_MENU_WIDTH = BUTTON_SORT_WIDTH
+BUTTON_MENU_HEIGHT = BUTTON_SORT_HEIGHT
 # ------------------------------------------------------------------
 # GUI - Animácie
 # ------------------------------------------------------------------
