@@ -10,6 +10,7 @@ from gui.deal_animation import DealAnimation
 from gui.trick_animation import TrickAnimation
 from gui.speech_bubble import SpeechBubble
 from gui.bid_slider import BidSlider
+from gui.info_overlay import InfoOverlay
 from gui.game_over_screen import GameOverScreen
 from config import (
     SCREEN_WIDTH, SCREEN_HEIGHT, FPS, DEBUG_MODE,
@@ -91,6 +92,8 @@ class Screen:
         self._talon_anim_started: bool = False
         self.running = True
         self.new_game = new_game
+
+        self.info_overlay = InfoOverlay(self.screen)
     # ------------------------------------------------------------------
     # Hlavná slučka
     # ------------------------------------------------------------------
@@ -191,6 +194,10 @@ class Screen:
                 self.deal_animation.handle_event(event)
                 continue
 
+            if self.info_overlay.visible:
+                if self.info_overlay.handle_event(event):
+                    continue
+
             # Slider povinnosti
             if self.bid_slider.visible:
                 result = self.bid_slider.handle_event(event)
@@ -207,7 +214,11 @@ class Screen:
         if self._button_sort_rect().collidepoint(pos):
             self.game_state.players[self.game_state.human_index].hand.sort_hand()
             return
+        if self._button_info_rect().collidepoint(pos):
+            self.info_overlay.toggle()
+            return
         if self._button_menu_rect().collidepoint(pos):
+            self._reset_trick_state()
             self.running = False
             return
         if self.waiting_for_ai:  # ← pridané
@@ -403,6 +414,45 @@ class Screen:
                 self.trick_waiting = True
                 self.trick_display_timer = pygame.time.get_ticks() + 1500
 
+    def _reset_trick_state(self):
+        """Resetuje stav štichu pri odchode z hry."""
+        # Ak je štich kompletný ale neuzavretý — uzavri ho
+        current_round = self.game_state.current_round
+        if (current_round and current_round.current_trick and
+                current_round.current_trick.is_complete):
+            trick = current_round.current_trick
+            winner_index = trick.get_winner_index()
+            for ai in self.ai_players:
+                if ai is not None:
+                    ai.record_trick(
+                        trick.leader_index,
+                        trick.played_cards,
+                        winner_index,
+                        current_round.trick_number
+                    )
+            current_round.finish_trick()
+            if current_round.phase == "scoring":
+                self.game_state.finish_round()
+                self.game_state.logger.save_round()
+
+        # Reset stavov
+        self.trick_waiting = False
+        self.trick_display_timer = 0
+        self._trick_anim_started = False
+        self._talon_anim_started = False
+        self.talon_revealing = False
+        self.talon_reveal_cards = []
+        self.trick_animation.done = True
+        self.trick_animation.cards_in_flight = []
+        self.waiting_for_ai = False
+        self.pending_trump_card = None
+        self.pending_trump_suit = None
+
+        # Spusti nový štich ak hra pokračuje
+        if (current_round and current_round.phase == "tricks"
+                and current_round.current_trick is None):
+            current_round.start_trick()
+
     # ------------------------------------------------------------------
     # Tromf
     # ------------------------------------------------------------------
@@ -560,9 +610,9 @@ class Screen:
                     points = player.bid
                     self.speech_bubble.show_round_result(i, points, True, fulfilled)
                 else:
-                    self.speech_bubble.show_round_result(
-                        i, player.round_points, False
-                    )
+                    # Zaokrúhli body rovnako ako _rounded_points() v player.py
+                    rounded = player._rounded_points(player.round_points)
+                    self.speech_bubble.show_round_result(i, rounded, False)
 
             # Log výsledku kola
             results = {}
@@ -834,6 +884,7 @@ class Screen:
         self.bid_slider.draw()
         self.speech_bubble.draw()
         self._draw_message()
+        self.info_overlay.draw()
 
     def _draw_table(self):
         """Nakreslí herný stôl."""
@@ -900,6 +951,11 @@ class Screen:
         self._draw_button(
             self._button_sort_rect(),
             "Zoradiť karty",
+            COLOR_BUTTON_SECONDARY
+        )
+        self._draw_button(
+            self._button_info_rect(),
+            "Pravidlá",
             COLOR_BUTTON_SECONDARY
         )
         # Menu tlačidlo — vždy viditeľné
@@ -993,7 +1049,7 @@ class Screen:
         return pygame.Rect(TABLE_CENTER_X + 20, BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
 
     def _button_confirm_rect(self) -> pygame.Rect:
-        return pygame.Rect(TABLE_CENTER_X + 20, BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
+        return pygame.Rect(TABLE_CENTER_X - BUTTON_WIDTH // 2, BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
 
     def _button_trump_yes_rect(self) -> pygame.Rect:
         return pygame.Rect(TABLE_CENTER_X - 200, BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
@@ -1004,6 +1060,10 @@ class Screen:
     def _button_sort_rect(self) -> pygame.Rect:
         from config import BUTTON_SORT_X, BUTTON_SORT_Y, BUTTON_SORT_WIDTH, BUTTON_SORT_HEIGHT
         return pygame.Rect(BUTTON_SORT_X, BUTTON_SORT_Y, BUTTON_SORT_WIDTH, BUTTON_SORT_HEIGHT)
+
+    def _button_info_rect(self) -> pygame.Rect:
+        from config import BUTTON_INFO_X, BUTTON_INFO_Y, BUTTON_INFO_WIDTH, BUTTON_INFO_HEIGHT
+        return pygame.Rect(BUTTON_INFO_X, BUTTON_INFO_Y, BUTTON_INFO_WIDTH, BUTTON_INFO_HEIGHT)
 
     def _button_menu_rect(self) -> pygame.Rect:
         from config import BUTTON_MENU_X, BUTTON_MENU_Y, BUTTON_MENU_WIDTH, BUTTON_MENU_HEIGHT

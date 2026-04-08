@@ -97,16 +97,9 @@ def main():
 
         elif action == "new_game":
 
-            print("[MAIN] new_game clicked")
-
             active_game_state, active_ai_players = _create_game(settings)
-
-            print("[MAIN] game created, starting...")
-
             result, active_game_state, active_ai_players = _run_game(
-
                 window, active_game_state, active_ai_players
-
             )
 
             if result == "game_over" and active_game_state.winner is not None:
