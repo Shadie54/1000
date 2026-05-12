@@ -48,14 +48,14 @@ class AIEvaluator:
         }
 
     # ------------------------------------------------------------------
-    # Istý štych
+    # Istý štich
     # ------------------------------------------------------------------
 
     def get_guaranteed_tricks(self, hand: list[Card],
                                trump_suit: str | None) -> list[Card]:
         """
-        Vráti karty ktoré sú istý štych.
-        Karta je istý štych ak:
+        Vráti karty ktoré sú istý štich.
+        Karta je istý štich ak:
         - Je najvyššia nezahraná v danej farbe (žiadna vyššia u súperov)
         - Alebo je tromfová a je najvyššia nezahraná tromfová
         """
@@ -66,15 +66,15 @@ class AIEvaluator:
         return guaranteed
 
     # ------------------------------------------------------------------
-    # Pravdepodobný štych
+    # Pravdepodobný štich
     # ------------------------------------------------------------------
 
     def get_probable_tricks(self, hand: list[Card],
                             trump_suit: str | None,
                             guaranteed: list[Card]) -> list[Card]:
         """
-        Vráti karty ktoré sú pravdepodobný štych (nie istý ale vysoká šanca).
-        Nikdy nevracia desiatky — tie nie sú pravdepodobný štych ak eso nepadlo.
+        Vráti karty ktoré sú pravdepodobný štich (nie istý ale vysoká šanca).
+        Nikdy nevracia desiatky — tie nie sú pravdepodobný štich ak eso nepadlo.
         """
         probable = []
         guaranteed_set = set(id(c) for c in guaranteed)
@@ -83,7 +83,7 @@ class AIEvaluator:
             if id(card) in guaranteed_set:
                 continue
 
-            # Desiatka nikdy nie je pravdepodobný štych ako leader
+            # Desiatka nikdy nie je pravdepodobný štich ako leader
             # (eso je vždy vyššie)
             if card.rank == "ten":
                 continue
@@ -351,7 +351,7 @@ class AIEvaluator:
         Rozhodne či navýšiť bid po zobratí talonu.
         Bez limitu navýšenia — zohľadní celú silu ruky.
         """
-        # Istý štych body
+        # Istý štich body
         guaranteed = self.get_guaranteed_tricks(hand, trump_suit)
         guaranteed_points = sum(c.points for c in guaranteed)
 

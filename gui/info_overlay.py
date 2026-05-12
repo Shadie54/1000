@@ -4,11 +4,13 @@ import pygame
 import os
 from config import (
     SCREEN_WIDTH, SCREEN_HEIGHT,
-    COLOR_WHITE, COLOR_BLACK, COLOR_GOLD, COLOR_GRAY,
-    COLOR_PANEL_BG, COLOR_GREEN, COLOR_RED,
-    FONT_SIZE_SMALL, FONT_SIZE_MEDIUM, FONT_SIZE_LARGE, FONT_SIZE_XLARGE,
-    CARDS_SMALL_PATH, CARD_SIZE_SMALL, SUIT_ICONS_PATH,
-    BUTTON_RADIUS, COLOR_BUTTON_SECONDARY, CARDS_MEDIUM_PATH, CARD_SIZE_MEDIUM
+    COLOR_WHITE, COLOR_GOLD, COLOR_GRAY,
+    COLOR_GREEN, COLOR_RED,
+    FONT_SIZE_SMALL, FONT_SIZE_MEDIUM, FONT_SIZE_LARGE,
+    CARDS_MEDIUM_PATH, CARD_SIZE_MEDIUM,
+    SUIT_ICONS_PATH, BUTTON_RADIUS,
+    COLOR_BUTTON_PRIMARY, COLOR_BUTTON_SECONDARY,
+    get_font
 )
 
 
@@ -16,346 +18,300 @@ class InfoOverlay:
     def __init__(self, screen: pygame.Surface):
         self.screen = screen
         self.visible = False
-        self.font_small = pygame.font.SysFont(None, 36)
-        self.font_medium = pygame.font.SysFont(None, 48)
-        self.font_large = pygame.font.SysFont(None, 64)
+        self.active_tab = "bodovanie"
+
+        self.font_small  = get_font(FONT_SIZE_SMALL)       # 18
+        self.font_medium = get_font(FONT_SIZE_MEDIUM)      # 24
+        self.font_large  = get_font(FONT_SIZE_LARGE)       # 32
+        self.font_title  = get_font(FONT_SIZE_LARGE + 8)   # 40
+
         self._card_cache: dict[str, pygame.Surface] = {}
-        self._icon_cache: dict[str, pygame.Surface] = {}
 
-        # Rozmery overlay — celá obrazovka
-        self.overlay_w = SCREEN_WIDTH
-        self.overlay_h = SCREEN_HEIGHT
-        self.overlay_x = 0
-        self.overlay_y = 0
-
-        # Tlačidlo zavrieť — pravý horný roh
-        self.btn_close = pygame.Rect(
-            SCREEN_WIDTH - 60,
-            20,
-            40, 40
-        )
-
-        self.active_tab = "bodovanie"    # "bodovanie" alebo "pravidla"
+        # ------------------------------------------------------------------
+        # Konštanty layoutu
+        # ------------------------------------------------------------------
+        self.PAD       = 30
+        self.PANEL_X   = 60
+        self.PANEL_Y   = 20
+        self.PANEL_W   = SCREEN_WIDTH  - 120
+        self.PANEL_H   = SCREEN_HEIGHT - 40
+        self.INNER_X   = self.PANEL_X  + self.PAD
+        self.INNER_W   = self.PANEL_W  - self.PAD * 2
+        self.CONTENT_Y = self.PANEL_Y  + 130   # pod nadpisom a záložkami
 
         # Záložky
-        tab_w = 200
-        tab_h = 45
-        center_x = SCREEN_WIDTH // 2
-        self.tab_bodovanie = pygame.Rect(
-            center_x - tab_w - 10,
-            80,
-            tab_w, tab_h
+        tab_w, tab_h = 220, 44
+        cx = SCREEN_WIDTH // 2
+        self.tab_rects = {
+            "bodovanie": pygame.Rect(cx - tab_w - 8, self.PANEL_Y + 72, tab_w, tab_h),
+            "pravidla": pygame.Rect(cx + 8, self.PANEL_Y + 72, tab_w, tab_h),
+        }
+
+        # Tlačidlo zavrieť
+        self.btn_close = pygame.Rect(
+            self.PANEL_X + self.PANEL_W - 44,
+            self.PANEL_Y + 10,
+            36, 36
         )
-        self.tab_pravidla = pygame.Rect(
-            center_x + 10,
-            80,
-            tab_w, tab_h
-        )
-
-        self.content_y = 145
-
-    def show(self):
-        self.visible = True
-
-    def hide(self):
-        self.visible = False
-
-    def toggle(self):
-        self.visible = not self.visible
 
     # ------------------------------------------------------------------
-    # Udalosti
+    # Verejné metódy
     # ------------------------------------------------------------------
+
+    def show(self):    self.visible = True
+    def hide(self):    self.visible = False
+    def toggle(self):  self.visible = not self.visible
 
     def handle_event(self, event: pygame.event.Event) -> bool:
-        """
-        Spracuje udalosť.
-        Vracia True ak overlay zachytil event.
-        """
         if not self.visible:
             return False
-
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_ESCAPE or event.key == pygame.K_i:
+            if event.key in (pygame.K_ESCAPE, pygame.K_i):
                 self.hide()
                 return True
-
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.btn_close.collidepoint(event.pos):
                 self.hide()
                 return True
-            if self.tab_bodovanie.collidepoint(event.pos):
-                self.active_tab = "bodovanie"
-                return True
-            if self.tab_pravidla.collidepoint(event.pos):
-                self.active_tab = "pravidla"
-                return True
-            # Klik mimo overlay — zavri
-            overlay_rect = pygame.Rect(
-                self.overlay_x, self.overlay_y,
-                self.overlay_w, self.overlay_h
-            )
-            if not overlay_rect.collidepoint(event.pos):
-                self.hide()
-                return True
-            return True  # Blokuj klikanie cez overlay
-
+            for key, rect in self.tab_rects.items():
+                if rect.collidepoint(event.pos):
+                    self.active_tab = key
+                    return True
+            return True  # blokuj klik cez overlay
         return False
 
     # ------------------------------------------------------------------
-    # Kreslenie
+    # Kreslenie — hlavná metóda
     # ------------------------------------------------------------------
 
     def draw(self):
         if not self.visible:
             return
 
-        # Tmavý overlay celej obrazovky
-        dark = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-        dark.fill((0, 0, 0, 240))
-        self.screen.blit(dark, (0, 0))
+        # Tmavý backdrop
+        backdrop = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        backdrop.fill((0, 0, 0, 220))
+        self.screen.blit(backdrop, (0, 0))
+
+        # Panel
+        self._draw_panel_bg()
 
         # Nadpis
-        title = self.font_large.render("PRAVIDLÁ A BODOVANIE", True, COLOR_GOLD)
-        title_rect = title.get_rect(
-            centerx=SCREEN_WIDTH // 2,
-            top=20
-        )
-        self.screen.blit(title, title_rect)
-
-        # Zlatá čiara pod nadpisom
-        pygame.draw.line(
-            self.screen, COLOR_GOLD,
-            (100, 65), (SCREEN_WIDTH - 100, 65),
-            width=1
-        )
-
-        # Tlačidlo zavrieť
-        pygame.draw.rect(self.screen, COLOR_BUTTON_SECONDARY,
-                        self.btn_close, border_radius=6)
-        pygame.draw.rect(self.screen, COLOR_GOLD,
-                        self.btn_close, width=2, border_radius=6)
-        x_surf = self.font_medium.render("✕", True, COLOR_WHITE)
-        self.screen.blit(x_surf, x_surf.get_rect(center=self.btn_close.center))
+        title = self.font_title.render("PRAVIDLÁ A BODOVANIE", True, COLOR_GOLD)
+        self.screen.blit(title, title.get_rect(
+            centerx=SCREEN_WIDTH // 2, top=self.PANEL_Y + 14
+        ))
 
         # Záložky
         self._draw_tabs()
 
-        # Obsah podľa aktívnej záložky
+        # Tlačidlo zavrieť
+        self._draw_close_btn()
+
+        # Obsah
         if self.active_tab == "bodovanie":
-            self._draw_card_values()
-            self._draw_trump_values()
+            self._draw_bodovanie()
         else:
-            self._draw_rules()
+            self._draw_pravidla()
+
+    # ------------------------------------------------------------------
+    # Panel a záložky
+    # ------------------------------------------------------------------
+
+    def _draw_panel_bg(self):
+        surf = pygame.Surface((self.PANEL_W, self.PANEL_H), pygame.SRCALPHA)
+        surf.fill((15, 9, 4, 245))
+        self.screen.blit(surf, (self.PANEL_X, self.PANEL_Y))
+        pygame.draw.rect(
+            self.screen, COLOR_GOLD,
+            (self.PANEL_X, self.PANEL_Y, self.PANEL_W, self.PANEL_H),
+            width=2, border_radius=14
+        )
 
     def _draw_tabs(self):
-        """Nakreslí záložky Bodovanie / Pravidlá."""
-        for tab, label in (
-            (self.tab_bodovanie, "Bodovanie"),
-            (self.tab_pravidla, "Pravidlá"),
-        ):
-            active = (
-                (label == "Bodovanie" and self.active_tab == "bodovanie") or
-                (label == "Pravidlá" and self.active_tab == "pravidla")
-            )
-            bg_color = (40, 28, 10) if active else (20, 12, 5)
-            pygame.draw.rect(self.screen, bg_color, tab, border_radius=6)
-            pygame.draw.rect(self.screen, COLOR_GOLD, tab, width=2, border_radius=6)
-            text_color = COLOR_GOLD if active else COLOR_GRAY
-            surf = self.font_small.render(label, True, text_color)
-            self.screen.blit(surf, surf.get_rect(center=tab.center))
+        labels = {"bodovanie": "Bodovanie", "pravidla": "Pravidlá"}
+        for key, rect in self.tab_rects.items():
+            active = self.active_tab == key
+            bg = (45, 30, 10) if active else (20, 12, 5)
+            pygame.draw.rect(self.screen, bg, rect, border_radius=8)
+            border = COLOR_GOLD if active else COLOR_GRAY
+            pygame.draw.rect(self.screen, border, rect, width=2, border_radius=8)
+            color = COLOR_GOLD if active else COLOR_GRAY
+            surf = self.font_medium.render(labels[key], True, color)
+            self.screen.blit(surf, surf.get_rect(center=rect.center))
 
-    def _draw_card_values(self):
-        """Bodovanie kariet — všetky hodnoty srdce od najvyššej."""
-        ranks_ordered = ["ace", "ten", "king", "over", "under", "nine", "eight", "seven"]
-        points = {"ace": 11, "ten": 10, "king": 4, "over": 3, "under": 2,
-                  "nine": 0, "eight": 0, "seven": 0}
+    def _draw_close_btn(self):
+        pygame.draw.rect(self.screen, (50, 30, 10),
+                         self.btn_close, border_radius=6)
+        pygame.draw.rect(self.screen, COLOR_GOLD,
+                         self.btn_close, width=2, border_radius=6)
+        surf = self.font_medium.render("X", True, COLOR_WHITE)
+        self.screen.blit(surf, surf.get_rect(center=self.btn_close.center))
 
-        card_w, card_h = 130, 210
-        spacing = 20
-        total_w = len(ranks_ordered) * (card_w + spacing) - spacing
-        x_start = SCREEN_WIDTH // 2 - total_w // 2
-        y = self.content_y + 20
+    # ------------------------------------------------------------------
+    # Tab: Bodovanie
+    # ------------------------------------------------------------------
 
-        for i, rank in enumerate(ranks_ordered):
-            cx = x_start + i * (card_w + spacing)
+    def _draw_bodovanie(self):
+        y = self.CONTENT_Y
 
-            # Obrázok karty
+        # — Sekcia 1: Hodnoty kariet —
+        self._section_title("HODNOTY KARIET", y)
+        y += 36
+
+        ranks  = ["ace", "ten", "king", "over", "under", "nine", "eight", "seven"]
+        points = {"ace": 11, "ten": 10, "king": 4, "over": 3,
+                  "under": 2, "nine": 0, "eight": 0, "seven": 0}
+
+        card_w, card_h = 120, 194
+        gap = 16
+        total_w = len(ranks) * (card_w + gap) - gap
+        cx = SCREEN_WIDTH // 2
+        x0 = cx - total_w // 2
+
+        for i, rank in enumerate(ranks):
+            x = x0 + i * (card_w + gap)
             img = self._load_card("heart", rank)
             if img:
                 img = pygame.transform.scale(img, (card_w, card_h))
-                self.screen.blit(img, (cx, y))
+                self.screen.blit(img, (x, y))
+            pts  = points[rank]
+            col  = COLOR_GOLD if pts > 0 else COLOR_GRAY
+            psurf = self.font_large.render(str(pts), True, col)
+            self.screen.blit(psurf, psurf.get_rect(
+                centerx=x + card_w // 2, top=y + card_h + 14
+            ))
 
-            # Body
-            pts = points[rank]
-            color = COLOR_GOLD if pts > 0 else COLOR_GRAY
-            pts_surf = self.font_medium.render(str(pts), True, color)
-            pts_rect = pts_surf.get_rect(
-                centerx=cx + card_w // 2,
-                top=y + card_h + 8
-            )
-            self.screen.blit(pts_surf, pts_rect)
+        y += card_h + 60
 
-    def _draw_trump_values(self):
-        """Hodnoty tromfov — páry od žaluďa po srdce."""
-        trump_data = [
-            ("acorn", 100),
-            ("leaf", 80),
-            ("bell", 60),
-            ("heart", 40),
-        ]
+        # Oddeľovač
+        self._divider(y)
+        y += 28
 
-        card_w, card_h = 130, 210
-        pair_w = card_w * 2 + 10
-        spacing = 60
-        total_w = len(trump_data) * (pair_w + spacing) - spacing
-        x_start = SCREEN_WIDTH // 2 - total_w // 2
+        # — Sekcia 2: Tromfy —
+        self._section_title("TROMFY  (kráľ + horník rovnakej farby)", y)
+        y += 48
 
-        # Oddeľovacia čiara
-        sep_y = self.content_y + 210 + 70
-        pygame.draw.line(
-            self.screen, COLOR_GRAY,
-            (100, sep_y), (SCREEN_WIDTH - 100, sep_y),
-            width=1
-        )
+        trump_data = [("acorn", 100), ("leaf", 80), ("bell", 60), ("heart", 40)]
+        pair_w  = card_w * 2 + 10
+        t_gap   = 60
+        total_t = len(trump_data) * (pair_w + t_gap) - t_gap
+        tx0     = cx - total_t // 2
 
-        y = sep_y + 20
+        for i, (suit, pts) in enumerate(trump_data):
+            x = tx0 + i * (pair_w + t_gap)
+            for j, rank in enumerate(["king", "over"]):
+                img = self._load_card(suit, rank)
+                if img:
+                    img = pygame.transform.scale(img, (card_w, card_h))
+                    self.screen.blit(img, (x + j * (card_w + 10), y))
+            psurf = self.font_title.render(str(pts), True, COLOR_GOLD)
+            self.screen.blit(psurf, psurf.get_rect(
+                centerx=x + pair_w // 2, top=y + card_h + 14
+            ))
 
-        for i, (suit, points) in enumerate(trump_data):
-            cx = x_start + i * (pair_w + spacing)
+    # ------------------------------------------------------------------
+    # Tab: Pravidlá
+    # ------------------------------------------------------------------
 
-            # Kráľ
-            king_img = self._load_card(suit, "king")
-            if king_img:
-                king_img = pygame.transform.scale(king_img, (card_w, card_h))
-                self.screen.blit(king_img, (cx, y))
-
-            # Horník
-            over_img = self._load_card(suit, "over")
-            if over_img:
-                over_img = pygame.transform.scale(over_img, (card_w, card_h))
-                self.screen.blit(over_img, (cx + card_w + 10, y))
-
-            # Body
-            pts_surf = self.font_large.render(str(points), True, COLOR_GOLD)
-            pts_rect = pts_surf.get_rect(
-                centerx=cx + pair_w // 2,
-                top=y + card_h + 8
-            )
-            self.screen.blit(pts_surf, pts_rect)
-
-    def _draw_rules(self):
-        """Nakreslí pravidlá hry."""
-
+    def _draw_pravidla(self):
         sections = [
-            ("CIEĽ HRY", [
+            ("CIEL HRY", [
                 "Prvý hráč ktorý dosiahne 1000 bodov vyhráva.",
             ]),
             ("PRIEBEH KOLA", [
-                "1. Rozdanie — každý dostane 10 kariet, 2 idú do talonu",
-                "2. Dražba — hráči dražia kto zoberie talon (min. 50)",
-                "3. Talon — víťaz zoberie 2 karty, zahodí 2",
-                "   (nemožno zahodiť eso ani desiatku)",
-                "4. Štychy — hráči hrajú 10 štychov",
-                "5. Bodovanie — víťaz musí splniť povinnosť",
+                "1.  Rozdanie — každý dostane 10 kariet, 2 idú do talonu",
+                "2.  Dražba   — hráči dražia kto zoberie talon (min. 50)",
+                "3.  Talon    — víťaz zoberie 2 karty, zahodí 2",
+                "     (nemožno zahodiť eso ani desiatku)",
+                "4.  Štichy   — hráči hrajú 10 štichov",
+                "5.  Bodovanie — víťaz musí splniť povinnosť",
             ]),
             ("DRAŽBA", [
-                "• Hráč s povinnosťou (P) začína automaticky na 50",
-                "• Každý môže pridávať po 10 alebo pasovať",
-                "• Kto vydraží, zoberie talon a môže navýšiť povinnosť",
-                "• Ak nikto nepridá, povinnosť berie hráč (P) za 50",
+                "Hráč s povinnosťou (P) začína automaticky na 50.",
+                "Každý môže pridávať po 10 alebo pasovať.",
+                "Kto vydraží, zoberie talon a môže navýšiť povinnosť.",
+                "Ak nikto nepridá, povinnosť berie hráč (P) za 50.",
             ]),
-            ("ŠTYCHY", [
-                "• Leader zahrá ľubovoľnú kartu",
-                "• Ostatní MUSIA zahrať kartu rovnakej farby",
-                "• Ak nemáš farbu — MUSÍŠ zahrať tromfovú farbu",
-                "• Ak nemáš ani farbu ani tromf — zahraj čokoľvek",
-                "• Vyššia karta v hranej farbe vyhráva štych",
-                "• Tromfová karta bije všetky ostatné farby",
-                "• Víťaz štychu začína ďalší štych",
+            ("ŠTICHY", [
+                "Leader zahrá ľubovoľnú kartu.",
+                "Ostatní MUSIA zahrať kartu rovnakej farby.",
+                "Ak nemáš farbu — MUSÍŠ zahrať tromfovú kartu.",
+                "Ak nemáš ani farbu ani tromf — zahraj čokoľvek.",
+                "Vyššia karta v hranej farbe vyhráva štich.",
+                "Tromfová karta bije všetky ostatné farby.",
             ]),
             ("TROMFY", [
-                "• Tromf = kráľ + horník (K+Q) rovnakej farby na ruke",
-                "• Hlásiť môžeš až od 2. štychu",
-                "• Musíš byť leader (začínať štych)",
-                "• Tromf nahlásiš vynesením kráľa ALEBO horníka",
-                "• Tromfová farba sa stáva najsilnejšou",
-                "• Tromf môže byť zmenený zahlásením nového tromfu",
+                "Tromf = kráľ + horník (K+H) rovnakej farby na ruke.",
+                "Hlásiť môžeš až od 2. štichu.",
+                "Musíš byť leader (začínať štich).",
+                "Tromf nahlásiš vynesením kráľa ALEBO horníka.",
+                "Tromfová farba sa stáva najsilnejšou.",
             ]),
             ("BODOVANIE", [
-                "• Víťaz dražby MUSÍ nazbierať aspoň toľko bodov",
-                "  koľko vydražil (povinnosť)",
-                "• Splnil povinnosť = dostane body rovné povinnosti",
-                "• Nesplnil = odpočítajú sa mu body povinnosti",
-                "• Ostatní hráči vždy dostanú zaokrúhlené body",
-                "• Body: A=11, 10=10, K=4, Q=3, J=2",
-                "• Body za tromf sa pripočítajú automaticky",
+                "Víťaz dražby MUSÍ nazbierať aspoň toľko bodov",
+                "  koľko vydražil (povinnosť).",
+                "Splnil povinnosť  →  dostane body rovné povinnosti.",
+                "Nesplnil          →  odpočítajú sa mu body povinnosti.",
+                "Ostatní hráči vždy dostanú zaokrúhlené body štichov.",
+                "Body za tromf sa pripočítajú automaticky.",
             ]),
         ]
 
         # 2 stĺpce
-        col_w = (SCREEN_WIDTH - 120) // 2
-        col1_x = 60
-        col2_x = 60 + col_w + 40
-        y = self.content_y + 10
+        col_w = (self.INNER_W - 40) // 2
+        cols  = [
+            (self.INNER_X,              sections[:3]),
+            (self.INNER_X + col_w + 40, sections[3:]),
+        ]
 
-        # Rozdeľ sekcie do 2 stĺpcov
-        col1_sections = sections[:3]  # Cieľ, Priebeh, Dražba
-        col2_sections = sections[3:]  # Štychy, Tromfy, Bodovanie
-
-        for col_x, col_sections in [(col1_x, col1_sections), (col2_x, col2_sections)]:
-            cy = y
+        for col_x, col_sections in cols:
+            y = self.CONTENT_Y
             for title, lines in col_sections:
                 # Nadpis sekcie
-                title_surf = self.font_medium.render(title, True, COLOR_GOLD)
-                self.screen.blit(title_surf, (col_x, cy))
-                cy += 28
-
-                # Oddeľovacia čiara pod nadpisom
+                tsurf = self.font_large.render(title, True, COLOR_GOLD)
+                self.screen.blit(tsurf, (col_x, y))
+                y += tsurf.get_height() + 2
                 pygame.draw.line(
                     self.screen, COLOR_GOLD,
-                    (col_x, cy), (col_x + col_w, cy),
-                    width=1
+                    (col_x, y), (col_x + col_w, y), width=1
                 )
-                cy += 8
-
+                y += 8
                 # Riadky
                 for line in lines:
-                    surf = self.font_small.render(line, True, COLOR_WHITE)
-                    self.screen.blit(surf, (col_x, cy))
-                    cy += 22
-
-                cy += 15  # Medzera medzi sekciami
+                    surf = self.font_medium.render(line, True, COLOR_WHITE)
+                    self.screen.blit(surf, (col_x, y))
+                    y += surf.get_height() + 4
+                y += 18  # medzera medzi sekciami
 
     # ------------------------------------------------------------------
-    # Načítanie obrázkov
+    # Pomocné metódy
     # ------------------------------------------------------------------
+
+    def _section_title(self, text: str, y: int):
+        surf = self.font_large.render(text, True, COLOR_GOLD)
+        self.screen.blit(surf, surf.get_rect(
+            centerx=SCREEN_WIDTH // 2, top=y
+        ))
+
+    def _divider(self, y: int):
+        pygame.draw.line(
+            self.screen, COLOR_GRAY,
+            (self.INNER_X, y),
+            (self.INNER_X + self.INNER_W, y),
+            width=1
+        )
 
     def _load_card(self, suit: str, rank: str) -> pygame.Surface | None:
-        """Načíta obrázok karty (medium)."""
         key = f"{suit}-{rank}"
         if key not in self._card_cache:
-            path = os.path.join(CARDS_MEDIUM_PATH, f"{suit}-{rank}.png")  # ← medium
+            path = os.path.join(CARDS_MEDIUM_PATH, f"{suit}-{rank}.png")
             try:
                 img = pygame.image.load(path).convert_alpha()
-                img = pygame.transform.scale(img, CARD_SIZE_MEDIUM)  # ← medium
                 self._card_cache[key] = img
             except FileNotFoundError:
                 self._card_cache[key] = None
         return self._card_cache[key]
 
-    def _load_icon(self, suit: str, size: int) -> pygame.Surface | None:
-        """Načíta ikonku farby."""
-        key = f"{suit}-{size}"
-        if key not in self._icon_cache:
-            path = os.path.join(SUIT_ICONS_PATH, f"{suit}-icon@medium.png")
-            try:
-                img = pygame.image.load(path).convert_alpha()
-                img = pygame.transform.scale(img, (size, size))
-                self._icon_cache[key] = img
-            except FileNotFoundError:
-                self._icon_cache[key] = None
-        return self._icon_cache[key]
-
     def __repr__(self) -> str:
-        return f"InfoOverlay(visible={self.visible})"
+        return f"InfoOverlay(visible={self.visible}, tab={self.active_tab})"

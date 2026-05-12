@@ -6,15 +6,15 @@ from config import (
     TABLE_CENTER_X, TABLE_CENTER_Y,
     COLOR_WHITE, COLOR_BLACK, COLOR_GOLD, COLOR_YELLOW, COLOR_GREEN, COLOR_RED,
     FONT_SIZE_LARGE, FONT_SIZE_MEDIUM,
-    SUIT_ICONS_PATH, SCREEN_WIDTH, SCREEN_HEIGHT
+    SUIT_ICONS_PATH, SCREEN_WIDTH, SCREEN_HEIGHT, get_font
 )
 
 
 class SpeechBubble:
     def __init__(self, screen: pygame.Surface):
         self.screen = screen
-        self.font_large = pygame.font.SysFont(None, FONT_SIZE_LARGE +16)
-        self.font_medium = pygame.font.SysFont(None, FONT_SIZE_MEDIUM +8)
+        self.font_large = get_font(32)
+        self.font_medium = get_font(24)
         self._icon_cache: dict[str, pygame.Surface] = {}
 
         # Aktívne bubliny [{player_index, text, suit, timer, color}]
@@ -22,7 +22,7 @@ class SpeechBubble:
 
         # Pozície bublín pre každého hráča
         self.bubble_positions = {
-            0: (TABLE_CENTER_X-SCREEN_WIDTH/4, 780),           # človek — nad kartami
+            0: (TABLE_CENTER_X-SCREEN_WIDTH/4, 820),           # človek — nad kartami
             1: (400, 300),                       # ľavý AI — napravo od kariet
             2: (SCREEN_WIDTH -400, 300),        # pravý AI — naľavo od kariet
         }
@@ -48,7 +48,7 @@ class SpeechBubble:
         """Zobrazí biddingová bublinu."""
         if amount is None:
             text = "ja som DOBRÝ"
-            color = (150, 150, 150)
+            color = COLOR_YELLOW
         else:
             text = f"DÁVAM {amount}!"
             color = COLOR_YELLOW
@@ -71,7 +71,7 @@ class SpeechBubble:
             text=text,
             suit=None,
             duration_ms=99999999,  # "nekonečno" — zmizne manuálne
-            color=COLOR_WHITE
+            color=COLOR_YELLOW
         )
 
     def hide_instruction(self, player_index: int):

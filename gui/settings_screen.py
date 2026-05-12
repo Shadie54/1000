@@ -8,7 +8,7 @@ from config import (
     COLOR_BUTTON_PRIMARY, COLOR_BUTTON_SECONDARY,
     COLOR_GREEN, COLOR_YELLOW, COLOR_RED,
     FONT_SIZE_LARGE, FONT_SIZE_MEDIUM, FONT_SIZE_XLARGE,
-    BUTTON_RADIUS
+    BUTTON_RADIUS, get_font
 )
 
 
@@ -25,9 +25,9 @@ class SettingsScreen:
         self.clock = pygame.time.Clock()
         self.settings = settings.copy()
 
-        self.font_title = pygame.font.SysFont(None, 72)
-        self.font_large = pygame.font.SysFont(None, FONT_SIZE_LARGE)
-        self.font_medium = pygame.font.SysFont(None, FONT_SIZE_MEDIUM)
+        self.font_title = get_font(72)
+        self.font_large = get_font(FONT_SIZE_LARGE)
+        self.font_medium = get_font(FONT_SIZE_MEDIUM)
 
         # Pozadie
         try:

@@ -6,12 +6,13 @@ import random
 import os
 from config import (
     SCREEN_WIDTH, SCREEN_HEIGHT,
-    COLOR_WHITE, COLOR_BLACK, COLOR_GOLD, COLOR_GRAY,
+    COLOR_WHITE, COLOR_GOLD, COLOR_GRAY,
     COLOR_BUTTON_PRIMARY, COLOR_BUTTON_SECONDARY,
     FONT_SIZE_LARGE, FONT_SIZE_MEDIUM,
-    BUTTON_WIDTH, BUTTON_HEIGHT, BUTTON_RADIUS,
+    BUTTON_RADIUS,
     CARDS_MEDIUM_PATH, CARD_SIZE_MEDIUM,
-    SUITS, RANKS
+    SUITS, RANKS,
+    get_font
 )
 
 
@@ -21,8 +22,8 @@ class Menu:
         self.clock = pygame.time.Clock()
         self.show_continue = show_continue
 
-        self.font_button = pygame.font.SysFont(None, FONT_SIZE_LARGE)
-        self.font_medium = pygame.font.SysFont(None, FONT_SIZE_MEDIUM)
+        self.font_button = get_font(FONT_SIZE_LARGE)
+        self.font_medium = get_font(FONT_SIZE_MEDIUM)
 
         # Pozadie
         try:
@@ -208,7 +209,7 @@ class Menu:
             )
             self.screen.blit(self.logo, logo_rect)
         else:
-            font_title = pygame.font.SysFont(None, 120)
+            font_title = get_font(120)
             title = font_title.render("TISÍC", True, COLOR_GOLD)
             title_rect = title.get_rect(
                 center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 150)

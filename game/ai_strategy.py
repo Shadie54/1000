@@ -233,6 +233,16 @@ class AIStrategy:
         # S1 — CERTAIN_TRICK
         guaranteed = self.evaluator.get_guaranteed_tricks(hand, trump_suit)
         guaranteed_playable = [c for c in guaranteed if c in playable]
+
+        # ← NOVÉ: v prvom kole vylúč potenciálny tromfový pár
+        if trick_number == 0:
+            guaranteed_playable = [
+                c for c in guaranteed_playable
+                if not (c.rank in ("king", "over") and
+                        any(cc.suit == c.suit and cc.rank in ("king", "over")
+                            and cc != c for cc in hand))
+            ]
+
         if guaranteed_playable:
             card = max(guaranteed_playable, key=lambda c: c.points)
             self._log(SC.CERTAIN_TRICK, f"{card}")
@@ -277,6 +287,23 @@ class AIStrategy:
 
         # S4 — PASSIVE
         card = self._play_safest_card(playable, hand)
+
+        # ← NOVÉ: v prvom kole nehrať potenciálny tromfový pár
+        if trick_number == 0 and card.rank in ("king", "over"):
+            has_pair = any(
+                c.suit == card.suit and c.rank in ("king", "over") and c != card
+                for c in hand
+            )
+            if has_pair:
+                alternatives = [
+                    c for c in playable
+                    if not (c.rank in ("king", "over") and
+                            any(cc.suit == c.suit and cc.rank in ("king", "over")
+                                and cc != c for cc in hand))
+                ]
+                if alternatives:
+                    card = min(alternatives, key=lambda c: (c.points, c.rank_order))
+
         self._log(SC.PASSIVE, f"{card}")
         return card
 
@@ -293,10 +320,10 @@ class AIStrategy:
         guaranteed_playable = [c for c in guaranteed if c in playable]
 
         if guaranteed_playable:
-            # Zahraj istý štych s najvyššími bodmi
+            # Zahraj istý štich s najvyššími bodmi
             return max(guaranteed_playable, key=lambda c: c.points)
 
-        # Ak nemám istý štych — zahraj najnižšiu kartu
+        # Ak nemám istý štich — zahraj najnižšiu kartu
         # (v koncovke nechceme riskovať)
         return min(playable, key=lambda c: (c.points, c.rank_order))
 
@@ -381,7 +408,7 @@ class AIStrategy:
     def _check_passive_bid(self, hand: list[Card], current_bid: int) -> bool:
         """
         S27 — Pasuj ak mám 2+ esá + kryté tromfy.
-        Dostanem sa na štych bez záväzku.
+        Dostanem sa na štich bez záväzku.
         """
         ace_count = sum(1 for c in hand if c.rank == "ace")
         trump_points = self.evaluator.get_playable_trump_points(hand)
@@ -390,7 +417,7 @@ class AIStrategy:
         if ace_count >= 2 and trump_points >= 40:
             return True
 
-        # 3+ esá — dostanem sa na štych vždy
+        # 3+ esá — dostanem sa na štich vždy
         if ace_count >= 3:
             return True
 
@@ -423,7 +450,7 @@ class AIStrategy:
                       trick: Trick) -> Card | None:
         """
         S23 — Sleduj dražiteľa.
-        Ak štich berie dražiteľ → prebi ho aj lacnejším štychom.
+        Ak štich berie dražiteľ → prebi ho aj lacnejším štichom.
         Ak štich neberie dražiteľ → nemusíme prebíjať.
         """
         # Nájdi dražiteľa
@@ -470,7 +497,7 @@ class AIStrategy:
 
         played_count = len(trick.played_cards)
 
-        # Som 2. v poradí — potrebujem istý štych
+        # Som 2. v poradí — potrebujem istý štich
         if played_count == 1:
             lead_suit = trick.lead_suit
             same_suit = [c for c in playable if c.suit == lead_suit]
@@ -482,7 +509,7 @@ class AIStrategy:
             for card in sorted(same_suit, key=lambda c: c.rank_order, reverse=True):
                 if self.memory.is_highest_in_suit(card, hand):
                     self._log(SC.CLAIM_LEAD,
-                              f"{card} → istý štych (2. v poradí)")
+                              f"{card} → istý štich (2. v poradí)")
                     return card
 
             # Nemám istú → nič nerobím

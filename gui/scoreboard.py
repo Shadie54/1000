@@ -9,16 +9,16 @@ from config import (
     COLOR_WHITE, COLOR_BLACK, COLOR_YELLOW, COLOR_GREEN, COLOR_RED,
     COLOR_PANEL_BG, COLOR_GRAY, COLOR_GOLD,
     FONT_SIZE_SMALL, FONT_SIZE_MEDIUM, FONT_SIZE_LARGE,
-    WINNING_SCORE, SUIT_ICONS_PATH
+    WINNING_SCORE, SUIT_ICONS_PATH, get_font
 )
 
 
 class Scoreboard:
     def __init__(self, screen: pygame.Surface):
         self.screen = screen
-        self.font_small = pygame.font.SysFont(None, FONT_SIZE_MEDIUM)
-        self.font_medium = pygame.font.SysFont(None, FONT_SIZE_LARGE)
-        self.font_large = pygame.font.SysFont(None, FONT_SIZE_LARGE+8)
+        self.font_small = get_font(18)
+        self.font_medium = get_font(24)
+        self.font_large = get_font(32)
         self._icon_cache: dict[str, pygame.Surface] = {}
 
         # Rozmery panelov
@@ -134,12 +134,20 @@ class Scoreboard:
             y = y_start + i * 58
 
             is_current = (
-                current_round and
-                current_round.get_current_player_index() == i
+                    current_round and (
+                current_round.bidding.get_next_bidder(
+                    current_round.bidding.highest_bidder_index
+                ) == i
+                if current_round.phase == "bidding"
+                else current_round.get_current_player_index() == i
+            )
             )
             is_obligation = (
-                current_round and
+                    current_round and (
                 current_round.obligation_index == i
+                if current_round.phase not in ("bidding", "talon", "tricks")
+                else current_round.bidding.highest_bidder_index == i
+            )
             )
 
             name_color = COLOR_YELLOW if is_current else COLOR_WHITE
@@ -160,9 +168,9 @@ class Scoreboard:
 
             self._draw_progress_bar(
                 x=self.score_x + 10,
-                y=y + 22,
+                y=y + 36,
                 width=self.score_w - 20,
-                height=7,
+                height=10,
                 value=player.total_score,
                 max_value=WINNING_SCORE
             )
@@ -195,10 +203,10 @@ class Scoreboard:
         self._draw_info_row("Fáza:", phase_text, y, COLOR_WHITE)
         y += line_h
 
-        # Štych
+        # štich
         if current_round.phase == "tricks":
             self._draw_info_row(
-                "Štych:",
+                "Štich:",
                 f"{current_round.trick_number + 1} / 10",
                 y, COLOR_WHITE
             )
@@ -241,9 +249,9 @@ class Scoreboard:
 
         self._draw_progress_bar(
             x=self.info_x + 10,
-            y=y + 18,
+            y=y + 30,
             width=self.info_w - 20,
-            height=7,
+            height=10,
             value=current_points,
             max_value=bid
         )
@@ -270,8 +278,8 @@ class Scoreboard:
 
         pygame.draw.line(
             self.screen, COLOR_GOLD,
-            (x + 10, y + 32),
-            (x + w - 10, y + 32),
+            (x + 10, y + 38),
+            (x + w - 10, y + 38),
             width=1
         )
 

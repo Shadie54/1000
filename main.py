@@ -89,7 +89,7 @@ def main():
                 # next_action == "new_game" → nová hra
                 if next_action == "new_game":
                     active_game_state, active_ai_players = _create_game(settings)
-                    result, active_game_state, active_ai_players = _run_game(
+                    result, active_game_state, active_ai_players = _run_game(  # ← pridaj
                         window, active_game_state, active_ai_players
                     )
             # result == "menu" → späť do menu (while True pokračuje)
@@ -114,6 +114,9 @@ def main():
                 active_ai_players = None
                 if next_action == "new_game":
                     active_game_state, active_ai_players = _create_game(settings)
+                    result, active_game_state, active_ai_players = _run_game(  # ← pridaj
+                        window, active_game_state, active_ai_players
+                    )
             # result == "menu" → active_game_state ostáva pre pokračovanie
 
 

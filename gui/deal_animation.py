@@ -6,7 +6,7 @@ from config import (
     TABLE_CENTER_X, TABLE_CENTER_Y,
     CARD_SIZE_MEDIUM, CARD_FAN_OFFSET,
     COLOR_GOLD, COLOR_WHITE, COLOR_PANEL_BG,
-    FONT_SIZE_MEDIUM
+    FONT_SIZE_MEDIUM, get_font
 )
 
 
@@ -14,7 +14,7 @@ class DealAnimation:
     def __init__(self, screen: pygame.Surface, card_renderer):
         self.screen = screen
         self.card_renderer = card_renderer
-        self.font = pygame.font.SysFont(None, FONT_SIZE_MEDIUM)
+        self.font = get_font(FONT_SIZE_MEDIUM)
 
         # Cieľové pozície pre každého hráča
         # {player_index: [(x, y), (x, y), ...]} — pozícia každej karty

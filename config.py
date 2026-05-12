@@ -164,3 +164,13 @@ CARD_DEAL_DELAY = 50
 # Obrázok zadnej strany karty
 # ------------------------------------------------------------------
 CARD_BACK_IMAGE = "card-back.png"
+
+def get_font(size: int) -> pygame.font.Font:
+    """Vráti font s podporou diakritiky."""
+    for font_name in ("tahoma", "arial"):
+        try:
+            font = pygame.font.SysFont(font_name, size)
+            return font
+        except:
+            continue
+    return pygame.font.SysFont(None, size)  # fallback — systémový default
