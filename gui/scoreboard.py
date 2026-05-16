@@ -152,7 +152,7 @@ class Scoreboard:
 
             name_color = COLOR_YELLOW if is_current else COLOR_WHITE
             indicator = "► " if is_current else "  "
-            obligation = " (P)" if is_obligation else ""
+            obligation = f" (P{current_round.bidding.current_bid})" if is_obligation else ""
             name_text = f"{indicator}{player.name}{obligation}"
 
             name_surf = self.font_medium.render(name_text, True, name_color)

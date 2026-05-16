@@ -1,12 +1,12 @@
 # gui/speech_bubble.py
 
 import pygame
-import os
+import os, random
 from config import (
     TABLE_CENTER_X, TABLE_CENTER_Y,
     COLOR_WHITE, COLOR_BLACK, COLOR_GOLD, COLOR_YELLOW, COLOR_GREEN, COLOR_RED,
     FONT_SIZE_LARGE, FONT_SIZE_MEDIUM,
-    SUIT_ICONS_PATH, SCREEN_WIDTH, SCREEN_HEIGHT, get_font
+    SUIT_ICONS_PATH, SCREEN_WIDTH, SCREEN_HEIGHT, get_font, COLOR_GRAY
 )
 
 
@@ -23,8 +23,8 @@ class SpeechBubble:
         # Pozície bublín pre každého hráča
         self.bubble_positions = {
             0: (TABLE_CENTER_X-SCREEN_WIDTH/4, 820),           # človek — nad kartami
-            1: (400, 300),                       # ľavý AI — napravo od kariet
-            2: (SCREEN_WIDTH -400, 300),        # pravý AI — naľavo od kariet
+            1: (480, 320),                       # ľavý AI — napravo od kariet
+            2: (SCREEN_WIDTH -480, 320),        # pravý AI — naľavo od kariet
         }
 
     # ------------------------------------------------------------------
@@ -47,8 +47,16 @@ class SpeechBubble:
                  duration_ms: int = 5000):
         """Zobrazí biddingová bublinu."""
         if amount is None:
-            text = "ja som DOBRÝ"
-            color = COLOR_YELLOW
+            answers = [
+                "Ja som DOBRÝ",
+                "Som DOBRÝ",
+                "Tak si to BER",
+                "NECHAJ si to",
+                "DOBRÝ"
+            ]
+
+            text = random.choice(answers)
+            color = COLOR_WHITE
         else:
             text = f"DÁVAM {amount}!"
             color = COLOR_YELLOW
@@ -150,7 +158,7 @@ class SpeechBubble:
         )
 
         # Chvost bubliny (trojuholník)
-        self._draw_tail(cx, by + bubble_h, player_index, bubble["color"])
+        self._draw_tail(cx, by + bubble_h, by, bubble_w, bubble_h, player_index, bubble["color"])
 
         # Text
         text_rect = text_surf.get_rect(
@@ -169,41 +177,35 @@ class SpeechBubble:
                 )
                 self.screen.blit(icon, icon_rect)
 
-    def _draw_tail(self, cx: int, base_y: int,
+    def _draw_tail(self, cx: int, base_y: int, by: int, bubble_w: int, bubble_h: int,
                    player_index: int, color: tuple):
-        """Nakreslí chvost bubliny smerom k hráčovi."""
         tail_size = 12
+        bx = cx - bubble_w // 2
 
         if player_index == 0:
-            # Chvost dole (k hráčovi dole)
+            # Hráč dole — chvost dole (zo spodku bubliny)
             points = [
                 (cx - tail_size, base_y),
                 (cx + tail_size, base_y),
                 (cx, base_y + tail_size * 2)
             ]
         elif player_index == 1:
-            # Chvost doľava
+            # PC3 vľavo — chvost doľava (z ľavého okraja bubliny)
+            mid_y = by + bubble_h // 2
             points = [
-                (base_y - tail_size, cx),
-                (base_y + tail_size, cx),
-                (base_y - tail_size * 2, cx)
-            ]
-            # Pre ľavého AI upravíme súradnice
-            bx, by = self.bubble_positions[1]
-            points = [
-                (bx - tail_size * 2, by),
-                (bx - tail_size * 2, by + tail_size * 2),
-                (bx - tail_size * 4, by + tail_size)
+                (bx, mid_y - tail_size),
+                (bx, mid_y + tail_size),
+                (bx - tail_size * 2, mid_y)
             ]
         else:
-            # Chvost doprava
-            bx, by = self.bubble_positions[2]
+            # PC1 vpravo — chvost doprava (z pravého okraja bubliny)
+            mid_y = by + bubble_h // 2
+            right_x = bx + bubble_w
             points = [
-                (bx + tail_size * 2, by),
-                (bx + tail_size * 2, by + tail_size * 2),
-                (bx + tail_size * 4, by + tail_size)
+                (right_x, mid_y - tail_size),
+                (right_x, mid_y + tail_size),
+                (right_x + tail_size * 2, mid_y)
             ]
-
         pygame.draw.polygon(self.screen, color, points)
 
     def _load_icon(self, suit: str, size: int) -> pygame.Surface | None:

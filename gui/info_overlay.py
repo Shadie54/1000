@@ -1,16 +1,14 @@
 # gui/info_overlay.py
 
-import pygame
 import os
+
+import pygame
+
 from config import (
     SCREEN_WIDTH, SCREEN_HEIGHT,
     COLOR_WHITE, COLOR_GOLD, COLOR_GRAY,
-    COLOR_GREEN, COLOR_RED,
     FONT_SIZE_SMALL, FONT_SIZE_MEDIUM, FONT_SIZE_LARGE,
-    CARDS_MEDIUM_PATH, CARD_SIZE_MEDIUM,
-    SUIT_ICONS_PATH, BUTTON_RADIUS,
-    COLOR_BUTTON_PRIMARY, COLOR_BUTTON_SECONDARY,
-    get_font
+    CARDS_MEDIUM_PATH, get_font
 )
 
 
@@ -236,6 +234,7 @@ class InfoOverlay:
             ("ŠTICHY", [
                 "Leader zahrá ľubovoľnú kartu.",
                 "Ostatní MUSIA zahrať kartu rovnakej farby.",
+                "Ostatní MUSIA zahrať vyššiu kartu ak majú (prebiť).",
                 "Ak nemáš farbu — MUSÍŠ zahrať tromfovú kartu.",
                 "Ak nemáš ani farbu ani tromf — zahraj čokoľvek.",
                 "Vyššia karta v hranej farbe vyhráva štich.",

@@ -1,14 +1,15 @@
 # gui/game_over_screen.py
 
-import pygame
 import sys
+
+import pygame
+
 from config import (
     SCREEN_WIDTH, SCREEN_HEIGHT,
     COLOR_WHITE, COLOR_GOLD, COLOR_GRAY,
-    COLOR_GREEN, COLOR_RED,
+    COLOR_RED,
     COLOR_BUTTON_PRIMARY, COLOR_BUTTON_SECONDARY,
-    FONT_SIZE_MEDIUM, FONT_SIZE_LARGE, FONT_SIZE_XLARGE,
-    BUTTON_RADIUS, WINNING_SCORE, get_font
+    FONT_SIZE_MEDIUM, FONT_SIZE_LARGE, BUTTON_RADIUS, WINNING_SCORE, get_font
 )
 
 

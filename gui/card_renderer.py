@@ -1,18 +1,19 @@
 # gui/card_renderer.py
 
-import pygame
 import os
-from game.card import Card
-from game.trick import Trick
+
+import pygame
+
 from config import (
     CARDS_MEDIUM_PATH, CARDS_SMALL_PATH, CARD_BACK_IMAGE,
     CARD_SIZE_MEDIUM, CARD_SIZE_SMALL,
-    CARD_FAN_OFFSET, CARD_OVERLAP,
-    TABLE_CENTER_X, TABLE_CENTER_Y,
+    CARD_FAN_OFFSET, TABLE_CENTER_X, TABLE_CENTER_Y,
     TALON_X, TALON_Y,
     COLOR_YELLOW, COLOR_GREEN, COLOR_WHITE, COLOR_GOLD,
-    NUM_PLAYERS, get_font
+    get_font, HUMAN_HAND_Y, SCREEN_HEIGHT, SCREEN_WIDTH
 )
+from game.card import Card
+from game.trick import Trick
 
 
 class CardRenderer:
@@ -28,13 +29,11 @@ class CardRenderer:
             2: (TABLE_CENTER_X + 150, TABLE_CENTER_Y),   # AI pravý
         }
 
-        # Pozície rúk hráčov
         self.hand_configs = {
-            0: {"direction": "horizontal", "x": 200, "y": 860, "offset": 100},
-            1: {"direction": "vertical", "x": 30, "y": 100, "offset": 50},
-            2: {"direction": "vertical", "x": 1600, "y": 100, "offset": 50},
+            0: {"direction": "horizontal", "x": 200, "y": HUMAN_HAND_Y, "offset": 100},
+            1: {"direction": "vertical", "x": 30, "y": int(SCREEN_HEIGHT * 0.09), "offset": 50},
+            2: {"direction": "vertical", "x": SCREEN_WIDTH - 220, "y": int(SCREEN_HEIGHT * 0.09), "offset": 50},
         }
-
     # ------------------------------------------------------------------
     # Načítanie obrázkov
     # ------------------------------------------------------------------
@@ -124,7 +123,8 @@ class CardRenderer:
                 if h.has_trump_pair(card.suit):
                     self._draw_highlight(x, y, CARD_SIZE_MEDIUM, COLOR_GOLD)
 
-    def _card_position(self, config: dict, index: int) -> tuple[int, int]:
+    @staticmethod
+    def _card_position(config: dict, index: int) -> tuple[int, int]:
         """Vypočíta pozíciu karty v ruke podľa konfigurácie."""
         if config["direction"] == "horizontal":
             x = config["x"] + index * config["offset"]
@@ -172,7 +172,7 @@ class CardRenderer:
         # Popisok
         font = get_font(22)
         label = font.render("Talon", True, COLOR_WHITE)
-        self.screen.blit(label, (TALON_X, TALON_Y - 20))
+        self.screen.blit(label, (TALON_X, TALON_Y - 40))
 
     def draw_talon_debug(self, talon_cards: list):
         """V debug móde zobrazí talon s lícom kariet."""
@@ -184,7 +184,7 @@ class CardRenderer:
 
         font = get_font(22)
         label = font.render("Talon [DEBUG]", True, COLOR_YELLOW)
-        self.screen.blit(label, (TALON_X, TALON_Y - 20))
+        self.screen.blit(label, (TALON_X, TALON_Y - 40))
 
     # ------------------------------------------------------------------
     # Detekcia kliku na kartu

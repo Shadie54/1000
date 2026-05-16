@@ -270,20 +270,30 @@ class AIStrategy:
             for opp in forcing:
                 backup = opp.get("backup_count", 1)
 
-                # Prah závisí od počtu záložných kariet
                 if backup >= 2:
-                    threshold = 0.3  # 2+ zálohy → aj 30% stačí
+                    threshold = 0.3
                 elif backup == 1:
-                    threshold = 0.5  # 1 záloha → aspoň 50%
+                    threshold = 0.5
                 else:
-                    threshold = 0.7  # žiadna záloha → vysoká istota
+                    threshold = 0.7
+
+                forcing_card = opp["forcing_card"]
+
+                # ← NOVÉ: v prvom kole vylúč potenciálny tromfový pár
+                if trick_number == 0 and forcing_card.rank in ("king", "over"):
+                    has_pair = any(
+                        c.suit == forcing_card.suit and c.rank in ("king", "over")
+                        and c != forcing_card for c in hand
+                    )
+                    if has_pair:
+                        continue  # preskočí túto forcing príležitosť
 
                 if (opp["probability"] >= threshold
-                        and opp["forcing_card"] in playable):
+                        and forcing_card in playable):
                     self._log(SC.FORCING,
-                              f"{opp['forcing_card']} → chráni {opp['protected_card']} "
+                              f"{forcing_card} → chráni {opp['protected_card']} "
                               f"(p={opp['probability']:.0%}, backup={backup})")
-                    return opp["forcing_card"]
+                    return forcing_card
 
         # S4 — PASSIVE
         card = self._play_safest_card(playable, hand)

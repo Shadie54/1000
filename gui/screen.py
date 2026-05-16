@@ -1,40 +1,39 @@
 # gui/screen.py
 
 import pygame
-from game.card import Card
-from game.game_state import GameState
-from game.ai import AI
-from gui.card_renderer import CardRenderer
-from gui.scoreboard import Scoreboard
-from gui.deal_animation import DealAnimation
-from gui.trick_animation import TrickAnimation
-from gui.speech_bubble import SpeechBubble
-from gui.bid_slider import BidSlider
-from gui.info_overlay import InfoOverlay
-from gui.game_over_screen import GameOverScreen
+
 from config import (
     SCREEN_WIDTH, SCREEN_HEIGHT, FPS, DEBUG_MODE,
     COLOR_BG, COLOR_BG_DARK, COLOR_YELLOW, COLOR_GRAY,
-    COLOR_WHITE, COLOR_BLACK, COLOR_PANEL_BG, COLOR_GOLD,
-    COLOR_GREEN,
+    COLOR_WHITE, COLOR_GOLD,
     FONT_SIZE_MEDIUM, FONT_SIZE_LARGE, FONT_SIZE_SMALL,
     TABLE_CENTER_X, TABLE_CENTER_Y,
     BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT, BUTTON_RADIUS,
-    BUTTON_SORT_X, BUTTON_SORT_Y, BUTTON_SORT_WIDTH, BUTTON_SORT_HEIGHT,
     COLOR_BUTTON_PRIMARY, COLOR_BUTTON_SECONDARY,
-    NUM_PLAYERS, CARD_SIZE_MEDIUM,
     TALON_X, TALON_Y, CARD_FAN_OFFSET, TRUMP_POINTS,
-    get_font
+    get_font, HUMAN_HAND_Y
 )
+from game.ai import AI
+from game.card import Card
+from game.game_state import GameState
+from gui.bid_slider import BidSlider
+from gui.card_renderer import CardRenderer
+from gui.deal_animation import DealAnimation
+from gui.info_overlay import InfoOverlay
+from gui.scoreboard import Scoreboard
+from gui.speech_bubble import SpeechBubble
+from gui.trick_animation import TrickAnimation
 
 
 class Screen:
-    def __init__(self, game_state: GameState, ai_players: list[AI], debug: bool = DEBUG_MODE, new_game: bool = True):
+    def __init__(self, game_state: GameState, ai_players: list[AI],
+                 debug: bool = DEBUG_MODE, new_game: bool = True,
+                 table_bg: str = "table.jpg"):
         pygame.init()
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.display.set_caption("Tisíc")
         try:
-            self.table_bg = pygame.image.load("assets/graphics/table.jpg").convert()
+            self.table_bg = pygame.image.load(f"assets/graphics/{table_bg}").convert()
             self.table_bg = pygame.transform.scale(
                 self.table_bg, (SCREEN_WIDTH, SCREEN_HEIGHT)
             )
@@ -48,7 +47,6 @@ class Screen:
 
         self.card_renderer = CardRenderer(self.screen, debug)
         self.scoreboard = Scoreboard(self.screen)
-
         self.font_small = get_font(FONT_SIZE_SMALL)
         self.font_medium = get_font(FONT_SIZE_MEDIUM)
         self.font_large = get_font(FONT_SIZE_LARGE)
@@ -61,6 +59,7 @@ class Screen:
         # Tromf
         self.pending_trump_card: Card | None = None
         self.pending_trump_suit: str | None = None
+        self.pending_trump_first_trick = False
 
         # Ukáž posledný štich
         self.show_last_trick: bool = False
@@ -306,7 +305,6 @@ class Screen:
         current_round.give_talon_to_winner()
 
         winner = current_round.bidding.winner
-        winner_index = current_round.bidding.winner_index
 
         if winner.is_human:
             self.can_raise_bid = True
@@ -485,17 +483,11 @@ class Screen:
     # ------------------------------------------------------------------
 
     def _try_declare_trump(self, player_index: int, card: Card) -> bool:
-        """
-        Skontroluje či karta môže spustiť tromf.
-        Vráti True ak čakáme na rozhodnutie hráča.
-        """
         current_round = self.game_state.current_round
 
-        if current_round.trick_number == 0:
-            return False
         if current_round.get_current_player_index() != player_index:
             return False
-        if current_round.current_leader_index != player_index:  # ← pridané
+        if current_round.current_leader_index != player_index:
             return False
         if card.rank not in ("over", "king"):
             return False
@@ -504,12 +496,20 @@ class Screen:
 
         self.pending_trump_card = card
         self.pending_trump_suit = card.suit
+        # ← NOVÉ: zapamätaj či je prvý štich
+        self.pending_trump_first_trick = (current_round.trick_number == 0)
         return True
 
     def _handle_trump_decision_click(self, pos: tuple[int, int]):
         """Spracuje rozhodnutie hráča či chce hlásiť tromf."""
         current_round = self.game_state.current_round
         player_index = self.game_state.human_index
+
+        if self._button_trump_yes_rect().collidepoint(pos):
+            # ← prvý štich: zobraz info a nič nerob
+            if self.pending_trump_first_trick:
+                self._show_message("Tromf nie je možný v prvom štichu!")
+                return
 
         if self._button_trump_yes_rect().collidepoint(pos):
             trump_suit = self.pending_trump_suit  # ← ulož pred vymazaním
@@ -835,7 +835,7 @@ class Screen:
         if new_bid > current_round.bidding.current_bid:
             current_round.bidding.current_bid = new_bid
             self.game_state.players[player_index].bid = new_bid
-            self._show_message(f"Povinnosť navýšená na {new_bid}")
+            self._show_message(f"Povinnosť navýšená na {new_bid}", 5000)
             self.game_state.logger.log_raise(
                 self.game_state.players[player_index].name,
                 new_bid
@@ -857,7 +857,7 @@ class Screen:
         self.talon_revealing = True
         self.talon_reveal_timer = pygame.time.get_ticks() + 2000
 
-        self._show_message(f"{winner.name} vydražil za {winner.bid}")
+        self._show_message(f"{winner.name} vydražil za {winner.bid}", 5000)
 
         # Zaznamená dražiteľa do pamäte všetkých AI
         for ai in self.ai_players:
@@ -898,11 +898,13 @@ class Screen:
         self._draw_hands()
         if not self._trick_anim_started and (not self.trick_animation or self.trick_animation.is_done):
             self._draw_current_trick()
+
         self._draw_talon()
         # Talon reveal — len ak animácia ešte nezačala
         if self.talon_revealing and not self._talon_anim_started:
             self._draw_talon_reveal()
         self.trick_animation.draw()
+        self._draw_player_labels()
         self.scoreboard.draw(
             self.game_state.players,
             self.game_state.current_round
@@ -951,6 +953,44 @@ class Screen:
 
             )
 
+    def _draw_player_labels(self):
+        """Nakreslí menovky hráčov."""
+
+        font = get_font(28)
+
+        label_positions = {
+            0: (TABLE_CENTER_X, SCREEN_HEIGHT - 30),
+            1: (120, TABLE_CENTER_Y -120),
+            2: (SCREEN_WIDTH - 120, TABLE_CENTER_Y -120)
+        }
+
+        for i, player in enumerate(self.game_state.players):
+            pos = label_positions[i]
+
+            surf = font.render(player.name, True, COLOR_WHITE)
+            rect = surf.get_rect(center=pos)
+
+            bg_rect = rect.inflate(16, 8)
+
+            bg = pygame.Surface(
+                (bg_rect.width, bg_rect.height),
+                pygame.SRCALPHA
+            )
+
+            bg.fill((0, 0, 0, 160))
+
+            self.screen.blit(bg, bg_rect.topleft)
+
+            pygame.draw.rect(
+                self.screen,
+                COLOR_GOLD,
+                bg_rect,
+                width=1,
+                border_radius=6
+            )
+
+            self.screen.blit(surf, rect)
+
     def _draw_current_trick(self):
         """Nakreslí karty aktuálneho štichu."""
         current_round = self.game_state.current_round
@@ -959,8 +999,7 @@ class Screen:
 
     def _draw_last_trick_overlay(self):
         """Nakreslí overlay s posledným štichom."""
-        import os
-        from config import CARDS_MEDIUM_PATH, CARD_SIZE_MEDIUM
+        from config import CARD_SIZE_MEDIUM
         current_round = self.game_state.current_round
         if not current_round or not current_round.tricks:
             self.show_last_trick = False
@@ -999,14 +1038,14 @@ class Screen:
                              width=border_width, border_radius=6)
 
             name = self.game_state.players[player_idx].name
-            name_surf = self.font_small.render(
+            name_surf = self.font_large.render(
                 name, True, COLOR_GOLD if is_winner else COLOR_WHITE
             )
             self.screen.blit(name_surf, name_surf.get_rect(
                 centerx=cx + card_w // 2, top=y0 + card_h + 8
             ))
 
-        hint = self.font_small.render("Klikni pre zavretie", True, COLOR_GRAY)
+        hint = self.font_medium.render("Klikni pre zavretie", True, COLOR_GRAY)
         self.screen.blit(hint, hint.get_rect(
             centerx=SCREEN_WIDTH // 2, top=y0 + card_h + 50
         ))
@@ -1067,8 +1106,14 @@ class Screen:
                 "leaf": "Zeleň", "acorn": "Žaluď"
             }
             label = trump_labels.get(self.pending_trump_suit, self.pending_trump_suit)
-            self._draw_button(self._button_trump_yes_rect(), f"Tromf: {label}", COLOR_BUTTON_PRIMARY)
-            self._draw_button(self._button_trump_no_rect(), "bez Tromfu", COLOR_BUTTON_SECONDARY)
+
+            if self.pending_trump_first_trick:
+                # ← prvý štich: šedé/disabled tromf tlačidlo + bez tromfu
+                self._draw_button(self._button_trump_yes_rect(), f"Tromf: {label}", COLOR_BUTTON_SECONDARY)
+                self._draw_button(self._button_trump_no_rect(), "Bez tromfu", COLOR_BUTTON_SECONDARY)
+            else:
+                self._draw_button(self._button_trump_yes_rect(), f"Tromf: {label}", COLOR_BUTTON_PRIMARY)
+                self._draw_button(self._button_trump_no_rect(), "Bez tromfu", COLOR_BUTTON_SECONDARY)
             return
 
         phase = self.game_state.current_round.phase if self.game_state.current_round else None
@@ -1114,7 +1159,7 @@ class Screen:
 
         # Pozícia — tesne nad karty hráča (y=860 je HUMAN_HAND_Y)
         msg_x = TABLE_CENTER_X - msg_w // 2
-        msg_y = 790 - msg_h // 2
+        msg_y = HUMAN_HAND_Y - 55 - msg_h // 2
 
         # Priehľadný overlay
         overlay = pygame.Surface((msg_w, msg_h), pygame.SRCALPHA)
@@ -1136,35 +1181,44 @@ class Screen:
     # Rects — tlačidlá
     # ------------------------------------------------------------------
 
-    def _button_bid_rect(self) -> pygame.Rect:
+    @staticmethod
+    def _button_bid_rect() -> pygame.Rect:
         return pygame.Rect(TABLE_CENTER_X - 200, BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
 
-    def _button_pass_rect(self) -> pygame.Rect:
+    @staticmethod
+    def _button_pass_rect() -> pygame.Rect:
         return pygame.Rect(TABLE_CENTER_X + 20, BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
 
-    def _button_confirm_rect(self) -> pygame.Rect:
+    @staticmethod
+    def _button_confirm_rect() -> pygame.Rect:
         return pygame.Rect(TABLE_CENTER_X - BUTTON_WIDTH // 2, BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
 
-    def _button_trump_yes_rect(self) -> pygame.Rect:
+    @staticmethod
+    def _button_trump_yes_rect() -> pygame.Rect:
         return pygame.Rect(TABLE_CENTER_X - 200, BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
 
-    def _button_trump_no_rect(self) -> pygame.Rect:
+    @staticmethod
+    def _button_trump_no_rect() -> pygame.Rect:
         return pygame.Rect(TABLE_CENTER_X + 20, BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
 
-    def _button_last_trick_rect(self) -> pygame.Rect:
+    @staticmethod
+    def _button_last_trick_rect() -> pygame.Rect:
         from config import BUTTON_SORT_X, BUTTON_SORT_Y, BUTTON_SORT_WIDTH, BUTTON_SORT_HEIGHT
         return pygame.Rect(BUTTON_SORT_X, BUTTON_SORT_Y - BUTTON_SORT_HEIGHT - 10,
                            BUTTON_SORT_WIDTH, BUTTON_SORT_HEIGHT)
 
-    def _button_sort_rect(self) -> pygame.Rect:
+    @staticmethod
+    def _button_sort_rect() -> pygame.Rect:
         from config import BUTTON_SORT_X, BUTTON_SORT_Y, BUTTON_SORT_WIDTH, BUTTON_SORT_HEIGHT
         return pygame.Rect(BUTTON_SORT_X, BUTTON_SORT_Y, BUTTON_SORT_WIDTH, BUTTON_SORT_HEIGHT)
 
-    def _button_info_rect(self) -> pygame.Rect:
+    @staticmethod
+    def _button_info_rect() -> pygame.Rect:
         from config import BUTTON_INFO_X, BUTTON_INFO_Y, BUTTON_INFO_WIDTH, BUTTON_INFO_HEIGHT
         return pygame.Rect(BUTTON_INFO_X, BUTTON_INFO_Y, BUTTON_INFO_WIDTH, BUTTON_INFO_HEIGHT)
 
-    def _button_menu_rect(self) -> pygame.Rect:
+    @staticmethod
+    def _button_menu_rect() -> pygame.Rect:
         from config import BUTTON_MENU_X, BUTTON_MENU_Y, BUTTON_MENU_WIDTH, BUTTON_MENU_HEIGHT
         return pygame.Rect(BUTTON_MENU_X, BUTTON_MENU_Y, BUTTON_MENU_WIDTH, BUTTON_MENU_HEIGHT)
     # ------------------------------------------------------------------

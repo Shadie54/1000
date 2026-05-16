@@ -1,12 +1,11 @@
 # gui/deal_animation.py
 
 import pygame
+
 from config import (
-    SCREEN_WIDTH, SCREEN_HEIGHT,
+    SCREEN_HEIGHT,
     TABLE_CENTER_X, TABLE_CENTER_Y,
-    CARD_SIZE_MEDIUM, CARD_FAN_OFFSET,
-    COLOR_GOLD, COLOR_WHITE, COLOR_PANEL_BG,
-    FONT_SIZE_MEDIUM, get_font
+    CARD_SIZE_MEDIUM, COLOR_WHITE, FONT_SIZE_MEDIUM, get_font
 )
 
 
