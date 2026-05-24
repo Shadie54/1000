@@ -6,7 +6,7 @@ from config import (
     TABLE_CENTER_X, TABLE_CENTER_Y,
     COLOR_WHITE, COLOR_BLACK, COLOR_GOLD, COLOR_YELLOW, COLOR_GREEN, COLOR_RED,
     FONT_SIZE_LARGE, FONT_SIZE_MEDIUM,
-    SUIT_ICONS_PATH, SCREEN_WIDTH, SCREEN_HEIGHT, get_font, COLOR_GRAY
+    SUIT_ICONS_PATH, SCREEN_WIDTH, SCREEN_HEIGHT, get_font, COLOR_GRAY, HUMAN_HAND_Y
 )
 
 
@@ -22,9 +22,9 @@ class SpeechBubble:
 
         # Pozície bublín pre každého hráča
         self.bubble_positions = {
-            0: (TABLE_CENTER_X-SCREEN_WIDTH/4, 820),           # človek — nad kartami
-            1: (480, 320),                       # ľavý AI — napravo od kariet
-            2: (SCREEN_WIDTH -480, 320),        # pravý AI — naľavo od kariet
+            0: (TABLE_CENTER_X - SCREEN_WIDTH // 4, HUMAN_HAND_Y - 30),
+            1: (int(SCREEN_WIDTH * 0.24), int(SCREEN_HEIGHT * 0.3)),
+            2: (int(SCREEN_WIDTH * 0.82), int(SCREEN_HEIGHT * 0.3)),
         }
 
     # ------------------------------------------------------------------

@@ -5,7 +5,7 @@ import pygame
 from config import (
     SCREEN_HEIGHT,
     TABLE_CENTER_X, TABLE_CENTER_Y,
-    CARD_SIZE_MEDIUM, COLOR_WHITE, FONT_SIZE_MEDIUM, get_font
+    CARD_SIZE_MEDIUM, COLOR_WHITE, FONT_SIZE_MEDIUM, get_font, HUMAN_HAND_Y, SCREEN_WIDTH
 )
 
 
@@ -48,19 +48,19 @@ class DealAnimation:
         # Hráč 0 — horizontálne dole
         for i in range(10):
             x = 200 + i * 100
-            y = 860
+            y = HUMAN_HAND_Y
             self.target_positions[0].append((x, y))
 
         # Hráč 1 — vertikálne ľavo
         for i in range(10):
             x = 30
-            y = 100 + i * 50
+            y = int(SCREEN_HEIGHT * 0.09) + i * 50
             self.target_positions[1].append((x, y))
 
         # Hráč 2 — vertikálne pravo
         for i in range(10):
-            x = 1600
-            y = 100 + i * 50
+            x = SCREEN_WIDTH - 330
+            y = int(SCREEN_HEIGHT * 0.09) + i * 50
             self.target_positions[2].append((x, y))
 
         # Talon

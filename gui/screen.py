@@ -131,6 +131,8 @@ class Screen:
                 if self.deal_animation.done:
                     self.dealing = False
                     self.deal_animation = None
+                    pygame.event.clear()
+                    self._auto_sort()
             else:
                 self._process_talon_reveal()
                 self._process_waiting_trick()
@@ -174,7 +176,7 @@ class Screen:
         self.game_state.logger.log_bid(obligation_player.name, 50)
 
         # Spusti animáciu rozdávania
-        self._auto_sort()
+
         self.deal_animation = DealAnimation(self.screen, self.card_renderer)
         self.deal_animation.start(current_round.obligation_index)
         self.dealing = True
@@ -196,6 +198,11 @@ class Screen:
                     self.running = False
             if self.dealing and self.deal_animation:
                 self.deal_animation.handle_event(event)
+                if self.deal_animation.done:  # ← okamžitá kontrola
+                    self.dealing = False
+                    self.deal_animation = None
+                    pygame.event.clear()
+                    self._auto_sort()
                 continue
 
             if self.info_overlay.visible:
@@ -703,7 +710,7 @@ class Screen:
                 if player.is_human:
                     return
 
-                pygame.time.delay(500)
+                #pygame.time.delay(500)
                 ai = self.ai_players[current_index]
                 amount = ai.decide_bid(bidding.current_bid)
                 self.speech_bubble.show_bid(current_index, amount)

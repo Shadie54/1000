@@ -32,7 +32,7 @@ class CardRenderer:
         self.hand_configs = {
             0: {"direction": "horizontal", "x": 200, "y": HUMAN_HAND_Y, "offset": 100},
             1: {"direction": "vertical", "x": 30, "y": int(SCREEN_HEIGHT * 0.09), "offset": 50},
-            2: {"direction": "vertical", "x": SCREEN_WIDTH - 220, "y": int(SCREEN_HEIGHT * 0.09), "offset": 50},
+            2: {"direction": "vertical", "x": SCREEN_WIDTH - 330, "y": int(SCREEN_HEIGHT * 0.09), "offset": 50},
         }
     # ------------------------------------------------------------------
     # Načítanie obrázkov
