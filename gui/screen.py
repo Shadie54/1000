@@ -23,12 +23,14 @@ from gui.info_overlay import InfoOverlay
 from gui.scoreboard import Scoreboard
 from gui.speech_bubble import SpeechBubble
 from gui.trick_animation import TrickAnimation
+from gui.achievement_popup import AchievementPopup
+
 
 
 class Screen:
     def __init__(self, game_state: GameState, ai_players: list[AI],
                  debug: bool = DEBUG_MODE, new_game: bool = True,
-                 table_bg: str = "table.jpg"):
+                 table_bg: str = "table.jpg", achievement_tracker=None):
         pygame.init()
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.display.set_caption("Tisíc")
@@ -43,6 +45,8 @@ class Screen:
         self.debug = debug
 
         self.game_state = game_state
+        self.achievement_tracker = achievement_tracker
+        self.achievement_popup = AchievementPopup(self.screen)
         self.ai_players = ai_players
 
         self.card_renderer = CardRenderer(self.screen, debug)
@@ -139,6 +143,13 @@ class Screen:
                 self.trick_animation.update()
                 self._handle_ai_turn()
                 self._draw()
+                # ← NOVÉ
+                if self.achievement_tracker:
+                    notifications = self.achievement_tracker.pop_notifications()
+                    if notifications:
+                        self.achievement_popup.add(notifications)
+                self.achievement_popup.update()
+                self.achievement_popup.draw()
 
             pygame.display.flip()  # ← správne miesto — vnútri while
 
@@ -149,6 +160,9 @@ class Screen:
 
     def _start_round(self):
         """Začne nové kolo a inicializuje AI pamäť."""
+        if self.achievement_tracker:
+            self.achievement_tracker.reset_round()
+
         self.game_state.start_new_round()
         self.game_state.current_round.start_bidding()
 
@@ -333,6 +347,11 @@ class Screen:
 
         if self._button_bid_rect().collidepoint(pos):
             new_bid = current_round.bidding.current_bid + 10
+
+            # ← NOVÉ: achievement tracking
+            if self.achievement_tracker:
+                self.achievement_tracker.on_bid_placed()
+
             self.speech_bubble.show_bid(player_index, new_bid)
             self.game_state.logger.log_bid(  # ← log priamo tu
                 self.game_state.players[player_index].name,
@@ -372,6 +391,11 @@ class Screen:
                         self.game_state.players[player_index].name,
                         self.selected_discards
                     )
+
+                    # ← NOVÉ: achievement tracking
+                    if self.achievement_tracker:
+                        self.achievement_tracker.on_discard(self.selected_discards)
+
                     self.selected_discards = []
                     self.speech_bubble.hide_instruction(player_index)
 
@@ -388,6 +412,7 @@ class Screen:
                         )
                     else:
                         self.can_raise_bid = False
+                        self._check_trump_streak()  # ← NOVÉ
                         current_round.start_trick()
             return
 
@@ -519,9 +544,20 @@ class Screen:
                 return
 
         if self._button_trump_yes_rect().collidepoint(pos):
-            trump_suit = self.pending_trump_suit  # ← ulož pred vymazaním
+            trump_suit = self.pending_trump_suit
             is_new = current_round.trump_suit is not None
             current_round.declare_trump(player_index, trump_suit)
+
+            # ← NOVÉ: achievement tracking
+            if self.achievement_tracker:
+                self.achievement_tracker.on_trump_declared(
+                    suit=trump_suit,
+                    trick_number=current_round.trick_number,
+                    hand_cards=self.game_state.players[player_index].hand.cards,
+                    is_new_trump=is_new,
+                    is_human = True  # ← NOVÉ
+                )
+
             for ai in self.ai_players:
                 if ai is not None:
                     ai.record_trump_declaration(trump_suit, player_index)
@@ -609,6 +645,13 @@ class Screen:
         trick = current_round.current_trick
         winner_index = trick.get_winner_index()
 
+        # ← NOVÉ: achievement tracking
+        if self.achievement_tracker:
+            self.achievement_tracker.on_trick_won(
+                winner_is_human=(winner_index == self.game_state.human_index),
+                trick_points=trick.total_points
+            )
+
         # Log štichu ← pridané
         played = [
             (self.game_state.players[idx].name, card)
@@ -636,6 +679,21 @@ class Screen:
 
         if current_round.phase == "scoring":
             self.game_state.finish_round()
+
+            # ← NOVÉ: achievement tracking
+            if self.achievement_tracker:
+                human_index = self.game_state.human_index
+                human = self.game_state.players[human_index]
+                human_fulfilled = human.round_points >= human.bid if human.is_bidder else True
+
+                self.achievement_tracker.on_round_finished(
+                    human_is_bidder=human.is_bidder,
+                    human_bid=human.bid,
+                    human_round_points=human.round_points,
+                    human_fulfilled=human_fulfilled,
+                    human_card_points_only=self.achievement_tracker.round_human_card_points
+                )
+                self.achievement_tracker.on_score_updated(human.total_score)
 
             # Bubliny s výsledkami
             for i, player in enumerate(self.game_state.players):
@@ -784,7 +842,7 @@ class Screen:
             self.game_state.players[player_index].name,
             cards
         )
-
+        self._check_trump_streak()
         current_round.start_trick()
 
     def _ai_play_card(self, player_index: int, ai: AI):
@@ -811,6 +869,17 @@ class Screen:
                 trump_suit = card.suit
                 is_new = current_round.trump_suit is not None
                 current_round.declare_trump(player_index, trump_suit)
+
+                # ← NOVÉ: achievement tracking (len počíta poradie, neodomyká human achievementy)
+                if self.achievement_tracker:
+                    self.achievement_tracker.on_trump_declared(
+                        suit=trump_suit,
+                        trick_number=current_round.trick_number,
+                        hand_cards=[],  # nepoužije sa pri is_human=False
+                        is_new_trump=is_new,
+                        is_human=False
+                    )
+
                 self.speech_bubble.show_trump(player_index, trump_suit, is_new=is_new)
                 for a in self.ai_players:
                     if a is not None:
@@ -851,6 +920,7 @@ class Screen:
         self.speech_bubble.hide_instruction(player_index)  # ← pridané
         self.bid_slider.hide()
         self.can_raise_bid = False
+        self._check_trump_streak()  # ← NOVÉ
         current_round.start_trick()
 
     def _after_bidding(self):
@@ -858,6 +928,14 @@ class Screen:
         current_round = self.game_state.current_round
         winner = current_round.bidding.winner
         winner_index = current_round.bidding.winner_index  # ← hneď po winner
+
+        # ← NOVÉ: achievement tracking — tichý pozorovateľ
+        if (self.achievement_tracker
+                and not self.achievement_tracker.round_human_bid
+                and winner_index != self.game_state.human_index):  # ← pridaná podmienka
+            human_hand = self.game_state.players[self.game_state.human_index].hand
+            trump_pair_count = len(human_hand.get_available_trumps())
+            self.achievement_tracker.on_bidding_passed_with_trumps(trump_pair_count)
 
         # Uložíme karty talonu na zobrazenie
         self.talon_reveal_cards = current_round.talon.copy()
@@ -1238,6 +1316,15 @@ class Screen:
         """Zobrazí správu na obrazovke."""
         self.message = text
         self.message_timer = pygame.time.get_ticks() + duration_ms
+
+    def _check_trump_streak(self):
+        """Skontroluje tromfový pár a esá human hráča pred prvým štichom kola."""
+        if not self.achievement_tracker:
+            return
+        human_hand = self.game_state.players[self.game_state.human_index].hand
+        has_pair = len(human_hand.get_available_trumps()) > 0
+        has_ace = any(c.rank == "ace" for c in human_hand.cards)  # ← NOVÉ
+        self.achievement_tracker.on_round_hand_ready(has_pair, has_ace)
 
     def __repr__(self) -> str:
         return f"Screen({SCREEN_WIDTH}x{SCREEN_HEIGHT}, debug={self.debug})"

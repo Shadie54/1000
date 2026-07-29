@@ -52,6 +52,7 @@ class Menu:
         if show_continue:
             buttons_data.append(("Pokračovať", "continue", COLOR_BUTTON_PRIMARY))
         buttons_data.append(("Nová hra", "new_game", COLOR_BUTTON_PRIMARY))
+        buttons_data.append(("Trofeje", "achievements", COLOR_BUTTON_SECONDARY))
         buttons_data.append(("Nastavenia", "settings", COLOR_BUTTON_SECONDARY))
         buttons_data.append(("Koniec", "quit", COLOR_BUTTON_SECONDARY))
 

@@ -16,6 +16,9 @@ from gui.menu import Menu
 from gui.settings_screen import SettingsScreen
 from gui.game_over_screen import GameOverScreen
 from config import DEBUG_MODE
+from achievements.tracker import AchievementTracker
+from gui.achievements_screen import AchievementsScreen
+
 
 def _get_settings_path() -> str:
     docs = os.path.join(os.path.expanduser("~"), "Documents", "Tisic")
@@ -62,8 +65,11 @@ def _create_game(settings: dict) -> tuple:
     return game_state, ai_players
 
 
-def _run_game(window, game_state, ai_players, new_game: bool = True, settings: dict = {}) -> tuple:
-    screen = Screen(game_state, ai_players, debug=DEBUG_MODE, new_game=new_game, table_bg=settings.get("table_bg", "table.jpg"))
+def _run_game(window, game_state, ai_players, new_game: bool = True,
+              settings: dict = {}, achievement_tracker=None) -> tuple:
+    screen = Screen(game_state, ai_players, debug=DEBUG_MODE, new_game=new_game,
+                    table_bg=settings.get("table_bg", "table.jpg"),
+                    achievement_tracker=achievement_tracker)
     result = screen.run()
     return result, game_state, ai_players
 
@@ -79,6 +85,7 @@ def main():
 
     active_game_state = None
     active_ai_players = None
+    achievement_tracker = AchievementTracker()
 
     while True:
         menu = Menu(window, show_continue=active_game_state is not None)
@@ -87,6 +94,10 @@ def main():
         if action == "quit":
             pygame.quit()
             sys.exit()
+
+        elif action == "achievements":
+            achievements_screen = AchievementsScreen(window)
+            achievements_screen.run()
 
         elif action == "settings":
             settings_screen = SettingsScreen(window, settings)
@@ -97,9 +108,21 @@ def main():
         elif action == "continue" and active_game_state is not None:
             result, active_game_state, active_ai_players = _run_game(
                 window, active_game_state, active_ai_players,
-                new_game=False, settings=settings
+                new_game=False, settings=settings, achievement_tracker=achievement_tracker
             )
             if result == "game_over" and active_game_state.winner is not None:
+                # ← NOVÉ: achievement tracking
+                human_player = active_game_state.players[0]  # human_index je vždy 0
+                human_won = active_game_state.winner == human_player
+                opponent_scores = [
+                    p.total_score for p in active_game_state.players if p != human_player
+                ]
+                achievement_tracker.on_game_finished(
+                    human_won=human_won,
+                    human_final_score=human_player.total_score,
+                    opponent_scores=opponent_scores
+                )
+
                 game_over = GameOverScreen(
                     window,
                     active_game_state.players,
@@ -112,21 +135,34 @@ def main():
                 # next_action == "menu" → späť do menu (while True pokračuje)
                 # next_action == "new_game" → nová hra
                 if next_action == "new_game":
+                    achievement_tracker.reset_game()
                     active_game_state, active_ai_players = _create_game(settings)
                     result, active_game_state, active_ai_players = _run_game(
-                    window, active_game_state, active_ai_players, settings=settings
+                    window, active_game_state, active_ai_players, settings=settings, achievement_tracker=achievement_tracker
                     )
             # result == "menu" → späť do menu (while True pokračuje)
 
 
         elif action == "new_game":
-
+            achievement_tracker.reset_game()
             active_game_state, active_ai_players = _create_game(settings)
             result, active_game_state, active_ai_players = _run_game(
-            window, active_game_state, active_ai_players, settings=settings
+            window, active_game_state, active_ai_players, settings=settings, achievement_tracker=achievement_tracker
             )
 
             if result == "game_over" and active_game_state.winner is not None:
+                # ← NOVÉ: achievement tracking
+                human_player = active_game_state.players[0]  # human_index je vždy 0
+                human_won = active_game_state.winner == human_player
+                opponent_scores = [
+                    p.total_score for p in active_game_state.players if p != human_player
+                ]
+                achievement_tracker.on_game_finished(
+                    human_won=human_won,
+                    human_final_score=human_player.total_score,
+                    opponent_scores=opponent_scores
+                )
+
                 game_over = GameOverScreen(
                     window,
                     active_game_state.players,
@@ -137,9 +173,10 @@ def main():
                 active_game_state = None
                 active_ai_players = None
                 if next_action == "new_game":
+                    achievement_tracker.reset_game()
                     active_game_state, active_ai_players = _create_game(settings)
                     result, active_game_state, active_ai_players = _run_game(
-                    window, active_game_state, active_ai_players, settings=settings
+                    window, active_game_state, active_ai_players, settings=settings, achievement_tracker=achievement_tracker
                     )
             # result == "menu" → active_game_state ostáva pre pokračovanie
 
