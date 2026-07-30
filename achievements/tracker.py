@@ -98,7 +98,7 @@ class AchievementTracker:
         if self.round_all_trump_declarations >= 3:
             self._unlock("last_word")
 
-        if trick_number == 9:
+        if trick_number == 8:
             self._unlock("last_chance_trump")
 
         if not self.round_had_ace_at_start:
@@ -174,7 +174,7 @@ class AchievementTracker:
                 self._unlock("bid_300")
             # Na doraz — presne bid, žiadne body navyše
             if human_round_points == human_bid:
-                self._unlock("on_the_edge")
+                self._unlock("barely_made_it")  # nie "on_the_edge"
 
         self._save()
 
@@ -201,7 +201,7 @@ class AchievementTracker:
         self.round_had_ace_at_start = has_ace  # ← NOVÉ
 
     # ------------------------------------------------------------------
-    # Event: Zahodenie hlášky do talonu
+    # Event: Zahodenie hlášky do talonu, Získanie talonu
     # ------------------------------------------------------------------
 
     def on_discard(self, discarded_cards: list):
@@ -216,6 +216,34 @@ class AchievementTracker:
                 self._unlock("pretty_but_useless")
                 self._save()
                 return
+
+    def on_talon_received(self, talon_cards: list):
+        """Volať keď human dostane karty z talonu (pred zahodením)."""
+        if len(talon_cards) != 2:
+            return
+
+        ranks = [c.rank for c in talon_cards]
+        suits = [c.suit for c in talon_cards]
+
+        is_lucky = False
+
+        # 2x eso
+        if ranks.count("ace") == 2:
+            is_lucky = True
+        # 2x desiatka
+        elif ranks.count("ten") == 2:
+            is_lucky = True
+        # eso + desiatka (v ľubovoľnom poradí)
+        elif set(ranks) == {"ace", "ten"}:
+            is_lucky = True
+        # kompletný tromfový pár (king + over rovnakej farby)
+        elif set(ranks) == {"king", "over"} and suits[0] == suits[1]:
+            is_lucky = True
+
+        if is_lucky:
+            self._unlock("lucky_pickup")
+            self._save()
+
     # ------------------------------------------------------------------
     # Event: koniec hry
     # ------------------------------------------------------------------
@@ -259,7 +287,7 @@ class AchievementTracker:
             if human_final_score == 1000:
                 self._unlock("close_win")
 
-            if self.game_trump_declarations == 3:
+            if 1 <= self.game_trump_declarations <= 3:
                 self._unlock("discreet")
 
         else:

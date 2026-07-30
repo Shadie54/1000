@@ -957,6 +957,10 @@ class Screen:
         if ai is not None:
             ai.record_talon(current_round.talon)
 
+        # ← NOVÉ: achievement tracking — šťastný nákup (len ak human vyhral)
+        if self.achievement_tracker and winner.is_human:
+           self.achievement_tracker.on_talon_received(current_round.talon)
+
         if winner.is_human:
             self.can_raise_bid = True
             # Bublina inštrukcie

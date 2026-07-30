@@ -76,6 +76,7 @@ def _run_game(window, game_state, ai_players, new_game: bool = True,
 
 def main():
     pygame.init()
+    pygame.mixer.init()
 
     import config
     window = pygame.display.set_mode((config.SCREEN_WIDTH, config.SCREEN_HEIGHT))

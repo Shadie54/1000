@@ -34,9 +34,16 @@ class Menu:
 
         # Logo
         try:
-            self.logo = pygame.image.load("assets/graphics/1000.png").convert_alpha()
+            self.logo = pygame.image.load("assets/graphics/1000.ico").convert_alpha()
             logo_size = 280
             self.logo = pygame.transform.scale(self.logo, (logo_size, logo_size))
+        except FileNotFoundError:
+            self.logo = None
+        try:
+            self.logo = pygame.image.load("assets/graphics/tisic_logo.png").convert_alpha()
+            logo_w = 500
+            logo_h = int(logo_w * (self.logo.get_height() / self.logo.get_width()))
+            self.logo = pygame.transform.scale(self.logo, (logo_w, logo_h))
         except FileNotFoundError:
             self.logo = None
 
@@ -195,10 +202,11 @@ class Menu:
             card["image"].set_alpha(250)
             self.screen.blit(card["image"], (card["x"], card["y"]))
 
-        # Tmavý panel v strede — celá výška obrazovky
-        center_overlay = pygame.Surface((500, SCREEN_HEIGHT), pygame.SRCALPHA)
+        # Tmavý panel v strede — celá výška obrazovky, zarovnaný so šírkou loga
+        panel_w = max(560, self.logo.get_width() + 60) if self.logo else 560
+        center_overlay = pygame.Surface((panel_w, SCREEN_HEIGHT), pygame.SRCALPHA)
         center_overlay.fill((0, 0, 0, 140))
-        self.screen.blit(center_overlay, (SCREEN_WIDTH // 2 - 250, 0))
+        self.screen.blit(center_overlay, (SCREEN_WIDTH // 2 - panel_w // 2, 0))
 
         self._draw_logo()
         self._draw_buttons()
@@ -206,16 +214,28 @@ class Menu:
     def _draw_logo(self):
         if self.logo:
             logo_rect = self.logo.get_rect(
-                center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 150)
+                centerx=SCREEN_WIDTH // 2,
+                bottom=self.buttons[0]["rect"].top - 40  # ← relatívne k prvému tlačidlu
             )
+
+            # Tmavý podklad pod logo
+            pad = 20
+            bg_rect = pygame.Rect(
+                logo_rect.x - pad, logo_rect.y - pad,
+                logo_rect.width + pad * 2, logo_rect.height + pad * 2
+            )
+            overlay = pygame.Surface((bg_rect.width, bg_rect.height), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 160))
+            self.screen.blit(overlay, (bg_rect.x, bg_rect.y))
+
             self.screen.blit(self.logo, logo_rect)
         else:
             font_title = get_font(120)
             title = font_title.render("TISÍC", True, COLOR_GOLD)
             title_rect = title.get_rect(
-                center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 150)
+                centerx=SCREEN_WIDTH // 2,
+                bottom=self.buttons[0]["rect"].top - 40  # ← rovnaká logika pre fallback
             )
-            # Tmavý podklad pod text
             pad = 20
             bg_rect = pygame.Rect(
                 title_rect.x - pad, title_rect.y - pad,
@@ -224,7 +244,6 @@ class Menu:
             overlay = pygame.Surface((bg_rect.width, bg_rect.height), pygame.SRCALPHA)
             overlay.fill((0, 0, 0, 160))
             self.screen.blit(overlay, (bg_rect.x, bg_rect.y))
-            # Tieň
             shadow = font_title.render("TISÍC", True, (0, 0, 0))
             self.screen.blit(shadow, (title_rect.x + 3, title_rect.y + 3))
             self.screen.blit(title, title_rect)
