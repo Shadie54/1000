@@ -1,14 +1,17 @@
 # config.py
 
-import os
 import pygame
+
+from gui import display
 
 pygame.init()
 
-# Detekcia rozlíšenia monitora
-_info = pygame.display.Info()
-SCREEN_WIDTH = _info.current_w
-SCREEN_HEIGHT = _info.current_h
+# Logický priestor (gui/display.py): šírka vždy 1920, výška 1080…1200
+# podľa pomeru strán okna. Hra kreslí v týchto súradniciach cez Canvas
+# (gui/canvas.py) priamo v rozlíšení okna. Logická VÝŠKA sa môže zmeniť
+# za behu (Nastavenia → Zobrazenie) — preto tu nie je; obrazovky ju berú
+# pri vytvorení z display.logical_height().
+SCREEN_WIDTH = display.LOGICAL_W
 
 FPS = 60
 
@@ -98,66 +101,23 @@ FONT_SIZE_XLARGE = 48
 FONT_SIZE_INFO = 28
 
 # ------------------------------------------------------------------
-# GUI - Pozície a rozmery (SCREEN_WIDTH/HEIGHT musia byť definované vyššie)
+# GUI - Rozmery
+# Rozloženie hernej obrazovky (ruky, štich, talon, tlačidlá…) je v
+# gui/layout.py — ukotvené podľa logickej výšky okna (1080…1200).
 # ------------------------------------------------------------------
-CARD_OVERLAP = 30
-CARD_FAN_OFFSET = 100
-
-HUMAN_HAND_Y = int(SCREEN_HEIGHT * 0.796)
-HUMAN_HAND_X_START = int(SCREEN_WIDTH * 0.21)  # bolo 400
-
-AI_LEFT_X = 30
-AI_LEFT_Y_START = int(SCREEN_HEIGHT * 0.185)   # bolo 200
-
-AI_RIGHT_X = SCREEN_WIDTH - 180
-AI_RIGHT_Y_START = int(SCREEN_HEIGHT * 0.185)  # bolo 200
-
-TABLE_CENTER_X = SCREEN_WIDTH // 2
-TABLE_CENTER_Y = SCREEN_HEIGHT // 2
-
-TALON_X = TABLE_CENTER_X - (CARD_SIZE_MEDIUM[0] + CARD_FAN_OFFSET) // 2
-TALON_Y = TABLE_CENTER_Y - (CARD_SIZE_MEDIUM[1] // 2)
-
-# SKÓRE
-SCORE_PANEL_WIDTH = 300
-SCORE_PANEL_HEIGHT = 220
-SCORE_PANEL_X = SCREEN_WIDTH // 2 - SCORE_PANEL_WIDTH // 2
-SCORE_PANEL_Y = 20
-
-# KOLO — pravý dolný roh
-INFO_PANEL_X = SCREEN_WIDTH - 320
-INFO_PANEL_Y = SCREEN_HEIGHT - int(SCREEN_HEIGHT * 0.204)  # bolo SCREEN_HEIGHT - 220
-INFO_PANEL_WIDTH = 300
-INFO_PANEL_HEIGHT = 300
-
-BUTTON_Y = TABLE_CENTER_Y + CARD_SIZE_MEDIUM[1] // 2 + 18
-BUTTON_WIDTH = 180
-BUTTON_HEIGHT = 55
+CARD_FAN_OFFSET = 100      # rozostup kariet talonu
 BUTTON_RADIUS = 8
-
-# SORT
-BUTTON_SORT_X = INFO_PANEL_X
-BUTTON_SORT_Y = INFO_PANEL_Y
-BUTTON_SORT_WIDTH = 200
-BUTTON_SORT_HEIGHT = 50
-
-# PRAVIDLÁ
-BUTTON_INFO_X = BUTTON_SORT_X
-BUTTON_INFO_Y = BUTTON_SORT_Y + BUTTON_SORT_HEIGHT + 10
-BUTTON_INFO_WIDTH = BUTTON_SORT_WIDTH
-BUTTON_INFO_HEIGHT = BUTTON_SORT_HEIGHT
-
-# MENU
-BUTTON_MENU_X = BUTTON_SORT_X
-BUTTON_MENU_Y = BUTTON_SORT_Y + 2 * (BUTTON_SORT_HEIGHT + 10)
-BUTTON_MENU_WIDTH = BUTTON_SORT_WIDTH
-BUTTON_MENU_HEIGHT = BUTTON_SORT_HEIGHT
 
 
 # ------------------------------------------------------------------
 # GUI - Animácie
 # ------------------------------------------------------------------
-ANIMATION_SPEED = 8
+# Rýchlosť animácií (Nastavenia → Hra): násobok základnej rýchlosti
+# letu karty na stôl (CardThrowAnimation) a zberu štichu (TrickAnimation,
+# tá sa nikdy nespomalí pod 1.0×). Rozdávanie má pevnú rýchlosť.
+ANIMATION_SPEED_MIN = 0.5
+ANIMATION_SPEED_MAX = 2.0
+ANIMATION_SPEED_DEFAULT = 1.5
 CARD_DEAL_DELAY = 50
 
 # ------------------------------------------------------------------

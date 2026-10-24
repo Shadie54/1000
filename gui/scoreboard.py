@@ -1,25 +1,24 @@
 # gui/scoreboard.py
 
-import pygame
 import os
 from game.player import Player
 from game.round import Round
 from config import (
-    SCREEN_WIDTH, SCREEN_HEIGHT,
-    COLOR_WHITE, COLOR_BLACK, COLOR_YELLOW, COLOR_GREEN, COLOR_RED,
-    COLOR_PANEL_BG, COLOR_GRAY, COLOR_GOLD,
-    FONT_SIZE_SMALL, FONT_SIZE_MEDIUM, FONT_SIZE_LARGE,
-    WINNING_SCORE, SUIT_ICONS_PATH, get_font
+    SCREEN_WIDTH,
+    COLOR_WHITE, COLOR_YELLOW, COLOR_GREEN, COLOR_RED,
+    COLOR_GRAY, COLOR_GOLD,
+    WINNING_SCORE, SUIT_ICONS_PATH
 )
 
 
 class Scoreboard:
-    def __init__(self, screen: pygame.Surface):
-        self.screen = screen
-        self.font_small = get_font(18)
-        self.font_medium = get_font(24)
-        self.font_large = get_font(32)
-        self._icon_cache: dict[str, pygame.Surface] = {}
+    def __init__(self, canvas):
+        # Kreslí cez Canvas (gui/canvas.py); panely sú ukotvené hore.
+        self.canvas = canvas
+        self.font_small = canvas.font(18)
+        self.font_medium = canvas.font(24)
+        self.font_large = canvas.font(32)
+        self._icon_cache: dict = {}
 
         # Rozmery panelov
         self.panel_h = 220
@@ -42,17 +41,11 @@ class Scoreboard:
     # Načítanie ikoniek
     # ------------------------------------------------------------------
 
-    def _load_suit_icon(self, suit: str, size: int = 80) -> pygame.Surface | None:
-        """Načíta ikonku farby."""
+    def _load_suit_icon(self, suit: str, size: int = 80):
+        """Načíta ikonku farby (LSurf), pomer strán zachovaný (85×75)."""
         key = f"{suit}-{size}"
         if key not in self._icon_cache:
-            path = os.path.join(SUIT_ICONS_PATH, f"{suit}-icon@medium.png")
-            try:
-                img = pygame.image.load(path).convert_alpha()
-                img = pygame.transform.scale(img, (size, size))
-                self._icon_cache[key] = img
-            except FileNotFoundError:
-                self._icon_cache[key] = None
+            self._icon_cache[key] = load_suit_icon(self.canvas, suit, size)
         return self._icon_cache[key]
 
     # ------------------------------------------------------------------
@@ -85,8 +78,9 @@ class Scoreboard:
         # Ikonka tromfu — medium veľkosť (80x80)
         icon = self._load_suit_icon(trump_suit, 80)
         if icon:
-            icon_rect = icon.get_rect(centerx=cx, top=self.panel_y + 45)
-            self.screen.blit(icon, icon_rect)
+            # Ikona vycentrovaná v štvorci 80×80 pod nadpisom
+            icon_rect = icon.get_rect(centerx=cx, centery=self.panel_y + 45 + 40)
+            self.canvas.blit(icon, icon_rect)
 
         # Slovenský názov + body
         trump_labels = {
@@ -105,11 +99,11 @@ class Scoreboard:
 
         label_surf = self.font_medium.render(label, True, COLOR_GOLD)
         label_rect = label_surf.get_rect(centerx=cx, top=self.panel_y + 135)
-        self.screen.blit(label_surf, label_rect)
+        self.canvas.blit(label_surf, label_rect)
 
         points_surf = self.font_small.render(f"{points} bodov", True, COLOR_WHITE)
         points_rect = points_surf.get_rect(centerx=cx, top=self.panel_y + 158)
-        self.screen.blit(points_surf, points_rect)
+        self.canvas.blit(points_surf, points_rect)
 
         # Kto zahlásil
         if current_round and hasattr(current_round, 'trump_declarer'):
@@ -117,7 +111,7 @@ class Scoreboard:
             if declarer:
                 decl_surf = self.font_small.render(declarer, True, COLOR_GRAY)
                 decl_rect = decl_surf.get_rect(centerx=cx, top=self.panel_y + 178)
-                self.screen.blit(decl_surf, decl_rect)
+                self.canvas.blit(decl_surf, decl_rect)
 
     # ------------------------------------------------------------------
     # Panel 2 — SKÓRE
@@ -151,12 +145,20 @@ class Scoreboard:
             )
 
             name_color = COLOR_YELLOW if is_current else COLOR_WHITE
-            indicator = "► " if is_current else "  "
             obligation = f" (P{current_round.bidding.current_bid})" if is_obligation else ""
-            name_text = f"{indicator}{player.name}{obligation}"
+            name_text = f"{player.name}{obligation}"
 
+            # Ukazovateľ hráča na ťahu — kreslený trojuholník (font Tahoma
+            # nemá znak "►", zobrazoval sa ako prázdny štvorček).
             name_surf = self.font_medium.render(name_text, True, name_color)
-            self.screen.blit(name_surf, (self.score_x + 10, y))
+            indent = 18
+            if is_current:
+                cy = y + name_surf.get_height() // 2
+                tx = self.score_x + 10
+                self.canvas.polygon(COLOR_YELLOW, [
+                    (tx, cy - 6), (tx + 10, cy), (tx, cy + 6)
+                ])
+            self.canvas.blit(name_surf, (self.score_x + 10 + indent, y))
 
             score_color = self._score_color(player.total_score)
             score_surf = self.font_medium.render(str(player.total_score), True, score_color)
@@ -164,7 +166,7 @@ class Scoreboard:
                 right=self.score_x + self.score_w - 10,
                 top=y
             )
-            self.screen.blit(score_surf, score_rect)
+            self.canvas.blit(score_surf, score_rect)
 
             self._draw_progress_bar(
                 x=self.score_x + 10,
@@ -235,7 +237,7 @@ class Scoreboard:
         bid = bidder.bid
 
         label = self.font_small.render("Body zatiaľ:", True, COLOR_GRAY)
-        self.screen.blit(label, (self.info_x + 10, y))
+        self.canvas.blit(label, (self.info_x + 10, y))
 
         color = COLOR_GREEN if current_points >= bid else COLOR_YELLOW
         points_surf = self.font_small.render(
@@ -245,7 +247,7 @@ class Scoreboard:
             right=self.info_x + self.info_w - 10,
             top=y
         )
-        self.screen.blit(points_surf, points_rect)
+        self.canvas.blit(points_surf, points_rect)
 
         self._draw_progress_bar(
             x=self.info_x + 10,
@@ -262,22 +264,17 @@ class Scoreboard:
 
     def _draw_panel_bg(self, x: int, y: int, w: int, h: int):
         """Nakreslí pozadie panelu."""
-        overlay = pygame.Surface((w, h), pygame.SRCALPHA)
-        overlay.fill((20, 12, 5, 210))
-        self.screen.blit(overlay, (x, y))
-        pygame.draw.rect(
-            self.screen, COLOR_GOLD,
-            (x, y, w, h), width=2, border_radius=10
-        )
+        self.canvas.overlay((x, y, w, h), (20, 12, 5, 210))
+        self.canvas.rect(COLOR_GOLD, (x, y, w, h), width=2, border_radius=10)
 
     def _draw_panel_title(self, title: str, x: int, y: int, w: int):
         """Nakreslí nadpis panelu."""
         surf = self.font_medium.render(title, True, COLOR_GOLD)
         rect = surf.get_rect(centerx=x + w // 2, top=y + 8)
-        self.screen.blit(surf, rect)
+        self.canvas.blit(surf, rect)
 
-        pygame.draw.line(
-            self.screen, COLOR_GOLD,
+        self.canvas.line(
+            COLOR_GOLD,
             (x + 10, y + 38),
             (x + w - 10, y + 38),
             width=1
@@ -287,12 +284,12 @@ class Scoreboard:
         """Nakreslí jeden riadok label: value."""
         label_surf = self.font_small.render(label, True, COLOR_GRAY)
         value_surf = self.font_small.render(value, True, color)
-        self.screen.blit(label_surf, (self.info_x + 10, y))
+        self.canvas.blit(label_surf, (self.info_x + 10, y))
         value_rect = value_surf.get_rect(
             right=self.info_x + self.info_w - 10,
             top=y
         )
-        self.screen.blit(value_surf, value_rect)
+        self.canvas.blit(value_surf, value_rect)
 
     def _score_color(self, score: int) -> tuple:
         """Vráti farbu skóre."""
@@ -307,10 +304,7 @@ class Scoreboard:
     def _draw_progress_bar(self, x: int, y: int, width: int, height: int,
                            value: int, max_value: int):
         """Nakreslí progress bar."""
-        pygame.draw.rect(
-            self.screen, COLOR_GRAY,
-            (x, y, width, height), border_radius=4
-        )
+        self.canvas.rect(COLOR_GRAY, (x, y, width, height), border_radius=4)
 
         fill_ratio = max(0, min(value / max_value, 1.0)) if max_value > 0 else 0
         fill_width = int(width * fill_ratio)
@@ -322,15 +316,25 @@ class Scoreboard:
                 color = COLOR_GREEN
             else:
                 color = COLOR_GOLD
-            pygame.draw.rect(
-                self.screen, color,
-                (x, y, fill_width, height), border_radius=4
-            )
+            self.canvas.rect(color, (x, y, fill_width, height), border_radius=4)
 
-        pygame.draw.rect(
-            self.screen, COLOR_WHITE,
-            (x, y, width, height), width=1, border_radius=4
-        )
+        self.canvas.rect(COLOR_WHITE, (x, y, width, height), width=1, border_radius=4)
 
     def __repr__(self) -> str:
         return "Scoreboard()"
+
+
+def load_suit_icon(canvas, suit: str, size: int):
+    """Ikona farby (LSurf) vpísaná do štvorca size×size so zachovaným
+    pomerom strán. Spoločné pre Scoreboard a SpeechBubble."""
+    path = os.path.join(SUIT_ICONS_PATH, f"{suit}-icon@medium.png")
+    if not os.path.exists(path):
+        return None
+    w, h = canvas.image_size(path)
+    # Pri väčšej mierke (napr. 4K) zdroj @large, aby ikona nebola rozmazaná
+    large = os.path.join(SUIT_ICONS_PATH, f"{suit}-icon@large.png")
+    if size * canvas.s > max(w, h) and os.path.exists(large):
+        path = large
+        w, h = canvas.image_size(path)
+    k = size / max(w, h)
+    return canvas.image(path, (max(1, round(w * k)), max(1, round(h * k))))

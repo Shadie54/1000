@@ -1,16 +1,14 @@
 # gui/trick_animation.py
 
 import pygame
-from config import (
-    SCREEN_WIDTH, SCREEN_HEIGHT,
-    TABLE_CENTER_X, TABLE_CENTER_Y,
-    CARD_SIZE_MEDIUM
-)
+from config import CARD_FAN_OFFSET
+from gui import layout
 
 
 class TrickAnimation:
-    def __init__(self, screen: pygame.Surface, card_renderer):
-        self.screen = screen
+    def __init__(self, canvas, card_renderer):
+        # Kreslí cez Canvas; pozície z gui/layout.py.
+        self.canvas = canvas
         self.card_renderer = card_renderer
         self.cards_in_flight: list[dict] = []
         self.done: bool = True
@@ -18,11 +16,10 @@ class TrickAnimation:
         self._talon_anim_started: bool = False
 
         # Cieľové pozície pre každého hráča (stred ruky)
-        self.target_positions = {
-            0: (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 50),    # človek — dole
-            1: (50, SCREEN_HEIGHT // 4),                    # ľavý AI
-            2: (SCREEN_WIDTH - 50, SCREEN_HEIGHT // 4),    # pravý AI
-        }
+        lay = layout.game()
+        self.target_positions = dict(lay.trick_collect_targets)
+        self.start_positions = dict(lay.trick_positions)   # karty na stole
+        self.talon_pos = lay.talon_pos
 
     def start(self, played_cards: list[tuple[int, object]],
               winner_index: int):
@@ -36,11 +33,7 @@ class TrickAnimation:
         target_x, target_y = self.target_positions[winner_index]
 
         # Štartové pozície kariet na stole
-        start_positions = {
-            0: (TABLE_CENTER_X, TABLE_CENTER_Y + 120),
-            1: (TABLE_CENTER_X - 150, TABLE_CENTER_Y),
-            2: (TABLE_CENTER_X + 150, TABLE_CENTER_Y),
-        }
+        start_positions = self.start_positions
 
         for i, (player_idx, card) in enumerate(played_cards):
             sx, sy = start_positions[player_idx]
@@ -97,10 +90,10 @@ class TrickAnimation:
         target_x, target_y = self.target_positions[winner_index]
 
         # Štartové pozície — tam kde sú talon karty zobrazené
-        from config import TALON_X, TALON_Y, CARD_FAN_OFFSET
+        tx, ty = self.talon_pos
         for i, card in enumerate(talon_cards):
-            sx = TALON_X + i * CARD_FAN_OFFSET
-            sy = TALON_Y
+            sx = tx + i * CARD_FAN_OFFSET
+            sy = ty
             self.cards_in_flight.append({
                 "card": card,
                 "player_index": winner_index,
@@ -127,11 +120,11 @@ class TrickAnimation:
             if now < self._start_time + card["delay"]:
                 # Karta ešte neletí — nakresli ju na mieste
                 img = self.card_renderer._get_card_image(card["card"])
-                self.screen.blit(img, (int(card["x"]), int(card["y"])))
+                self.canvas.blit(img, (int(card["x"]), int(card["y"])))
                 continue
 
             img = self.card_renderer._get_card_image(card["card"])
-            self.screen.blit(img, (int(card["x"]), int(card["y"])))
+            self.canvas.blit(img, (int(card["x"]), int(card["y"])))
 
     @property
     def is_done(self) -> bool:

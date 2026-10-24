@@ -1,13 +1,13 @@
 # gui/bid_slider.py
 
 import pygame
+from gui import display
 
+from gui import layout
 from config import (
-    TABLE_CENTER_X, TABLE_CENTER_Y,
-    CARD_SIZE_MEDIUM,
     COLOR_WHITE, COLOR_GOLD, COLOR_GRAY,
     COLOR_BUTTON_PRIMARY, FONT_SIZE_MEDIUM, FONT_SIZE_LARGE, FONT_SIZE_XLARGE,
-    BUTTON_RADIUS, MIN_BID, BID_STEP, MAX_BID, get_font
+    BUTTON_RADIUS, MIN_BID, BID_STEP, MAX_BID
 )
 
 
@@ -17,11 +17,12 @@ class BidSlider:
     # Inicializácia
     # ------------------------------------------------------------------
 
-    def __init__(self, screen: pygame.Surface):
-        self.screen = screen
-        self.font_small = get_font(FONT_SIZE_MEDIUM)         # 24
-        self.font_medium = get_font(FONT_SIZE_LARGE)         # 32
-        self.font_large = get_font(FONT_SIZE_XLARGE)         # 48
+    def __init__(self, canvas):
+        # Kreslí cez Canvas; poloha panelu z gui/layout.py (stred stola).
+        self.canvas = canvas
+        self.font_small = canvas.font(FONT_SIZE_MEDIUM)         # 24
+        self.font_medium = canvas.font(FONT_SIZE_LARGE)         # 32
+        self.font_large = canvas.font(FONT_SIZE_XLARGE)         # 48
 
         self.visible = False
         self.current_value = MIN_BID
@@ -32,8 +33,9 @@ class BidSlider:
         # Panel rozmery
         self.panel_w = 460
         self.panel_h = 250
-        self.panel_x = TABLE_CENTER_X - self.panel_w // 2
-        self.panel_y = TABLE_CENTER_Y + CARD_SIZE_MEDIUM[1] // 2 - 130
+        lay = layout.game()
+        self.panel_x = lay.table_center[0] - self.panel_w // 2
+        self.panel_y = lay.bid_panel_y
 
         # Padding
         pad = 20
@@ -152,14 +154,11 @@ class BidSlider:
             return
 
         # Panel pozadie
-        overlay = pygame.Surface((self.panel_w, self.panel_h), pygame.SRCALPHA)
-        overlay.fill((15, 9, 4, 230))
-        self.screen.blit(overlay, (self.panel_x, self.panel_y))
-        pygame.draw.rect(
-            self.screen, COLOR_GOLD,
-            (self.panel_x, self.panel_y, self.panel_w, self.panel_h),
-            width=2, border_radius=14
-        )
+        self.canvas.overlay((self.panel_x, self.panel_y, self.panel_w, self.panel_h),
+                            (15, 9, 4, 230))
+        self.canvas.rect(COLOR_GOLD,
+                         (self.panel_x, self.panel_y, self.panel_w, self.panel_h),
+                         width=2, border_radius=14)
 
         # Nadpis
         title_surf = self.font_small.render("NAVÝŠIŤ POVINNOSŤ", True, COLOR_GOLD)
@@ -167,19 +166,19 @@ class BidSlider:
             centerx=self.panel_x + self.panel_w // 2,
             top=self.panel_y + 14
         )
-        self.screen.blit(title_surf, title_rect)
+        self.canvas.blit(title_surf, title_rect)
 
         # Oddeľovacia čiara pod nadpisom
-        pygame.draw.line(
-            self.screen, COLOR_GOLD,
+        self.canvas.line(
+            COLOR_GOLD,
             (self.panel_x + 15, self.panel_y + 44),
             (self.panel_x + self.panel_w - 15, self.panel_y + 44),
             width=1
         )
 
         # Track pozadie
-        pygame.draw.rect(
-            self.screen, (60, 45, 30),
+        self.canvas.rect(
+            (60, 45, 30),
             (self.track_x, self.track_y - self.track_h // 2,
              self.track_w, self.track_h),
             border_radius=5
@@ -189,8 +188,8 @@ class BidSlider:
         hx = self._handle_x()
         fill_w = hx - self.track_x
         if fill_w > 0:
-            pygame.draw.rect(
-                self.screen, COLOR_GOLD,
+            self.canvas.rect(
+                COLOR_GOLD,
                 (self.track_x, self.track_y - self.track_h // 2,
                  fill_w, self.track_h),
                 border_radius=5
@@ -198,16 +197,16 @@ class BidSlider:
 
         # Min / Max hodnoty pod trackom
         min_surf = self.font_small.render(str(self.min_value), True, COLOR_GRAY)
-        self.screen.blit(min_surf, (self.track_x, self.track_y + 14))
+        self.canvas.blit(min_surf, (self.track_x, self.track_y + 14))
 
         max_surf = self.font_small.render(str(self.max_value), True, COLOR_GRAY)
         max_rect = max_surf.get_rect(right=self.track_x + self.track_w)
-        self.screen.blit(max_surf, (max_rect.x, self.track_y + 14))
+        self.canvas.blit(max_surf, (max_rect.x, self.track_y + 14))
 
         # Handle — dvojitý kruh
-        pygame.draw.circle(self.screen, COLOR_GOLD, (hx, self.track_y), self.handle_r)
-        pygame.draw.circle(self.screen, (15, 9, 4), (hx, self.track_y), self.handle_r - 5)
-        pygame.draw.circle(self.screen, COLOR_GOLD, (hx, self.track_y), self.handle_r - 9)
+        self.canvas.circle(COLOR_GOLD, (hx, self.track_y), self.handle_r)
+        self.canvas.circle((15, 9, 4), (hx, self.track_y), self.handle_r - 5)
+        self.canvas.circle(COLOR_GOLD, (hx, self.track_y), self.handle_r - 9)
 
         # Hodnota nad handle
         val_surf = self.font_medium.render(str(self.current_value), True, COLOR_WHITE)
@@ -215,7 +214,7 @@ class BidSlider:
             centerx=hx,
             bottom=self.track_y - self.handle_r - 8
         )
-        self.screen.blit(val_surf, val_rect)
+        self.canvas.blit(val_surf, val_rect)
 
         # Tlačidlo mínus
         self._draw_round_btn(self.btn_minus, "−")
@@ -224,34 +223,28 @@ class BidSlider:
         self._draw_round_btn(self.btn_plus, "+")
 
         # Tlačidlo Potvrdiť
-        mouse_pos = pygame.mouse.get_pos()
+        mouse_pos = display.mouse_pos()
         is_hover = self.btn_confirm.collidepoint(mouse_pos)
         alpha = 255 if is_hover else 210
-        btn_overlay = pygame.Surface(
-            (self.btn_confirm.width, self.btn_confirm.height), pygame.SRCALPHA
-        )
-        btn_overlay.fill((*COLOR_BUTTON_PRIMARY, alpha))
-        self.screen.blit(btn_overlay, (self.btn_confirm.x, self.btn_confirm.y))
-        pygame.draw.rect(
-            self.screen, COLOR_WHITE if is_hover else COLOR_GOLD,
-            self.btn_confirm, width=2, border_radius=BUTTON_RADIUS
-        )
+        self.canvas.overlay(self.btn_confirm, (*COLOR_BUTTON_PRIMARY, alpha))
+        self.canvas.rect(COLOR_WHITE if is_hover else COLOR_GOLD,
+                         self.btn_confirm, width=2, border_radius=BUTTON_RADIUS)
         confirm_surf = self.font_medium.render("Potvrdiť", True, COLOR_WHITE)
-        self.screen.blit(confirm_surf, confirm_surf.get_rect(center=self.btn_confirm.center))
+        self.canvas.blit(confirm_surf, confirm_surf.get_rect(center=self.btn_confirm.center))
 
     def _draw_round_btn(self, rect: pygame.Rect, text: str):
         """Nakreslí okrúhle +/- tlačidlo."""
-        mouse_pos = pygame.mouse.get_pos()
+        mouse_pos = display.mouse_pos()
         is_hover = rect.collidepoint(mouse_pos)
         cx, cy = rect.center
         r = rect.width // 2
 
         color_fill = (100, 70, 30) if is_hover else (50, 35, 15)
-        pygame.draw.circle(self.screen, color_fill, (cx, cy), r)
-        pygame.draw.circle(self.screen, COLOR_GOLD, (cx, cy), r, width=2)
+        self.canvas.circle(color_fill, (cx, cy), r)
+        self.canvas.circle(COLOR_GOLD, (cx, cy), r, width=2)
 
         surf = self.font_medium.render(text, True, COLOR_WHITE)
-        self.screen.blit(surf, surf.get_rect(center=(cx, cy)))
+        self.canvas.blit(surf, surf.get_rect(center=(cx, cy)))
 
     def __repr__(self) -> str:
         return f"BidSlider(value={self.current_value}, visible={self.visible})"

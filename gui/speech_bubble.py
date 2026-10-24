@@ -1,31 +1,28 @@
 # gui/speech_bubble.py
 
+import random
+
 import pygame
-import os, random
 from config import (
-    TABLE_CENTER_X, TABLE_CENTER_Y,
-    COLOR_WHITE, COLOR_BLACK, COLOR_GOLD, COLOR_YELLOW, COLOR_GREEN, COLOR_RED,
-    FONT_SIZE_LARGE, FONT_SIZE_MEDIUM,
-    SUIT_ICONS_PATH, SCREEN_WIDTH, SCREEN_HEIGHT, get_font, COLOR_GRAY, HUMAN_HAND_Y
+    COLOR_WHITE, COLOR_GOLD, COLOR_YELLOW, COLOR_GREEN, COLOR_RED,
 )
+from gui import layout
+from gui.scoreboard import load_suit_icon
 
 
 class SpeechBubble:
-    def __init__(self, screen: pygame.Surface):
-        self.screen = screen
-        self.font_large = get_font(32)
-        self.font_medium = get_font(24)
-        self._icon_cache: dict[str, pygame.Surface] = {}
+    def __init__(self, canvas):
+        # Kreslí cez Canvas (gui/canvas.py); pozície z gui/layout.py.
+        self.canvas = canvas
+        self.font_large = canvas.font(32)
+        self.font_medium = canvas.font(24)
+        self._icon_cache: dict = {}
 
         # Aktívne bubliny [{player_index, text, suit, timer, color}]
         self.bubbles: list[dict] = []
 
         # Pozície bublín pre každého hráča
-        self.bubble_positions = {
-            0: (TABLE_CENTER_X - SCREEN_WIDTH // 4, HUMAN_HAND_Y - 30),
-            1: (int(SCREEN_WIDTH * 0.24), int(SCREEN_HEIGHT * 0.3)),
-            2: (int(SCREEN_WIDTH * 0.82), int(SCREEN_HEIGHT * 0.3)),
-        }
+        self.bubble_positions = dict(layout.game().bubble_positions)
 
     # ------------------------------------------------------------------
     # Pridanie bubliny
@@ -146,16 +143,11 @@ class SpeechBubble:
         by = cy - bubble_h
 
         # Pozadie bubliny
-        overlay = pygame.Surface((bubble_w, bubble_h), pygame.SRCALPHA)
-        overlay.fill((20, 12, 5, 220))
-        self.screen.blit(overlay, (bx, by))
+        self.canvas.overlay((bx, by, bubble_w, bubble_h), (20, 12, 5, 220))
 
         # Okraj
-        pygame.draw.rect(
-            self.screen, bubble["color"],
-            (bx, by, bubble_w, bubble_h),
-            width=2, border_radius=12
-        )
+        self.canvas.rect(bubble["color"], (bx, by, bubble_w, bubble_h),
+                         width=2, border_radius=12)
 
         # Chvost bubliny (trojuholník)
         self._draw_tail(cx, by + bubble_h, by, bubble_w, bubble_h, player_index, bubble["color"])
@@ -165,7 +157,7 @@ class SpeechBubble:
             centerx=cx,
             top=by + padding
         )
-        self.screen.blit(text_surf, text_rect)
+        self.canvas.blit(text_surf, text_rect)
 
         # Ikonka farby (ak je tromf)
         if bubble["suit"]:
@@ -173,9 +165,9 @@ class SpeechBubble:
             if icon:
                 icon_rect = icon.get_rect(
                     centerx=cx,
-                    top=by + padding + text_h + 8
+                    centery=by + padding + text_h + 8 + icon_size // 2
                 )
-                self.screen.blit(icon, icon_rect)
+                self.canvas.blit(icon, icon_rect)
 
     def _draw_tail(self, cx: int, base_y: int, by: int, bubble_w: int, bubble_h: int,
                    player_index: int, color: tuple):
@@ -206,19 +198,13 @@ class SpeechBubble:
                 (right_x, mid_y + tail_size),
                 (right_x + tail_size * 2, mid_y)
             ]
-        pygame.draw.polygon(self.screen, color, points)
+        self.canvas.polygon(color, points)
 
-    def _load_icon(self, suit: str, size: int) -> pygame.Surface | None:
-        """Načíta ikonku farby."""
+    def _load_icon(self, suit: str, size: int):
+        """Načíta ikonku farby (LSurf, pomer strán zachovaný)."""
         key = f"{suit}-{size}"
         if key not in self._icon_cache:
-            path = os.path.join(SUIT_ICONS_PATH, f"{suit}-icon@medium.png")
-            try:
-                img = pygame.image.load(path).convert_alpha()
-                img = pygame.transform.scale(img, (size, size))
-                self._icon_cache[key] = img
-            except FileNotFoundError:
-                self._icon_cache[key] = None
+            self._icon_cache[key] = load_suit_icon(self.canvas, suit, size)
         return self._icon_cache[key]
 
     def show_round_result(self, player_index: int, points: int,

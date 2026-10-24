@@ -1,13 +1,16 @@
 # gui/achievements_screen.py
 
 import pygame
+from gui import display
+import os
 import sys
+from gui.canvas import draw_backdrop, draw_static
 from config import (
-    SCREEN_WIDTH, SCREEN_HEIGHT,
-    COLOR_WHITE, COLOR_GOLD, COLOR_GRAY,
+    SCREEN_WIDTH,
+    COLOR_WHITE, COLOR_GOLD,
     COLOR_BUTTON_PRIMARY, COLOR_BUTTON_SECONDARY,
-    FONT_SIZE_SMALL, FONT_SIZE_MEDIUM, FONT_SIZE_LARGE,
-    BUTTON_RADIUS, get_font
+    FONT_SIZE_MEDIUM, FONT_SIZE_LARGE,
+    BUTTON_RADIUS
 )
 from achievements.definitions import ACHIEVEMENTS
 from achievements.storage import load_achievements
@@ -15,31 +18,25 @@ from achievements.storage import load_achievements
 
 class AchievementsScreen:
     def __init__(self, screen: pygame.Surface):
-        self.screen = screen
+        # `screen` (logický povrch) sa už nepoužíva — kreslí sa cez Canvas.
+        self.canvas = display.canvas()
+        self.H = display.logical_height()
         self.clock = pygame.time.Clock()
 
-        self.font_title = get_font(FONT_SIZE_LARGE + 8)
-        self.font_large = get_font(FONT_SIZE_LARGE)
-        self.font_name  = get_font(FONT_SIZE_MEDIUM + 4)
-        self.font_desc  = get_font(FONT_SIZE_MEDIUM - 2)
-
-        try:
-            self.bg = pygame.image.load("assets/graphics/table.jpg").convert()
-            self.bg = pygame.transform.scale(self.bg, (SCREEN_WIDTH, SCREEN_HEIGHT))
-        except FileNotFoundError:
-            self.bg = None
+        self.font_title = self.canvas.font(FONT_SIZE_LARGE + 8)
+        self.font_large = self.canvas.font(FONT_SIZE_LARGE)
+        self.font_name  = self.canvas.font(FONT_SIZE_MEDIUM + 4)
+        self.font_desc  = self.canvas.font(FONT_SIZE_MEDIUM - 2)
 
         # Trofej ikony — jednotná výška pre single aj group, líši sa len šírka
         self.icon_w, self.icon_h = 70, 113          # single riadky
         self.icon_w_small = 46                       # group riadky (rovnaká výška icon_h)
 
+        # Cesty k ikonám trofejí (načítajú sa cez Canvas v potrebnej veľkosti)
         self.trophy_icons = {}
         for tier_name in ("bronze", "silver", "gold"):
-            try:
-                img = pygame.image.load(f"assets/graphics/trophy_{tier_name}.png").convert_alpha()
-                self.trophy_icons[tier_name] = img
-            except (FileNotFoundError, pygame.error):
-                self.trophy_icons[tier_name] = None
+            path = f"assets/graphics/trophy_{tier_name}.png"
+            self.trophy_icons[tier_name] = path if os.path.exists(path) else None
 
         self.data = load_achievements()
         self.scroll_offset = 0
@@ -49,7 +46,7 @@ class AchievementsScreen:
         self.PANEL_X = 60
         self.PANEL_Y = 20
         self.PANEL_W = SCREEN_WIDTH - 120
-        self.PANEL_H = SCREEN_HEIGHT - 40
+        self.PANEL_H = self.H - 40
 
         # Vyhradený priestor pre tlačidlo späť (mimo scrollovateľnej oblasti)
         self.BACK_AREA_H = 80
@@ -96,9 +93,9 @@ class AchievementsScreen:
     def run(self):
         while True:
             self.clock.tick(60)
-            mouse_pos = pygame.mouse.get_pos()
+            mouse_pos = display.mouse_pos()
 
-            for event in pygame.event.get():
+            for event in display.get_events():
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
@@ -114,47 +111,43 @@ class AchievementsScreen:
                         self.scroll_offset = min(self.max_scroll, self.scroll_offset + 50)
 
             self._draw(mouse_pos)
-            pygame.display.flip()
+            display.present()
 
     # ------------------------------------------------------------------
     # Kreslenie
     # ------------------------------------------------------------------
 
     def _draw(self, mouse_pos):
-        if self.bg:
-            self.screen.blit(self.bg, (0, 0))
-        else:
-            self.screen.fill((45, 28, 15))
+        # Všetko okrem tlačidla Späť (hover) — prekreslí sa len pri scrolle
+        draw_static(self, self.canvas, ("trofeje", self.scroll_offset),
+                    self._draw_static)
+        self._draw_back_button(mouse_pos)
 
-        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 200))
-        self.screen.blit(overlay, (0, 0))
-
+    def _draw_static(self):
+        draw_backdrop(self.canvas, (0, 0, 0, 200))
         self._draw_panel_bg()
         self._draw_title()
         self._draw_progress()
         self._draw_rows()
-        self._draw_back_button(mouse_pos)
 
     def _draw_panel_bg(self):
-        surf = pygame.Surface((self.PANEL_W, self.PANEL_H), pygame.SRCALPHA)
-        surf.fill((12, 8, 4, 248))
-        self.screen.blit(surf, (self.PANEL_X, self.PANEL_Y))
-        pygame.draw.rect(
-            self.screen, COLOR_GOLD,
+        self.canvas.overlay((self.PANEL_X, self.PANEL_Y, self.PANEL_W, self.PANEL_H),
+                            (12, 8, 4, 248))
+        self.canvas.rect(
+            COLOR_GOLD,
             (self.PANEL_X, self.PANEL_Y, self.PANEL_W, self.PANEL_H),
             width=2, border_radius=14
         )
         line_y = self.PANEL_Y + self.PANEL_H - self.BACK_AREA_H
-        pygame.draw.line(
-            self.screen, COLOR_GOLD,
+        self.canvas.line(
+            COLOR_GOLD,
             (self.PANEL_X + 20, line_y), (self.PANEL_X + self.PANEL_W - 20, line_y),
             width=1
         )
 
     def _draw_title(self):
         title = self.font_title.render("TROFEJE", True, COLOR_GOLD)
-        self.screen.blit(title, title.get_rect(
+        self.canvas.blit(title, title.get_rect(
             centerx=SCREEN_WIDTH // 2, top=self.PANEL_Y + 16
         ))
 
@@ -163,7 +156,7 @@ class AchievementsScreen:
         unlocked = sum(1 for v in self.data["unlocked"].values() if v)
         text = f"Odomknuté trofeje: {unlocked} / {total}"
         surf = self.font_large.render(text, True, COLOR_WHITE)
-        self.screen.blit(surf, surf.get_rect(
+        self.canvas.blit(surf, surf.get_rect(
             centerx=SCREEN_WIDTH // 2, top=self.PANEL_Y + 64
         ))
 
@@ -171,8 +164,8 @@ class AchievementsScreen:
         clip_rect = pygame.Rect(
             self.PANEL_X, self.CONTENT_Y, self.PANEL_W, self.CONTENT_H
         )
-        old_clip = self.screen.get_clip()
-        self.screen.set_clip(clip_rect)
+        old_clip = self.canvas.get_clip()
+        self.canvas.set_clip(clip_rect)
 
         y = self.CONTENT_Y - self.scroll_offset
 
@@ -184,7 +177,7 @@ class AchievementsScreen:
                     self._draw_group_row(row["items"], y)
             y += self.row_h
 
-        self.screen.set_clip(old_clip)
+        self.canvas.set_clip(old_clip)
 
     def _tier_icon_name(self, index: int, total: int) -> str:
         if total <= 1:
@@ -249,35 +242,31 @@ class AchievementsScreen:
     def _draw_row_bg(self, y: int, unlocked: bool):
         rect = pygame.Rect(self.PANEL_X + 20, y + 8, self.PANEL_W - 40, self.row_h - 16)
         color = (42, 32, 12, 190) if unlocked else (22, 17, 12, 150)
-        surf = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
-        surf.fill(color)
-        self.screen.blit(surf, rect.topleft)
+        self.canvas.overlay(rect, color)
         border = COLOR_GOLD if unlocked else (90, 80, 65)
-        pygame.draw.rect(self.screen, border, rect, width=1, border_radius=10)
+        self.canvas.rect(border, rect, width=1, border_radius=10)
 
     def _draw_trophy_slot(self, tier_name: str, cx: int, cy: int,
                           unlocked: bool, w: int, h: int):
         rect = pygame.Rect(cx - w // 2, cy - h // 2, w, h)
 
         if unlocked:
-            icon = self.trophy_icons.get(tier_name)
-            if icon:
-                scaled = pygame.transform.scale(icon, (w, h))
-                self.screen.blit(scaled, rect.topleft)
-                pygame.draw.rect(self.screen, COLOR_GOLD, rect, width=2, border_radius=6)
+            icon_path = self.trophy_icons.get(tier_name)
+            if icon_path:
+                scaled = self.canvas.image(icon_path, (w, h), smooth=False)
+                self.canvas.blit(scaled, rect.topleft)
+                self.canvas.rect(COLOR_GOLD, rect, width=2, border_radius=6)
             else:
                 r = min(w, h) // 2
-                pygame.draw.circle(self.screen, COLOR_GOLD, (cx, cy), r)
-                pygame.draw.circle(self.screen, (15, 9, 4), (cx, cy), r - 4)
+                self.canvas.circle(COLOR_GOLD, (cx, cy), r)
+                self.canvas.circle((15, 9, 4), (cx, cy), r - 4)
         else:
             # Prázdny rám s otáznikom — jediný vizuál pre zamknuté
-            surf = pygame.Surface((w, h), pygame.SRCALPHA)
-            surf.fill((25, 18, 10, 180))
-            self.screen.blit(surf, rect.topleft)
-            pygame.draw.rect(self.screen, (90, 80, 65), rect, width=2, border_radius=6)
-            q_font = get_font(int(h * 0.4))
+            self.canvas.overlay(rect, (25, 18, 10, 180))
+            self.canvas.rect((90, 80, 65), rect, width=2, border_radius=6)
+            q_font = self.canvas.font(int(h * 0.4))
             q_surf = q_font.render("?", True, (90, 80, 65))
-            self.screen.blit(q_surf, q_surf.get_rect(center=(cx, cy)))
+            self.canvas.blit(q_surf, q_surf.get_rect(center=(cx, cy)))
 
     def _draw_row_text(self, name: str, description: str, y: int,
                        unlocked: bool, icon_slot_w: int, hidden: bool = False):
@@ -286,7 +275,7 @@ class AchievementsScreen:
 
         name_color = COLOR_GOLD if unlocked else (160, 150, 135)
         name_surf = self.font_name.render(name, True, name_color)
-        self.screen.blit(name_surf, (text_x, y + 30))
+        self.canvas.blit(name_surf, (text_x, y + 30))
 
         # ← Zobraz popis ak je odomknuté ALEBO ak achievement nie je hidden
         show_description = unlocked or not hidden
@@ -296,7 +285,7 @@ class AchievementsScreen:
             line_h = self.font_desc.get_height() + 2
             for i, line in enumerate(desc_lines[:2]):
                 line_surf = self.font_desc.render(line, True, desc_color)
-                self.screen.blit(line_surf, (text_x, y + 66 + i * line_h))
+                self.canvas.blit(line_surf, (text_x, y + 66 + i * line_h))
 
     def _wrap_text(self, text: str, font, max_width: int) -> list[str]:
         words = text.split(" ")
@@ -317,12 +306,10 @@ class AchievementsScreen:
     def _draw_back_button(self, mouse_pos):
         hover = self.back_button.collidepoint(mouse_pos)
         color = COLOR_BUTTON_PRIMARY if hover else COLOR_BUTTON_SECONDARY
-        surf = pygame.Surface((self.back_button.width, self.back_button.height), pygame.SRCALPHA)
-        surf.fill((*color, 220))
-        self.screen.blit(surf, self.back_button.topleft)
-        pygame.draw.rect(self.screen, COLOR_GOLD, self.back_button, width=2, border_radius=BUTTON_RADIUS)
+        self.canvas.overlay(self.back_button, (*color, 220))
+        self.canvas.rect(COLOR_GOLD, self.back_button, width=2, border_radius=BUTTON_RADIUS)
         text = self.font_large.render("← Späť", True, COLOR_WHITE)
-        self.screen.blit(text, text.get_rect(center=self.back_button.center))
+        self.canvas.blit(text, text.get_rect(center=self.back_button.center))
 
     def __repr__(self):
         return "AchievementsScreen()"

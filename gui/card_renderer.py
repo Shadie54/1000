@@ -5,69 +5,61 @@ import os
 import pygame
 
 from config import (
-    CARDS_MEDIUM_PATH, CARDS_SMALL_PATH, CARD_BACK_IMAGE,
+    CARDS_MEDIUM_PATH, CARD_BACK_IMAGE,
     CARD_SIZE_MEDIUM, CARD_SIZE_SMALL,
-    CARD_FAN_OFFSET, TABLE_CENTER_X, TABLE_CENTER_Y,
-    TALON_X, TALON_Y,
+    CARD_FAN_OFFSET,
     COLOR_YELLOW, COLOR_GREEN, COLOR_WHITE, COLOR_GOLD,
-    get_font, HUMAN_HAND_Y, SCREEN_HEIGHT, SCREEN_WIDTH
 )
 from game.card import Card
 from game.trick import Trick
+from gui import layout
+from gui.canvas import LSurf
 
 
 class CardRenderer:
-    def __init__(self, screen: pygame.Surface, debug: bool = False):
-        self.screen = screen
+    def __init__(self, canvas, debug: bool = False):
+        # Kreslí cez Canvas (gui/canvas.py) v logických súradniciach;
+        # pozície rúk, štichu a talonu sú z gui/layout.py.
+        self.canvas = canvas
         self.debug = debug
-        self._cache: dict[str, pygame.Surface] = {}     # cache načítaných obrázkov
+        self._cache: dict[str, LSurf] = {}     # cache placeholderov
 
+        lay = layout.game()
         # Pozície kariet na stole pre každého hráča v štichu
-        self.trick_positions = {
-            0: (TABLE_CENTER_X, TABLE_CENTER_Y + 120),   # človek (dole)
-            1: (TABLE_CENTER_X - 150, TABLE_CENTER_Y),   # AI ľavý
-            2: (TABLE_CENTER_X + 150, TABLE_CENTER_Y),   # AI pravý
-        }
-
-        self.hand_configs = {
-            0: {"direction": "horizontal", "x": 200, "y": HUMAN_HAND_Y, "offset": 100},
-            1: {"direction": "vertical", "x": 30, "y": int(SCREEN_HEIGHT * 0.09), "offset": 50},
-            2: {"direction": "vertical", "x": SCREEN_WIDTH - 330, "y": int(SCREEN_HEIGHT * 0.09), "offset": 50},
-        }
+        self.trick_positions = dict(lay.trick_positions)
+        self.hand_configs = {i: dict(cfg) for i, cfg in lay.hand_configs.items()}
+        self.talon_pos = lay.talon_pos
     # ------------------------------------------------------------------
     # Načítanie obrázkov
     # ------------------------------------------------------------------
 
-    def _load_image(self, filename: str, size: tuple, path: str) -> pygame.Surface:
-        """Načíta obrázok z disku alebo z cache."""
-        key = f"{path}/{filename}"
+    def _load_image(self, filename: str, size: tuple, angle: int = 0) -> LSurf:
+        """Karta cez Canvas (ostrá pri každom rozlíšení, cache v Canvase).
+        Ak obrázok chýba — placeholder."""
+        if os.path.exists(os.path.join(CARDS_MEDIUM_PATH, filename)):
+            return self.canvas.card(filename, angle, size, smooth=False)
+        key = f"{filename}/{size}/{angle}"
         if key not in self._cache:
-            full_path = os.path.join(path, filename)
-            try:
-                img = pygame.image.load(full_path).convert_alpha()
-                img = pygame.transform.scale(img, size)
-                self._cache[key] = img
-            except FileNotFoundError:
-                # Ak obrázok chýba — nakreslíme placeholder
-                surf = pygame.Surface(size, pygame.SRCALPHA)
-                surf.fill((200, 200, 200))
-                font = get_font(18)
-                text = font.render(filename[:10], True, (0, 0, 0))
-                surf.blit(text, (5, size[1] // 2 - 10))
-                self._cache[key] = surf
+            surf = self.canvas.new_surface(size)
+            surf.phys.fill((200, 200, 200))
+            text = self.canvas.font(18).render(filename[:10], True, (0, 0, 0))
+            surf.phys.blit(text.phys, (round(5 * self.canvas.s),
+                                       round((size[1] // 2 - 10) * self.canvas.s)))
+            if angle:
+                surf = LSurf(pygame.transform.rotate(surf.phys, angle),
+                             *(size[::-1] if angle % 180 else size))
+            self._cache[key] = surf
         return self._cache[key]
 
-    def _get_card_image(self, card: Card, size: str = "medium") -> pygame.Surface:
+    def _get_card_image(self, card: Card, size: str = "medium", angle: int = 0) -> LSurf:
         """Vráti obrázok karty."""
-        path = CARDS_MEDIUM_PATH if size == "medium" else CARDS_SMALL_PATH
         card_size = CARD_SIZE_MEDIUM if size == "medium" else CARD_SIZE_SMALL
-        return self._load_image(card.image_name, card_size, path)
+        return self._load_image(card.image_name, card_size, angle)
 
-    def _get_card_back(self, size: str = "medium") -> pygame.Surface:
+    def _get_card_back(self, size: str = "medium", angle: int = 0) -> LSurf:
         """Vráti obrázok zadnej strany karty."""
-        path = CARDS_MEDIUM_PATH if size == "medium" else CARDS_SMALL_PATH
         card_size = CARD_SIZE_MEDIUM if size == "medium" else CARD_SIZE_SMALL
-        return self._load_image(CARD_BACK_IMAGE, card_size, path)
+        return self._load_image(CARD_BACK_IMAGE, card_size, angle)
 
     # ------------------------------------------------------------------
     # Kreslenie ruky hráča
@@ -92,16 +84,14 @@ class CardRenderer:
                 y -= 20 if config["direction"] == "horizontal" else 0
                 x -= 20 if config["direction"] == "vertical" else 0
 
-            if show_faces:
-                img = self._get_card_image(card)
-            else:
-                img = self._get_card_back()
-
             # Rotácia pre vertikálne ruky (AI hráči)
-            if config["direction"] == "vertical":
-                img = pygame.transform.rotate(img, 90)
+            angle = 90 if config["direction"] == "vertical" else 0
+            if show_faces:
+                img = self._get_card_image(card, angle=angle)
+            else:
+                img = self._get_card_back(angle=angle)
 
-            self.screen.blit(img, (x, y))
+            self.canvas.blit(img, (x, y))
 
             # Zvýraznenie hrateľných kariet
             if highlight_playable and show_faces:
@@ -134,28 +124,42 @@ class CardRenderer:
             y = config["y"] + index * config["offset"]
         return x, y
 
+    def hand_card_center(self, player_index: int, cards: list[Card],
+                         card: Card) -> tuple[int, int]:
+        """Stred karty v ruke (odtiaľ letí pri zahratí — CardThrowAnimation)."""
+        config = self.hand_configs[player_index]
+        idx = cards.index(card) if card in cards else 0
+        x, y = self._card_position(config, idx)
+        cw, ch = CARD_SIZE_MEDIUM
+        if config["direction"] == "vertical":
+            return x + ch // 2, y + cw // 2      # karta otočená o 90°
+        return x + cw // 2, y + ch // 2
+
     def _draw_highlight(self, x: int, y: int, size: tuple, color: tuple):
         """Nakreslí farebný okraj okolo karty."""
         rect = pygame.Rect(x - 2, y - 2, size[0] + 4, size[1] + 4)
-        pygame.draw.rect(self.screen, color, rect, width=3, border_radius=5)
+        self.canvas.rect(color, rect, width=3, border_radius=5)
 
     # ------------------------------------------------------------------
     # Kreslenie štichu na stole
     # ------------------------------------------------------------------
 
-    def draw_trick(self, trick: Trick):
-        """Nakreslí aktuálny štich na stole."""
+    def draw_trick(self, trick: Trick, exclude_players: set | None = None):
+        """Nakreslí aktuálny štich na stole. exclude_players = hráči, ktorých
+        karta ešte letí (CardThrowAnimation ju kreslí sama)."""
         for player_index, card in trick.played_cards:
+            if exclude_players and player_index in exclude_players:
+                continue
             pos = self.trick_positions[player_index]
             img = self._get_card_image(card)
             rect = img.get_rect(center=pos)
-            self.screen.blit(img, rect)
+            self.canvas.blit(img, rect)
 
             # V debug móde zobraz index hráča
             if self.debug:
-                font = get_font(20)
+                font = self.canvas.font(20)
                 label = font.render(str(player_index), True, COLOR_WHITE)
-                self.screen.blit(label, (rect.x, rect.y - 15))
+                self.canvas.blit(label, (rect.x, rect.y - 15))
 
     # ------------------------------------------------------------------
     # Kreslenie talonu
@@ -163,28 +167,26 @@ class CardRenderer:
 
     def draw_talon(self, count: int):
         """Nakreslí talon (zadná strana kariet)."""
+        tx, ty = self.talon_pos
         for i in range(count):
             img = self._get_card_back()
-            x = TALON_X + i * CARD_FAN_OFFSET
-            y = TALON_Y
-            self.screen.blit(img, (x, y))
+            self.canvas.blit(img, (tx + i * CARD_FAN_OFFSET, ty))
 
         # Popisok
-        font = get_font(22)
+        font = self.canvas.font(22)
         label = font.render("Talon", True, COLOR_WHITE)
-        self.screen.blit(label, (TALON_X, TALON_Y - 40))
+        self.canvas.blit(label, (tx, ty - 40))
 
     def draw_talon_debug(self, talon_cards: list):
         """V debug móde zobrazí talon s lícom kariet."""
+        tx, ty = self.talon_pos
         for i, card in enumerate(talon_cards):
             img = self._get_card_image(card)
-            x = TALON_X + i * CARD_FAN_OFFSET
-            y = TALON_Y
-            self.screen.blit(img, (x, y))
+            self.canvas.blit(img, (tx + i * CARD_FAN_OFFSET, ty))
 
-        font = get_font(22)
+        font = self.canvas.font(22)
         label = font.render("Talon [DEBUG]", True, COLOR_YELLOW)
-        self.screen.blit(label, (TALON_X, TALON_Y - 40))
+        self.canvas.blit(label, (tx, ty - 40))
 
     # ------------------------------------------------------------------
     # Detekcia kliku na kartu

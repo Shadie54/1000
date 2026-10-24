@@ -8,3 +8,8 @@ __pycache__/
 # Virtuálne prostredie
 .venv/
 venv/
+
+# Galéria obrazoviek (tools/screenshot_gallery.py)
+gallery/
+/ref_3kola.txt
+/ref_full.txt

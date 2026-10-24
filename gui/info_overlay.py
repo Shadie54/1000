@@ -4,26 +4,27 @@ import os
 
 import pygame
 
+from gui import display
 from config import (
-    SCREEN_WIDTH, SCREEN_HEIGHT,
+    SCREEN_WIDTH,
     COLOR_WHITE, COLOR_GOLD, COLOR_GRAY,
     FONT_SIZE_SMALL, FONT_SIZE_MEDIUM, FONT_SIZE_LARGE,
-    CARDS_MEDIUM_PATH, get_font
+    CARDS_MEDIUM_PATH
 )
 
 
 class InfoOverlay:
-    def __init__(self, screen: pygame.Surface):
-        self.screen = screen
+    def __init__(self, canvas):
+        # Kreslí cez Canvas; panel cez celú logickú výšku.
+        self.canvas = canvas
+        self.H = display.logical_height()
         self.visible = False
         self.active_tab = "bodovanie"
 
-        self.font_small  = get_font(FONT_SIZE_SMALL)       # 18
-        self.font_medium = get_font(FONT_SIZE_MEDIUM)      # 24
-        self.font_large  = get_font(FONT_SIZE_LARGE)       # 32
-        self.font_title  = get_font(FONT_SIZE_LARGE + 8)   # 40
-
-        self._card_cache: dict[str, pygame.Surface] = {}
+        self.font_small  = canvas.font(FONT_SIZE_SMALL)       # 18
+        self.font_medium = canvas.font(FONT_SIZE_MEDIUM)      # 24
+        self.font_large  = canvas.font(FONT_SIZE_LARGE)       # 32
+        self.font_title  = canvas.font(FONT_SIZE_LARGE + 8)   # 40
 
         # ------------------------------------------------------------------
         # Konštanty layoutu
@@ -32,7 +33,7 @@ class InfoOverlay:
         self.PANEL_X   = 60
         self.PANEL_Y   = 20
         self.PANEL_W   = SCREEN_WIDTH  - 120
-        self.PANEL_H   = SCREEN_HEIGHT - 40
+        self.PANEL_H   = self.H - 40
         self.INNER_X   = self.PANEL_X  + self.PAD
         self.INNER_W   = self.PANEL_W  - self.PAD * 2
         self.CONTENT_Y = self.PANEL_Y  + 130   # pod nadpisom a záložkami
@@ -86,17 +87,15 @@ class InfoOverlay:
         if not self.visible:
             return
 
-        # Tmavý backdrop
-        backdrop = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-        backdrop.fill((0, 0, 0, 220))
-        self.screen.blit(backdrop, (0, 0))
+        # Tmavý backdrop (cez celé okno aj pásma)
+        self.canvas.overlay_window((0, 0, 0, 220))
 
         # Panel
         self._draw_panel_bg()
 
         # Nadpis
         title = self.font_title.render("PRAVIDLÁ A BODOVANIE", True, COLOR_GOLD)
-        self.screen.blit(title, title.get_rect(
+        self.canvas.blit(title, title.get_rect(
             centerx=SCREEN_WIDTH // 2, top=self.PANEL_Y + 14
         ))
 
@@ -117,11 +116,10 @@ class InfoOverlay:
     # ------------------------------------------------------------------
 
     def _draw_panel_bg(self):
-        surf = pygame.Surface((self.PANEL_W, self.PANEL_H), pygame.SRCALPHA)
-        surf.fill((15, 9, 4, 245))
-        self.screen.blit(surf, (self.PANEL_X, self.PANEL_Y))
-        pygame.draw.rect(
-            self.screen, COLOR_GOLD,
+        self.canvas.overlay((self.PANEL_X, self.PANEL_Y, self.PANEL_W, self.PANEL_H),
+                            (15, 9, 4, 245))
+        self.canvas.rect(
+            COLOR_GOLD,
             (self.PANEL_X, self.PANEL_Y, self.PANEL_W, self.PANEL_H),
             width=2, border_radius=14
         )
@@ -131,20 +129,18 @@ class InfoOverlay:
         for key, rect in self.tab_rects.items():
             active = self.active_tab == key
             bg = (45, 30, 10) if active else (20, 12, 5)
-            pygame.draw.rect(self.screen, bg, rect, border_radius=8)
+            self.canvas.rect(bg, rect, border_radius=8)
             border = COLOR_GOLD if active else COLOR_GRAY
-            pygame.draw.rect(self.screen, border, rect, width=2, border_radius=8)
+            self.canvas.rect(border, rect, width=2, border_radius=8)
             color = COLOR_GOLD if active else COLOR_GRAY
             surf = self.font_medium.render(labels[key], True, color)
-            self.screen.blit(surf, surf.get_rect(center=rect.center))
+            self.canvas.blit(surf, surf.get_rect(center=rect.center))
 
     def _draw_close_btn(self):
-        pygame.draw.rect(self.screen, (50, 30, 10),
-                         self.btn_close, border_radius=6)
-        pygame.draw.rect(self.screen, COLOR_GOLD,
-                         self.btn_close, width=2, border_radius=6)
+        self.canvas.rect((50, 30, 10), self.btn_close, border_radius=6)
+        self.canvas.rect(COLOR_GOLD, self.btn_close, width=2, border_radius=6)
         surf = self.font_medium.render("X", True, COLOR_WHITE)
-        self.screen.blit(surf, surf.get_rect(center=self.btn_close.center))
+        self.canvas.blit(surf, surf.get_rect(center=self.btn_close.center))
 
     # ------------------------------------------------------------------
     # Tab: Bodovanie
@@ -169,14 +165,13 @@ class InfoOverlay:
 
         for i, rank in enumerate(ranks):
             x = x0 + i * (card_w + gap)
-            img = self._load_card("heart", rank)
+            img = self._load_card("heart", rank, (card_w, card_h))
             if img:
-                img = pygame.transform.scale(img, (card_w, card_h))
-                self.screen.blit(img, (x, y))
+                self.canvas.blit(img, (x, y))
             pts  = points[rank]
             col  = COLOR_GOLD if pts > 0 else COLOR_GRAY
             psurf = self.font_large.render(str(pts), True, col)
-            self.screen.blit(psurf, psurf.get_rect(
+            self.canvas.blit(psurf, psurf.get_rect(
                 centerx=x + card_w // 2, top=y + card_h + 14
             ))
 
@@ -199,12 +194,11 @@ class InfoOverlay:
         for i, (suit, pts) in enumerate(trump_data):
             x = tx0 + i * (pair_w + t_gap)
             for j, rank in enumerate(["king", "over"]):
-                img = self._load_card(suit, rank)
+                img = self._load_card(suit, rank, (card_w, card_h))
                 if img:
-                    img = pygame.transform.scale(img, (card_w, card_h))
-                    self.screen.blit(img, (x + j * (card_w + 10), y))
+                    self.canvas.blit(img, (x + j * (card_w + 10), y))
             psurf = self.font_title.render(str(pts), True, COLOR_GOLD)
-            self.screen.blit(psurf, psurf.get_rect(
+            self.canvas.blit(psurf, psurf.get_rect(
                 centerx=x + pair_w // 2, top=y + card_h + 14
             ))
 
@@ -269,17 +263,17 @@ class InfoOverlay:
             for title, lines in col_sections:
                 # Nadpis sekcie
                 tsurf = self.font_large.render(title, True, COLOR_GOLD)
-                self.screen.blit(tsurf, (col_x, y))
+                self.canvas.blit(tsurf, (col_x, y))
                 y += tsurf.get_height() + 2
-                pygame.draw.line(
-                    self.screen, COLOR_GOLD,
+                self.canvas.line(
+                    COLOR_GOLD,
                     (col_x, y), (col_x + col_w, y), width=1
                 )
                 y += 8
                 # Riadky
                 for line in lines:
                     surf = self.font_medium.render(line, True, COLOR_WHITE)
-                    self.screen.blit(surf, (col_x, y))
+                    self.canvas.blit(surf, (col_x, y))
                     y += surf.get_height() + 4
                 y += 18  # medzera medzi sekciami
 
@@ -289,28 +283,24 @@ class InfoOverlay:
 
     def _section_title(self, text: str, y: int):
         surf = self.font_large.render(text, True, COLOR_GOLD)
-        self.screen.blit(surf, surf.get_rect(
+        self.canvas.blit(surf, surf.get_rect(
             centerx=SCREEN_WIDTH // 2, top=y
         ))
 
     def _divider(self, y: int):
-        pygame.draw.line(
-            self.screen, COLOR_GRAY,
+        self.canvas.line(
+            COLOR_GRAY,
             (self.INNER_X, y),
             (self.INNER_X + self.INNER_W, y),
             width=1
         )
 
-    def _load_card(self, suit: str, rank: str) -> pygame.Surface | None:
-        key = f"{suit}-{rank}"
-        if key not in self._card_cache:
-            path = os.path.join(CARDS_MEDIUM_PATH, f"{suit}-{rank}.png")
-            try:
-                img = pygame.image.load(path).convert_alpha()
-                self._card_cache[key] = img
-            except FileNotFoundError:
-                self._card_cache[key] = None
-        return self._card_cache[key]
+    def _load_card(self, suit: str, rank: str, lsize: tuple[int, int]):
+        """Karta v logickej veľkosti lsize (cache v Canvase)."""
+        name = f"{suit}-{rank}.png"
+        if not os.path.exists(os.path.join(CARDS_MEDIUM_PATH, name)):
+            return None
+        return self.canvas.card(name, 0, lsize, smooth=False)
 
     def __repr__(self) -> str:
         return f"InfoOverlay(visible={self.visible}, tab={self.active_tab})"

@@ -1,11 +1,11 @@
 # gui/achievement_popup.py
 
 import pygame
+from gui import display
 from config import (
-    SCREEN_WIDTH, SCREEN_HEIGHT,
+    SCREEN_WIDTH,
     COLOR_WHITE, COLOR_GOLD,
     FONT_SIZE_LARGE, FONT_SIZE_MEDIUM, FONT_SIZE_SMALL,
-    get_font
 )
 from achievements.definitions import get_achievement, get_tier_name
 
@@ -17,11 +17,13 @@ class AchievementPopup:
 
     # gui/achievement_popup.py
 
-    def __init__(self, screen: pygame.Surface):
-        self.screen = screen
-        self.font_title = get_font(FONT_SIZE_SMALL + 2)
-        self.font_name = get_font(FONT_SIZE_LARGE)
-        self.font_desc = get_font(FONT_SIZE_MEDIUM - 2)
+    def __init__(self, canvas):
+        # Kreslí cez Canvas; poloha v pravom dolnom rohu podľa logickej výšky.
+        self.canvas = canvas
+        self.H = display.logical_height()
+        self.font_title = canvas.font(FONT_SIZE_SMALL + 2)
+        self.font_name = canvas.font(FONT_SIZE_LARGE)
+        self.font_desc = canvas.font(FONT_SIZE_MEDIUM - 2)
 
         self.queue: list[str] = []
         self.current: dict | None = None
@@ -39,10 +41,10 @@ class AchievementPopup:
 
         self.trophy_icons = {}
         for tier_name in ("bronze", "silver", "gold"):
+            path = f"assets/graphics/trophy_{tier_name}.png"
             try:
-                img = pygame.image.load(f"assets/graphics/trophy_{tier_name}.png").convert_alpha()
-                img = pygame.transform.scale(img, (self.icon_w, self.icon_h))
-                self.trophy_icons[tier_name] = img
+                self.trophy_icons[tier_name] = canvas.image(
+                    path, (self.icon_w, self.icon_h), smooth=False)
             except (FileNotFoundError, pygame.error):
                 self.trophy_icons[tier_name] = None
 
@@ -93,7 +95,7 @@ class AchievementPopup:
 
         target_x = SCREEN_WIDTH - self.popup_w - 30
         start_x = SCREEN_WIDTH + 20
-        y = SCREEN_HEIGHT - self.popup_h - 30
+        y = self.H - self.popup_h - 30
 
         if elapsed < self.slide_duration:
             progress = elapsed / self.slide_duration
@@ -107,20 +109,13 @@ class AchievementPopup:
         x = int(x)
 
         # Pozadie — tmavšie a nepriehľadnejšie, zladené s čiernou kartou
-        surf = pygame.Surface((self.popup_w, self.popup_h), pygame.SRCALPHA)
-        surf.fill((10, 6, 2, 245))
-        self.screen.blit(surf, (x, y))
-        pygame.draw.rect(
-            self.screen, COLOR_GOLD,
-            (x, y, self.popup_w, self.popup_h),
-            width=3, border_radius=12
-        )
+        self.canvas.overlay((x, y, self.popup_w, self.popup_h), (10, 6, 2, 245))
+        self.canvas.rect(COLOR_GOLD, (x, y, self.popup_w, self.popup_h),
+                         width=3, border_radius=12)
         # Jemný vnútorný okraj — zladenie s kartou
-        pygame.draw.rect(
-            self.screen, COLOR_GOLD,
-            (x + 5, y + 5, self.popup_w - 10, self.popup_h - 10),
-            width=1, border_radius=9
-        )
+        self.canvas.rect(COLOR_GOLD,
+                         (x + 5, y + 5, self.popup_w - 10, self.popup_h - 10),
+                         width=1, border_radius=9)
 
         # Ikona vľavo
         tier = get_tier_name(self.current["id"])
@@ -129,12 +124,9 @@ class AchievementPopup:
         icon_x = x + 18
         icon_y = y + (self.popup_h - self.icon_h) // 2
         if icon:
-            self.screen.blit(icon, (icon_x, icon_y))
-            pygame.draw.rect(
-                self.screen, COLOR_GOLD,
-                (icon_x, icon_y, self.icon_w, self.icon_h),
-                width=2, border_radius=8
-            )
+            self.canvas.blit(icon, (icon_x, icon_y))
+            self.canvas.rect(COLOR_GOLD, (icon_x, icon_y, self.icon_w, self.icon_h),
+                             width=2, border_radius=8)
         else:
             self._draw_trophy_icon(icon_x + self.icon_w // 2, icon_y + self.icon_h // 2, self.icon_w)
 
@@ -143,10 +135,10 @@ class AchievementPopup:
         text_max_w = self.popup_w - (text_x - x) - 18
 
         title_surf = self.font_title.render("TROFEJ ODOMKNUTÁ", True, COLOR_GOLD)
-        self.screen.blit(title_surf, (text_x, y + 20))
+        self.canvas.blit(title_surf, (text_x, y + 20))
 
         name_surf = self.font_name.render(self.current["name"], True, COLOR_WHITE)
-        self.screen.blit(name_surf, (text_x, y + 48))
+        self.canvas.blit(name_surf, (text_x, y + 48))
 
         # ← Lepšia farba popisu — teplá svetlá krémová namiesto šedej
         desc_color = (225, 210, 185)
@@ -154,7 +146,7 @@ class AchievementPopup:
         line_h = self.font_desc.get_height() + 3
         for i, line in enumerate(desc_lines[:3]):  # max 3 riadky (viac miesta teraz)
             line_surf = self.font_desc.render(line, True, desc_color)
-            self.screen.blit(line_surf, (text_x, y + 84 + i * line_h))
+            self.canvas.blit(line_surf, (text_x, y + 84 + i * line_h))
 
     def _wrap_text(self, text: str, font, max_width: int) -> list[str]:
         """Zalomí text na viac riadkov podľa max šírky."""
@@ -178,12 +170,12 @@ class AchievementPopup:
 
     def _draw_trophy_icon(self, cx: int, cy: int, size: int):
         """Nakreslí jednoduchú ikonu trofeje (kruh + hviezda)."""
-        pygame.draw.circle(self.screen, COLOR_GOLD, (cx, cy), size // 2)
-        pygame.draw.circle(self.screen, (15, 9, 4), (cx, cy), size // 2 - 4)
+        self.canvas.circle(COLOR_GOLD, (cx, cy), size // 2)
+        self.canvas.circle((15, 9, 4), (cx, cy), size // 2 - 4)
 
         # Jednoduchá hviezda v strede
         star_points = self._star_points(cx, cy, size // 2 - 8, size // 4 - 2)
-        pygame.draw.polygon(self.screen, COLOR_GOLD, star_points)
+        self.canvas.polygon(COLOR_GOLD, star_points)
 
     def _star_points(self, cx: int, cy: int, r_outer: int, r_inner: int) -> list:
         import math

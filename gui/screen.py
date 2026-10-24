@@ -1,21 +1,24 @@
 # gui/screen.py
 
+import os
+
 import pygame
+from gui import display, layout
+from gui.canvas import draw_backdrop, StaticLayer
 
 from config import (
-    SCREEN_WIDTH, SCREEN_HEIGHT, FPS, DEBUG_MODE,
+    SCREEN_WIDTH, FPS, DEBUG_MODE,
     COLOR_BG, COLOR_BG_DARK, COLOR_YELLOW, COLOR_GRAY,
     COLOR_WHITE, COLOR_GOLD,
     FONT_SIZE_MEDIUM, FONT_SIZE_LARGE, FONT_SIZE_SMALL,
-    TABLE_CENTER_X, TABLE_CENTER_Y,
-    BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT, BUTTON_RADIUS,
+    BUTTON_RADIUS,
     COLOR_BUTTON_PRIMARY, COLOR_BUTTON_SECONDARY,
-    TALON_X, TALON_Y, CARD_FAN_OFFSET, TRUMP_POINTS,
-    get_font, HUMAN_HAND_Y
+    CARD_FAN_OFFSET, TRUMP_POINTS, ANIMATION_SPEED_DEFAULT,
 )
 from game.ai import AI
 from game.card import Card
 from game.game_state import GameState
+from game import savegame
 from gui.bid_slider import BidSlider
 from gui.card_renderer import CardRenderer
 from gui.deal_animation import DealAnimation
@@ -23,37 +26,48 @@ from gui.info_overlay import InfoOverlay
 from gui.scoreboard import Scoreboard
 from gui.speech_bubble import SpeechBubble
 from gui.trick_animation import TrickAnimation
+from gui.card_throw_animation import CardThrowAnimation
 from gui.achievement_popup import AchievementPopup
+
+# Slovenské názvy farieb (tlačidlo tromfu, správa po zahlásení)
+TRUMP_LABELS = {
+    "heart": "Srdce", "bell": "Guľa",
+    "leaf": "Zeleň", "acorn": "Žaluď"
+}
 
 
 
 class Screen:
     def __init__(self, game_state: GameState, ai_players: list[AI],
                  debug: bool = DEBUG_MODE, new_game: bool = True,
-                 table_bg: str = "table.jpg", achievement_tracker=None):
+                 table_bg: str = "table.jpg", achievement_tracker=None,
+                 animation_speed: float = ANIMATION_SPEED_DEFAULT,
+                 restore_ui: dict | None = None, autosave: bool = True):
         pygame.init()
-        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-        pygame.display.set_caption("Tisíc")
-        try:
-            self.table_bg = pygame.image.load(f"assets/graphics/{table_bg}").convert()
-            self.table_bg = pygame.transform.scale(
-                self.table_bg, (SCREEN_WIDTH, SCREEN_HEIGHT)
-            )
-        except FileNotFoundError:
-            self.table_bg = None
+        # Okno otvára výhradne gui/display.py. Kreslí sa cez Canvas
+        # (gui/canvas.py) v logických súradniciach priamo do okna;
+        # rozloženie hernej obrazovky je v gui/layout.py.
+        self.canvas = display.canvas()
+        self.layout = layout.game()
+        self.H = self.layout.l_h
+        path = f"assets/graphics/{table_bg}"
+        self.table_bg = path if os.path.exists(path) else None
+        # Statická vrstva (stôl + ruky): pri 4K je kopírovanie pozadia a
+        # ~30 kariet každú snímku drahé — kreslia sa len pri zmene stavu.
+        self._static: StaticLayer | None = None
         self.clock = pygame.time.Clock()
         self.debug = debug
 
         self.game_state = game_state
         self.achievement_tracker = achievement_tracker
-        self.achievement_popup = AchievementPopup(self.screen)
+        self.achievement_popup = AchievementPopup(self.canvas)
         self.ai_players = ai_players
 
-        self.card_renderer = CardRenderer(self.screen, debug)
-        self.scoreboard = Scoreboard(self.screen)
-        self.font_small = get_font(FONT_SIZE_SMALL)
-        self.font_medium = get_font(FONT_SIZE_MEDIUM)
-        self.font_large = get_font(FONT_SIZE_LARGE)
+        self.card_renderer = CardRenderer(self.canvas, debug)
+        self.scoreboard = Scoreboard(self.canvas)
+        self.font_small = self.canvas.font(FONT_SIZE_SMALL)
+        self.font_medium = self.canvas.font(FONT_SIZE_MEDIUM)
+        self.font_large = self.canvas.font(FONT_SIZE_LARGE)
 
         self.selected_card = None
         self.selected_discards = []
@@ -86,12 +100,18 @@ class Screen:
         self.deal_animation: DealAnimation | None = None
         self.dealing: bool = False
         #animácia vyhratého štichu
-        self.trick_animation = TrickAnimation(self.screen, self.card_renderer)
+        self.trick_animation = TrickAnimation(self.canvas, self.card_renderer)
+        # Let zahratej karty z ruky na stôl (prevzaté z CHUJ)
+        self.card_throw_animation = CardThrowAnimation(
+            self.canvas, self.card_renderer, animation_speed)
+        # Zber štichu k víťazovi sa smie zrýchliť, ale nikdy nespomalí pod
+        # základnú rýchlosť (cesta k súperom by bola nepríjemne pomalá).
+        self.trick_animation.card_speed *= max(animation_speed, 1.0)
         self._trick_anim_started: bool = False
         #speech bubliny
-        self.speech_bubble = SpeechBubble(self.screen)
+        self.speech_bubble = SpeechBubble(self.canvas)
         #bid slider
-        self.bid_slider = BidSlider(self.screen)
+        self.bid_slider = BidSlider(self.canvas)
         #animácia talonu ku hráčovi
         self.talon_anim_cards: list[dict] = []
         self.talon_animating: bool = False
@@ -99,8 +119,14 @@ class Screen:
         self._talon_anim_started: bool = False
         self.running = True
         self.new_game = new_game
+        # Uloženie rozohratej hry (game/savegame.py): restore_ui = stav
+        # obrazovky pri odchode (posuvník navýšenia a pod.), exit_ui sa
+        # naplní pri odchode z run(). autosave=False pre testy.
+        self.restore_ui = restore_ui or {}
+        self.exit_ui: dict = {}
+        self.autosave = autosave
 
-        self.info_overlay = InfoOverlay(self.screen)
+        self.info_overlay = InfoOverlay(self.canvas)
     # ------------------------------------------------------------------
     # Hlavná slučka
     # ------------------------------------------------------------------
@@ -118,45 +144,123 @@ class Screen:
             self.talon_revealing = False
             self._trick_anim_started = False
             self._talon_anim_started = False
+            self._restore_after_continue()
 
         while self.running:
             self.clock.tick(FPS)
-
-            if self.game_over_timer and pygame.time.get_ticks() >= self.game_over_timer:
-                self.running = False
+            if not self.step_frame():
                 break
+            display.present()  # ← správne miesto — vnútri while
 
-            self._handle_events()
-
-            if self.dealing and self.deal_animation:
-                self.deal_animation.update()
-                self.deal_animation.draw(self.table_bg)
-                self.speech_bubble.draw()
-                if self.deal_animation.done:
-                    self.dealing = False
-                    self.deal_animation = None
-                    pygame.event.clear()
-                    self._auto_sort()
-            else:
-                self._process_talon_reveal()
-                self._process_waiting_trick()
-                self.trick_animation.update()
-                self._handle_ai_turn()
-                self._draw()
-                # ← NOVÉ
-                if self.achievement_tracker:
-                    notifications = self.achievement_tracker.pop_notifications()
-                    if notifications:
-                        self.achievement_popup.add(notifications)
-                self.achievement_popup.update()
-                self.achievement_popup.draw()
-
-            pygame.display.flip()  # ← správne miesto — vnútri while
-
-        # Mimo while cyklu — tu vrátime výsledok
+        # Mimo while cyklu — dorovnaj prechodné stavy a ulož / zmaž hru
+        self._settle_for_save()
         if self.game_state.phase == "game_over":
+            if self.autosave:
+                savegame.delete_save()
             return "game_over"
+        self.exit_ui = {"can_raise_bid": self.can_raise_bid,
+                        "raise_pending": self.bid_slider.visible}
+        if self.autosave:
+            savegame.save_game(self.game_state, self.ai_players,
+                               self.achievement_tracker, self.exit_ui)
         return "menu"
+
+    # ------------------------------------------------------------------
+    # Odchod z hry a návrat ("Pokračovať", aj po reštarte programu)
+    # ------------------------------------------------------------------
+
+    def _settle_for_save(self):
+        """Pri odchode z hry (Menu, zatvorenie okna) dorovná prechodné
+        stavy, aby sa dala hra uložiť a neskôr presne obnoviť:
+        - kompletný, ešte nezozbieraný štich sa uzavrie celou bežnou
+          cestou (log, AI pamäť, trofeje, prípadne koniec kola),
+        - odkrytý talon sa dá víťazovi dražby,
+        - animácie a dočasné stavy sa zrušia."""
+        rnd = self.game_state.current_round
+        if (rnd is not None and rnd.current_trick is not None
+                and rnd.current_trick.is_complete):
+            self.trick_waiting = True
+            self.trick_display_timer = 0
+            self._process_waiting_trick()          # spustí animáciu zberu
+            self.trick_animation.done = True
+            self.trick_animation.cards_in_flight = []
+            self._process_waiting_trick()          # uzavrie štich
+        rnd = self.game_state.current_round
+        if (self.talon_revealing and rnd is not None
+                and rnd.phase == "talon" and rnd.talon):
+            rnd.give_talon_to_winner()
+            if rnd.bidding.winner.is_human:
+                self.can_raise_bid = True
+        self.talon_revealing = False
+        self.talon_reveal_cards = []
+        self.dealing = False
+        self.deal_animation = None
+        self._reset_trick_state()
+
+    def _restore_after_continue(self):
+        """Návrat do rozohratej hry: obnoví to, čo nie je v hernom stave
+        (posuvník navýšenia, inštrukcie), alebo rozdá ďalšie kolo."""
+        gs = self.game_state
+        rnd = gs.current_round
+        if gs.phase == "game_over":
+            return
+        if rnd is None or rnd.phase in ("dealing", "scoring", "done"):
+            self._start_round()
+            return
+        self._auto_sort()
+        hi = gs.human_index
+        ui = self.restore_ui
+        if rnd.phase == "talon" and rnd.bidding.winner_index == hi:
+            # Víťaz dražby je hráč — má talon na ruke a ešte neodhodil
+            self.can_raise_bid = ui.get("can_raise_bid", True)
+            self.speech_bubble.show_instruction(hi, "Musím odhodiť 2 karty")
+        elif (rnd.phase == "tricks" and rnd.current_trick is None
+              and ui.get("raise_pending")):
+            # Odhodil, ale ešte nepotvrdil navýšenie povinnosti
+            self.can_raise_bid = True
+            self.bid_slider.show(min_value=rnd.bidding.current_bid,
+                                 current_value=rnd.bidding.current_bid)
+            self.speech_bubble.show_instruction(hi, "Navýšim povinnosť?")
+        elif rnd.phase == "tricks" and rnd.current_trick is None:
+            rnd.start_trick()
+
+    def step_frame(self) -> bool:
+        """
+        Jedna snímka hry: udalosti, logika, kreslenie (bez tick a flip).
+        Volá ju run() a aj headless testy (tester/regression_screen.py,
+        tools/screenshot_gallery.py), aby bežali presne tú istú cestu.
+        Vráti False, ak sa má hlavná slučka ukončiť (koniec hry).
+        """
+        if self.game_over_timer and pygame.time.get_ticks() >= self.game_over_timer:
+            self.running = False
+            return False
+
+        self._handle_events()
+
+        if self.dealing and self.deal_animation:
+            self.deal_animation.update()
+            self.deal_animation.draw(self._draw_table, self._draw_static)
+            self.speech_bubble.draw()
+            if self.deal_animation.done:
+                self.dealing = False
+                self.deal_animation = None
+                pygame.event.clear()
+                self._auto_sort()
+        else:
+            self._process_talon_reveal()
+            self._process_waiting_trick()
+            self.trick_animation.update()
+            self.card_throw_animation.update()
+            self._handle_ai_turn()
+            self._draw()
+            # ← NOVÉ
+            if self.achievement_tracker:
+                notifications = self.achievement_tracker.pop_notifications()
+                if notifications:
+                    self.achievement_popup.add(notifications)
+            self.achievement_popup.update()
+            self.achievement_popup.draw()
+        return True
 
     def _start_round(self):
         """Začne nové kolo a inicializuje AI pamäť."""
@@ -191,7 +295,7 @@ class Screen:
 
         # Spusti animáciu rozdávania
 
-        self.deal_animation = DealAnimation(self.screen, self.card_renderer)
+        self.deal_animation = DealAnimation(self.canvas, self.card_renderer)
         self.deal_animation.start(current_round.obligation_index)
         self.dealing = True
 
@@ -200,7 +304,7 @@ class Screen:
     # ------------------------------------------------------------------
 
     def _handle_events(self):
-        for event in pygame.event.get():
+        for event in display.get_events():
             if event.type == pygame.QUIT:
                 self.running = False
 
@@ -257,7 +361,7 @@ class Screen:
             self.info_overlay.toggle()
             return
         if self._button_menu_rect().collidepoint(pos):
-            self._reset_trick_state()
+            # Rozohraný štich/talon dorovná _settle_for_save() v run()
             self.running = False
             return
         if self.waiting_for_ai:  # ← pridané
@@ -463,13 +567,22 @@ class Screen:
         if self._try_declare_trump(player_index, clicked_card):
             return
 
-        success = current_round.play_card(player_index, clicked_card)
-        if success:
+        if self._play_card(player_index, clicked_card):
             self.selected_card = None
-            # Ak je štich kompletný — počkáme kým sa nakreslí
-            if current_round.current_trick.is_complete:
-                self.trick_waiting = True
-                self.trick_display_timer = pygame.time.get_ticks() + 1500
+
+    def _play_card(self, player_index: int, card: Card) -> bool:
+        """Zahrá kartu (človek aj AI): karta letí z ruky na stôl; ak je
+        štich kompletný, počká sa, kým ho hráč uvidí."""
+        current_round = self.game_state.current_round
+        throw_start = self.card_renderer.hand_card_center(
+            player_index, self.game_state.players[player_index].hand.cards, card)
+        if not current_round.play_card(player_index, card):
+            return False
+        self.card_throw_animation.start(player_index, card, throw_start)
+        if current_round.current_trick.is_complete:
+            self.trick_waiting = True
+            self.trick_display_timer = pygame.time.get_ticks() + 1500
+        return True
 
     def _reset_trick_state(self):
         """Resetuje stav štichu pri odchode z hry."""
@@ -501,13 +614,16 @@ class Screen:
         self.talon_reveal_cards = []
         self.trick_animation.done = True
         self.trick_animation.cards_in_flight = []
+        self.card_throw_animation.in_flight = {}
         self.waiting_for_ai = False
         self.pending_trump_card = None
         self.pending_trump_suit = None
 
-        # Spusti nový štich ak hra pokračuje
+        # Spusti nový štich ak hra pokračuje — nie však, kým hráč nepotvrdil
+        # navýšenie povinnosti (štich spustí až _confirm_raise_bid)
         if (current_round and current_round.phase == "tricks"
-                and current_round.current_trick is None):
+                and current_round.current_trick is None
+                and not self.bid_slider.visible):
             current_round.start_trick()
 
     # ------------------------------------------------------------------
@@ -543,7 +659,6 @@ class Screen:
                 self._show_message("Tromf nie je možný v prvom štichu!")
                 return
 
-        if self._button_trump_yes_rect().collidepoint(pos):
             trump_suit = self.pending_trump_suit
             is_new = current_round.trump_suit is not None
             current_round.declare_trump(player_index, trump_suit)
@@ -567,46 +682,19 @@ class Screen:
                 trump_suit,
                 TRUMP_POINTS[trump_suit]
             )
-            self._show_message(f"Tromf: {trump_suit}!")
-            current_round.play_card(player_index, self.pending_trump_card)
+            self._show_message(f"Tromf: {TRUMP_LABELS.get(trump_suit, trump_suit)}!")
+            self._play_card(player_index, self.pending_trump_card)
             self.pending_trump_card = None
             self.pending_trump_suit = None
             self.speech_bubble.show_trump(player_index, trump_suit, is_new=is_new)
-            if current_round.current_trick.is_complete:
-                self.trick_waiting = True
-                self.trick_display_timer = pygame.time.get_ticks() + 1500
 
         elif self._button_trump_no_rect().collidepoint(pos):
-            current_round.play_card(player_index, self.pending_trump_card)
+            self._play_card(player_index, self.pending_trump_card)
             self.pending_trump_card = None
             self.pending_trump_suit = None
-            if current_round.current_trick.is_complete:
-                self.trick_waiting = True
-                self.trick_display_timer = pygame.time.get_ticks() + 1500
     # ------------------------------------------------------------------
     # Koniec štichu
     # ------------------------------------------------------------------
-
-    def _check_trick_done(self):
-        """Skontroluje či je štich hotový a spracuje výsledok."""
-        current_round = self.game_state.current_round
-        if current_round.current_trick and current_round.current_trick.is_complete:
-            # Štich je kompletný — počkáme kým hráč uvidí karty
-            self.trick_waiting = True
-            self.trick_display_timer = pygame.time.get_ticks() + 1500  # 1.5 sekundy
-            winner_index = current_round.finish_trick()
-            winner_name = self.game_state.players[winner_index].name
-            self._show_message(f"{winner_name} vyhral štich!")
-
-            if current_round.phase == "scoring":
-                self.game_state.finish_round()
-                if self.game_state.phase == "game_over":
-                    self._show_message(f"{self.game_state.winner.name} vyhral hru!")
-                else:
-                    self._start_round()
-                    self.game_state.current_round.start_bidding()
-            else:
-                current_round.start_trick()
 
     def _process_waiting_trick(self):
         if not self.trick_waiting:
@@ -746,6 +834,11 @@ class Screen:
             return
         if self.talon_revealing:  # ← pridané
             return
+        if self.card_throw_animation.in_flight:
+            # Nechaj doletieť kartu vo vzduchu — inak by ďalšie AI (a jeho
+            # blokujúci delay() nižšie) zamrazilo slučku skôr, než sa
+            # animácia stihne prehrať.
+            return
         current_round = self.game_state.current_round
         phase = current_round.phase
 
@@ -807,16 +900,6 @@ class Screen:
             if bidding.active[idx]:
                 return idx
         return None
-
-    def _ai_bid(self, player_index: int, ai: AI):
-        """AI rozhodne v dražbe."""
-        current_round = self.game_state.current_round
-        if not current_round.bidding.can_bid(player_index):
-            return
-        amount = ai.decide_bid(current_round.bidding.current_bid)
-        done = current_round.process_bid(player_index, amount)
-        if done:
-            self._after_bidding()
 
     def _ai_discard(self, player_index: int, ai: AI):
         """AI zahodí 2 karty a rozhodne o navýšení."""
@@ -892,11 +975,7 @@ class Screen:
                     TRUMP_POINTS[trump_suit]
                 )
 
-        current_round.play_card(player_index, card)
-
-        if current_round.current_trick.is_complete:
-            self.trick_waiting = True
-            self.trick_display_timer = pygame.time.get_ticks() + 1500
+        self._play_card(player_index, card)
 
         self.waiting_for_ai = False
     # ------------------------------------------------------------------
@@ -983,10 +1062,12 @@ class Screen:
 
     def _draw(self):
         """Nakreslí celú obrazovku."""
-        self._draw_table()
-        self._draw_hands()
+        # Stôl a ruky — zo statickej vrstvy, prekreslí sa len pri zmene
+        self._draw_static(self._hands_key(),
+                          lambda: (self._draw_table(), self._draw_hands()))
         if not self._trick_anim_started and (not self.trick_animation or self.trick_animation.is_done):
             self._draw_current_trick()
+            self.card_throw_animation.draw()   # karty letiace z ruky na stôl
 
         self._draw_talon()
         # Talon reveal — len ak animácia ešte nezačala
@@ -1006,16 +1087,50 @@ class Screen:
         if self.show_last_trick:
             self._draw_last_trick_overlay()
 
+    def _draw_static(self, key, draw_fn):
+        """Nakreslí statický obsah cez StaticLayer: draw_fn() sa zavolá
+        len vtedy, keď sa zmenil `key` (hashovateľný opis stavu), inak sa
+        len skopíruje hotová vrstva. Výsledok je pixel po pixeli rovnaký
+        ako priame kreslenie (vrstva má formát okna)."""
+        c = self.canvas
+        size = c.target.get_size()
+        if self._static is None or self._static.surface.get_size() != size:
+            self._static = StaticLayer(size)
+        if self._static.needs_redraw(key):
+            with self._static.drawing(c, key):
+                draw_fn()
+        self._static.blit_to(c.target)
+
+    def _hands_key(self) -> tuple:
+        """Všetko, od čoho závisí vzhľad stola a rúk (_draw_hands)."""
+        rnd = self.game_state.current_round
+        trick = rnd.current_trick if rnd else None
+        if rnd and rnd.phase == "talon":
+            selected = tuple(self.selected_discards)
+        else:
+            selected = (self.pending_trump_card,) if self.pending_trump_card else ()
+        return (
+            "game", self.table_bg, self.debug,
+            rnd.trump_suit if rnd else None,
+            trick.lead_suit if trick else None,
+            tuple(trick.played_cards) if trick else (),
+            rnd.get_current_player_index() if rnd else None,
+            selected,
+            tuple(tuple(p.hand.cards) for p in self.game_state.players),
+        )
+
     def _draw_table(self):
         """Nakreslí herný stôl."""
         if self.table_bg:
-            self.screen.blit(self.table_bg, (0, 0))
+            # Stôl cez celé okno (aj pásma pri 21:9)
+            draw_backdrop(self.canvas, None, self.table_bg)
         else:
             # Fallback ak obrázok chýba
-            self.screen.fill(COLOR_BG)
+            self.canvas.fill_window(COLOR_BG)
+            cx, cy = self.layout.table_center
             pygame.draw.ellipse(
-                self.screen, COLOR_BG_DARK,
-                (TABLE_CENTER_X - 400, TABLE_CENTER_Y - 250, 800, 500)
+                self.canvas.target, COLOR_BG_DARK,
+                self.canvas.prect((cx - 400, cy - 250, 800, 500))
             )
 
     def _draw_hands(self):
@@ -1045,13 +1160,8 @@ class Screen:
     def _draw_player_labels(self):
         """Nakreslí menovky hráčov."""
 
-        font = get_font(28)
-
-        label_positions = {
-            0: (TABLE_CENTER_X, SCREEN_HEIGHT - 30),
-            1: (120, TABLE_CENTER_Y -120),
-            2: (SCREEN_WIDTH - 120, TABLE_CENTER_Y -120)
-        }
+        font = self.canvas.font(28)
+        label_positions = self.layout.label_positions
 
         for i, player in enumerate(self.game_state.players):
             pos = label_positions[i]
@@ -1061,30 +1171,24 @@ class Screen:
 
             bg_rect = rect.inflate(16, 8)
 
-            bg = pygame.Surface(
-                (bg_rect.width, bg_rect.height),
-                pygame.SRCALPHA
-            )
+            self.canvas.overlay(bg_rect, (0, 0, 0, 160))
 
-            bg.fill((0, 0, 0, 160))
-
-            self.screen.blit(bg, bg_rect.topleft)
-
-            pygame.draw.rect(
-                self.screen,
+            self.canvas.rect(
                 COLOR_GOLD,
                 bg_rect,
                 width=1,
                 border_radius=6
             )
 
-            self.screen.blit(surf, rect)
+            self.canvas.blit(surf, rect)
 
     def _draw_current_trick(self):
         """Nakreslí karty aktuálneho štichu."""
         current_round = self.game_state.current_round
         if current_round and current_round.current_trick:
-            self.card_renderer.draw_trick(current_round.current_trick)
+            self.card_renderer.draw_trick(
+                current_round.current_trick,
+                exclude_players=set(self.card_throw_animation.in_flight))
 
     def _draw_last_trick_overlay(self):
         """Nakreslí overlay s posledným štichom."""
@@ -1094,9 +1198,7 @@ class Screen:
             self.show_last_trick = False
             return
 
-        dark = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-        dark.fill((0, 0, 0, 200))
-        self.screen.blit(dark, (0, 0))
+        self.canvas.overlay_window((0, 0, 0, 200))
 
         last_trick = current_round.tricks[-1]
         winner_index = last_trick.get_winner_index()
@@ -1106,10 +1208,10 @@ class Screen:
         gap = 30
         total_w = len(played) * (card_w + gap) - gap
         x0 = SCREEN_WIDTH // 2 - total_w // 2
-        y0 = SCREEN_HEIGHT // 2 - card_h // 2 - 40
+        y0 = self.H // 2 - card_h // 2 - 40
 
         title = self.font_large.render("POSLEDNÝ ŠTICH", True, COLOR_GOLD)
-        self.screen.blit(title, title.get_rect(
+        self.canvas.blit(title, title.get_rect(
             centerx=SCREEN_WIDTH // 2, top=y0 - 60
         ))
 
@@ -1118,11 +1220,11 @@ class Screen:
             is_winner = (player_idx == winner_index)
 
             img = self.card_renderer._get_card_image(card)
-            self.screen.blit(img, (cx, y0))
+            self.canvas.blit(img, (cx, y0))
 
             border_color = COLOR_GOLD if is_winner else COLOR_GRAY
             border_width = 3 if is_winner else 1
-            pygame.draw.rect(self.screen, border_color,
+            self.canvas.rect(border_color,
                              (cx, y0, card_w, card_h),
                              width=border_width, border_radius=6)
 
@@ -1130,12 +1232,12 @@ class Screen:
             name_surf = self.font_large.render(
                 name, True, COLOR_GOLD if is_winner else COLOR_WHITE
             )
-            self.screen.blit(name_surf, name_surf.get_rect(
+            self.canvas.blit(name_surf, name_surf.get_rect(
                 centerx=cx + card_w // 2, top=y0 + card_h + 8
             ))
 
         hint = self.font_medium.render("Klikni pre zavretie", True, COLOR_GRAY)
-        self.screen.blit(hint, hint.get_rect(
+        self.canvas.blit(hint, hint.get_rect(
             centerx=SCREEN_WIDTH // 2, top=y0 + card_h + 50
         ))
 
@@ -1154,11 +1256,10 @@ class Screen:
         if not self.talon_revealing or not self.talon_reveal_cards:
             return
 
+        tx, ty = self.layout.talon_pos
         for i, card in enumerate(self.talon_reveal_cards):
             img = self.card_renderer._get_card_image(card)
-            x = TALON_X + i * CARD_FAN_OFFSET
-            y = TALON_Y
-            self.screen.blit(img, (x, y))
+            self.canvas.blit(img, (tx + i * CARD_FAN_OFFSET, ty))
 
     def _draw_buttons(self):
         self._draw_button(
@@ -1190,11 +1291,7 @@ class Screen:
             return
 
         if self.pending_trump_card is not None:
-            trump_labels = {
-                "heart": "Srdce", "bell": "Guľa",
-                "leaf": "Zeleň", "acorn": "Žaluď"
-            }
-            label = trump_labels.get(self.pending_trump_suit, self.pending_trump_suit)
+            label = TRUMP_LABELS.get(self.pending_trump_suit, self.pending_trump_suit)
 
             if self.pending_trump_first_trick:
                 # ← prvý štich: šedé/disabled tromf tlačidlo + bez tromfu
@@ -1222,20 +1319,18 @@ class Screen:
 
     def _draw_button(self, rect: pygame.Rect, text: str, color: tuple):
         """Nakreslí jedno tlačidlo."""
-        mouse_pos = pygame.mouse.get_pos()
+        mouse_pos = display.mouse_pos()
         is_hover = rect.collidepoint(mouse_pos)
 
-        overlay = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
         alpha = 240 if is_hover else 200
-        overlay.fill((*color, alpha))
-        self.screen.blit(overlay, (rect.x, rect.y))
+        self.canvas.overlay(rect, (*color, alpha))
 
         border_color = COLOR_WHITE if is_hover else COLOR_GOLD
-        pygame.draw.rect(self.screen, border_color, rect, width=2, border_radius=BUTTON_RADIUS)
+        self.canvas.rect(border_color, rect, width=2, border_radius=BUTTON_RADIUS)
 
         surf = self.font_medium.render(text, True, COLOR_WHITE)
         text_rect = surf.get_rect(center=rect.center)
-        self.screen.blit(surf, text_rect)
+        self.canvas.blit(surf, text_rect)
 
     def _draw_message(self):
         """Zobrazí správu s priehľadným pozadím tesne nad kartami hráča."""
@@ -1246,70 +1341,54 @@ class Screen:
         msg_w = surf.get_width() + 60
         msg_h = surf.get_height() + 20
 
-        # Pozícia — tesne nad karty hráča (y=860 je HUMAN_HAND_Y)
-        msg_x = TABLE_CENTER_X - msg_w // 2
-        msg_y = HUMAN_HAND_Y - 55 - msg_h // 2
+        # Pozícia — tesne nad karty hráča (gui/layout.py)
+        cx = self.layout.table_center[0]
+        msg_x = cx - msg_w // 2
+        msg_y = self.layout.message_bottom_y - msg_h // 2
 
         # Priehľadný overlay
-        overlay = pygame.Surface((msg_w, msg_h), pygame.SRCALPHA)
-        overlay.fill((25, 15, 8, 200))
-        self.screen.blit(overlay, (msg_x, msg_y))
+        self.canvas.overlay((msg_x, msg_y, msg_w, msg_h), (25, 15, 8, 200))
 
         # Zlatý okraj
-        pygame.draw.rect(
-            self.screen, COLOR_GOLD,
-            (msg_x, msg_y, msg_w, msg_h),
-            width=2, border_radius=8
-        )
+        self.canvas.rect(COLOR_GOLD, (msg_x, msg_y, msg_w, msg_h),
+                         width=2, border_radius=8)
 
         # Text
-        text_rect = surf.get_rect(center=(TABLE_CENTER_X, msg_y + msg_h // 2))
-        self.screen.blit(surf, text_rect)
+        text_rect = surf.get_rect(center=(cx, msg_y + msg_h // 2))
+        self.canvas.blit(surf, text_rect)
 
     # ------------------------------------------------------------------
     # Rects — tlačidlá
     # ------------------------------------------------------------------
 
-    @staticmethod
-    def _button_bid_rect() -> pygame.Rect:
-        return pygame.Rect(TABLE_CENTER_X - 200, BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
+    # Rozloženie tlačidiel je v gui/layout.py (ukotvené podľa výšky okna).
 
-    @staticmethod
-    def _button_pass_rect() -> pygame.Rect:
-        return pygame.Rect(TABLE_CENTER_X + 20, BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
+    def _button_bid_rect(self) -> pygame.Rect:
+        return self.layout.bid_rect()
 
-    @staticmethod
-    def _button_confirm_rect() -> pygame.Rect:
-        return pygame.Rect(TABLE_CENTER_X - BUTTON_WIDTH // 2, BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
+    def _button_pass_rect(self) -> pygame.Rect:
+        return self.layout.pass_rect()
 
-    @staticmethod
-    def _button_trump_yes_rect() -> pygame.Rect:
-        return pygame.Rect(TABLE_CENTER_X - 200, BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
+    def _button_confirm_rect(self) -> pygame.Rect:
+        return self.layout.confirm_rect()
 
-    @staticmethod
-    def _button_trump_no_rect() -> pygame.Rect:
-        return pygame.Rect(TABLE_CENTER_X + 20, BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
+    def _button_trump_yes_rect(self) -> pygame.Rect:
+        return self.layout.trump_yes_rect()
 
-    @staticmethod
-    def _button_last_trick_rect() -> pygame.Rect:
-        from config import BUTTON_SORT_X, BUTTON_SORT_Y, BUTTON_SORT_WIDTH, BUTTON_SORT_HEIGHT
-        return pygame.Rect(BUTTON_SORT_X, BUTTON_SORT_Y - BUTTON_SORT_HEIGHT - 10,
-                           BUTTON_SORT_WIDTH, BUTTON_SORT_HEIGHT)
+    def _button_trump_no_rect(self) -> pygame.Rect:
+        return self.layout.trump_no_rect()
 
-    @staticmethod
-    def _button_sort_rect() -> pygame.Rect:
-        from config import BUTTON_SORT_X, BUTTON_SORT_Y, BUTTON_SORT_WIDTH, BUTTON_SORT_HEIGHT
-        return pygame.Rect(BUTTON_SORT_X, BUTTON_SORT_Y, BUTTON_SORT_WIDTH, BUTTON_SORT_HEIGHT)
+    def _button_last_trick_rect(self) -> pygame.Rect:
+        return self.layout.last_trick_rect()
 
-    @staticmethod
-    def _button_info_rect() -> pygame.Rect:
-        from config import BUTTON_INFO_X, BUTTON_INFO_Y, BUTTON_INFO_WIDTH, BUTTON_INFO_HEIGHT
-        return pygame.Rect(BUTTON_INFO_X, BUTTON_INFO_Y, BUTTON_INFO_WIDTH, BUTTON_INFO_HEIGHT)
+    def _button_sort_rect(self) -> pygame.Rect:
+        return self.layout.sort_rect()
 
-    @staticmethod
-    def _button_menu_rect() -> pygame.Rect:
-        from config import BUTTON_MENU_X, BUTTON_MENU_Y, BUTTON_MENU_WIDTH, BUTTON_MENU_HEIGHT
-        return pygame.Rect(BUTTON_MENU_X, BUTTON_MENU_Y, BUTTON_MENU_WIDTH, BUTTON_MENU_HEIGHT)
+    def _button_info_rect(self) -> pygame.Rect:
+        return self.layout.info_rect()
+
+    def _button_menu_rect(self) -> pygame.Rect:
+        return self.layout.menu_rect()
     # ------------------------------------------------------------------
     # Pomocné metódy
     # ------------------------------------------------------------------
@@ -1331,4 +1410,4 @@ class Screen:
         self.achievement_tracker.on_round_hand_ready(has_pair, has_ace)
 
     def __repr__(self) -> str:
-        return f"Screen({SCREEN_WIDTH}x{SCREEN_HEIGHT}, debug={self.debug})"
+        return f"Screen({SCREEN_WIDTH}x{self.H}, debug={self.debug})"

@@ -1,50 +1,44 @@
 # gui/menu.py
 
 import pygame
+from gui import display
 import sys
 import random
 import os
+from gui.canvas import draw_backdrop, draw_static
 from config import (
-    SCREEN_WIDTH, SCREEN_HEIGHT,
+    SCREEN_WIDTH,
     COLOR_WHITE, COLOR_GOLD, COLOR_GRAY,
     COLOR_BUTTON_PRIMARY, COLOR_BUTTON_SECONDARY,
     FONT_SIZE_LARGE, FONT_SIZE_MEDIUM,
     BUTTON_RADIUS,
     CARDS_MEDIUM_PATH, CARD_SIZE_MEDIUM,
     SUITS, RANKS,
-    get_font
 )
+
+TABLE_BG = "assets/graphics/table.jpg"
+LOGO_PATH = "assets/graphics/tisic_logo.png"
 
 
 class Menu:
     def __init__(self, screen: pygame.Surface, show_continue: bool = False):
-        self.screen = screen
+        # `screen` (logický povrch) sa už nepoužíva — kreslí sa cez Canvas
+        # priamo do okna v jeho rozlíšení (gui/display.py, gui/canvas.py).
+        self.canvas = display.canvas()
+        self.H = display.logical_height()
         self.clock = pygame.time.Clock()
         self.show_continue = show_continue
 
-        self.font_button = get_font(FONT_SIZE_LARGE)
-        self.font_medium = get_font(FONT_SIZE_MEDIUM)
-
-        # Pozadie
-        try:
-            self.bg = pygame.image.load("assets/graphics/table.jpg").convert()
-            self.bg = pygame.transform.scale(self.bg, (SCREEN_WIDTH, SCREEN_HEIGHT))
-        except FileNotFoundError:
-            self.bg = None
+        self.font_button = self.canvas.font(FONT_SIZE_LARGE)
+        self.font_medium = self.canvas.font(FONT_SIZE_MEDIUM)
 
         # Logo
         try:
-            self.logo = pygame.image.load("assets/graphics/1000.ico").convert_alpha()
-            logo_size = 280
-            self.logo = pygame.transform.scale(self.logo, (logo_size, logo_size))
-        except FileNotFoundError:
-            self.logo = None
-        try:
-            self.logo = pygame.image.load("assets/graphics/tisic_logo.png").convert_alpha()
+            iw, ih = self.canvas.image_size(LOGO_PATH)
             logo_w = 500
-            logo_h = int(logo_w * (self.logo.get_height() / self.logo.get_width()))
-            self.logo = pygame.transform.scale(self.logo, (logo_w, logo_h))
-        except FileNotFoundError:
+            logo_h = int(logo_w * (ih / iw))
+            self.logo = self.canvas.image(LOGO_PATH, (logo_w, logo_h), smooth=False)
+        except (FileNotFoundError, pygame.error):
             self.logo = None
 
         # Náhodné karty v pozadí
@@ -64,7 +58,7 @@ class Menu:
         buttons_data.append(("Koniec", "quit", COLOR_BUTTON_SECONDARY))
 
         total_h = len(buttons_data) * (btn_h + 20) - 20
-        start_y = SCREEN_HEIGHT // 2 - total_h // 2 + (120 if self.logo else 50)
+        start_y = self.H // 2 - total_h // 2 + (120 if self.logo else 50)
 
         self.buttons = []
         for i, (label, action, color) in enumerate(buttons_data):
@@ -94,26 +88,25 @@ class Menu:
         selected = random.sample(card_names, 12)
 
         for filename in selected:
-            path = os.path.join(CARDS_MEDIUM_PATH, filename)
+            if not os.path.exists(os.path.join(CARDS_MEDIUM_PATH, filename)):
+                continue
             try:
-                img = pygame.image.load(path).convert_alpha()
-                # Zmenši karty
+                # Zmenšená (0.8) a náhodne otočená karta
                 w, h = CARD_SIZE_MEDIUM
                 scale = 0.8
-                img = pygame.transform.scale(img, (int(w * scale), int(h * scale)))
-
-                # Náhodná rotácia
                 angle = random.uniform(-35, 35)
-                img = pygame.transform.rotate(img, angle)
+                img = self.canvas.card(
+                    filename, angle, (int(w * scale), int(h * scale)),
+                    smooth=False).copy()
 
                 # Náhodná pozícia — vyhni sa stredu (kde sú tlačidlá)
                 attempts = 0
                 while attempts < 20:
                     x = random.randint(50, SCREEN_WIDTH - 200)
-                    y = random.randint(50, SCREEN_HEIGHT - 200)
+                    y = random.randint(50, self.H - 200)
 
                     # Vyhni sa stredu obrazovky
-                    cx, cy = SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2
+                    cx, cy = SCREEN_WIDTH // 2, self.H // 2
                     if abs(x - cx) < 350 and abs(y - cy) < 300:
                         attempts += 1
                         continue
@@ -139,7 +132,7 @@ class Menu:
                     "y": y
                 })
 
-            except FileNotFoundError:
+            except (FileNotFoundError, pygame.error):
                 continue
 
         return cards
@@ -151,9 +144,9 @@ class Menu:
     def run(self) -> str:
         while True:
             self.clock.tick(60)
-            mouse_pos = pygame.mouse.get_pos()
+            mouse_pos = display.mouse_pos()
 
-            for event in pygame.event.get():
+            for event in display.get_events():
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
@@ -166,7 +159,7 @@ class Menu:
 
             self._update_hover(mouse_pos)
             self._draw()
-            pygame.display.flip()
+            display.present()
 
     # ------------------------------------------------------------------
     # Udalosti
@@ -187,29 +180,26 @@ class Menu:
     # ------------------------------------------------------------------
 
     def _draw(self):
-        if self.bg:
-            self.screen.blit(self.bg, (0, 0))
-        else:
-            self.screen.fill((45, 28, 15))
+        # Všetko okrem tlačidiel (hover) je statické — kreslí sa raz
+        draw_static(self, self.canvas, "menu", self._draw_static)
+        self._draw_buttons()
 
-        # Tmavý overlay celá obrazovka
-        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 130))
-        self.screen.blit(overlay, (0, 0))
+    def _draw_static(self):
+        c = self.canvas
+        # Stôl cez celé okno (aj pásma) + tmavý overlay
+        draw_backdrop(c, (0, 0, 0, 130), TABLE_BG)
 
         # Karty v pozadí
         for card in self.bg_cards:
             card["image"].set_alpha(250)
-            self.screen.blit(card["image"], (card["x"], card["y"]))
+            c.blit(card["image"], (card["x"], card["y"]))
 
         # Tmavý panel v strede — celá výška obrazovky, zarovnaný so šírkou loga
         panel_w = max(560, self.logo.get_width() + 60) if self.logo else 560
-        center_overlay = pygame.Surface((panel_w, SCREEN_HEIGHT), pygame.SRCALPHA)
-        center_overlay.fill((0, 0, 0, 140))
-        self.screen.blit(center_overlay, (SCREEN_WIDTH // 2 - panel_w // 2, 0))
+        c.overlay((SCREEN_WIDTH // 2 - panel_w // 2, 0, panel_w, self.H),
+                  (0, 0, 0, 140))
 
         self._draw_logo()
-        self._draw_buttons()
 
     def _draw_logo(self):
         if self.logo:
@@ -224,13 +214,11 @@ class Menu:
                 logo_rect.x - pad, logo_rect.y - pad,
                 logo_rect.width + pad * 2, logo_rect.height + pad * 2
             )
-            overlay = pygame.Surface((bg_rect.width, bg_rect.height), pygame.SRCALPHA)
-            overlay.fill((0, 0, 0, 160))
-            self.screen.blit(overlay, (bg_rect.x, bg_rect.y))
+            self.canvas.overlay(bg_rect, (0, 0, 0, 160))
 
-            self.screen.blit(self.logo, logo_rect)
+            self.canvas.blit(self.logo, logo_rect)
         else:
-            font_title = get_font(120)
+            font_title = self.canvas.font(120)
             title = font_title.render("TISÍC", True, COLOR_GOLD)
             title_rect = title.get_rect(
                 centerx=SCREEN_WIDTH // 2,
@@ -241,12 +229,10 @@ class Menu:
                 title_rect.x - pad, title_rect.y - pad,
                 title_rect.width + pad * 2, title_rect.height + pad * 2
             )
-            overlay = pygame.Surface((bg_rect.width, bg_rect.height), pygame.SRCALPHA)
-            overlay.fill((0, 0, 0, 160))
-            self.screen.blit(overlay, (bg_rect.x, bg_rect.y))
+            self.canvas.overlay(bg_rect, (0, 0, 0, 160))
             shadow = font_title.render("TISÍC", True, (0, 0, 0))
-            self.screen.blit(shadow, (title_rect.x + 3, title_rect.y + 3))
-            self.screen.blit(title, title_rect)
+            self.canvas.blit(shadow, (title_rect.x + 3, title_rect.y + 3))
+            self.canvas.blit(title, title_rect)
 
     def _draw_buttons(self):
         for btn in self.buttons:
@@ -257,26 +243,19 @@ class Menu:
         color = btn["color"]
 
         alpha = 240 if btn["hover"] else 200
-        overlay = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
-        overlay.fill((*color, alpha))
-        self.screen.blit(overlay, (rect.x, rect.y))
+        self.canvas.overlay(rect, (*color, alpha))
 
         # Hover efekt
         if btn["hover"]:
-            hover_surf = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
-            hover_surf.fill((255, 255, 255, 25))
-            self.screen.blit(hover_surf, (rect.x, rect.y))
+            self.canvas.overlay(rect, (255, 255, 255, 25))
 
         border_color = COLOR_GOLD if btn["hover"] else COLOR_GRAY
-        pygame.draw.rect(
-            self.screen, border_color,
-            rect, width=2, border_radius=BUTTON_RADIUS
-        )
+        self.canvas.rect(border_color, rect, width=2, border_radius=BUTTON_RADIUS)
 
         text_color = COLOR_GOLD if btn["hover"] else COLOR_WHITE
         text_surf = self.font_button.render(btn["label"], True, text_color)
         text_rect = text_surf.get_rect(center=rect.center)
-        self.screen.blit(text_surf, text_rect)
+        self.canvas.blit(text_surf, text_rect)
 
     def __repr__(self) -> str:
         return "Menu()"
