@@ -217,6 +217,19 @@ class Gallery:
         self.frame(screen, 2)
         self.shot("game_07_stich_hrac_na_tahu")
 
+        # Smer hry proti smeru hodinových ručičiek (SR) — ten istý stav
+        # hry, len počítače vymenené (Počítač 1 vpravo). Iba vykreslenie,
+        # bez herných snímok — priebeh hry pre ďalšie scény sa nemení.
+        from gui.screen import Screen
+        from gui import layout
+        sr = Screen(gs, screen.ai_players, debug=False, new_game=False,
+                    achievement_tracker=tracker, autosave=False, clockwise=False)
+        sr.speech_bubble.show_bid(1, 70)
+        sr.speech_bubble.show_bid(2, 80)
+        sr._draw()
+        self.shot("game_07b_smer_SR")
+        layout.set_clockwise(True)
+
         # Dialóg tromfu — len vykreslenie (stav sa hneď vráti)
         card = next((c for c in human.hand.cards
                      if c.rank in ("over", "king")), human.hand.cards[0])
@@ -246,6 +259,11 @@ class Gallery:
         self.frame(screen)
         self.shot("game_12_pravidla_pravidla")
         screen.info_overlay.visible = False
+
+        screen.trophy_overlay.show()
+        self.frame(screen)
+        self.shot("game_12b_trofeje")
+        screen.trophy_overlay.hide()
 
         # Koniec kola — bubliny s výsledkom počas rozdávania ďalšieho kola
         self.run_until(screen, lambda: gs.round_number >= 2, bot)

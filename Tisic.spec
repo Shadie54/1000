@@ -1,4 +1,12 @@
 # -*- mode: python ; coding: utf-8 -*-
+#
+# Build hry Tisíc (PyInstaller, onedir):
+#   build.bat                       (alebo: pyinstaller Tisic.spec --noconfirm --clean)
+# Výsledok: dist\Tisic\Tisic.exe + dist\Tisic\_internal\ (hra, assets, Python).
+# Na rozdanie zbaliť celý priečinok dist\Tisic do zipu.
+#
+# Testy (tester\) a nástroje (tools\) sa do exe nedostanú — main.py ich
+# neimportuje.
 
 
 a = Analysis(
@@ -10,7 +18,7 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=['tkinter', 'unittest', 'pydoc', 'numpy'],
     noarchive=False,
     optimize=0,
 )
@@ -25,21 +33,21 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,          # UPX býva príčinou falošných poplachov antivírusov
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['assets\\graphics\\1000.ico'],
+    icon=['assets/graphics/1000.ico'],
 )
 coll = COLLECT(
     exe,
     a.binaries,
     a.datas,
     strip=False,
-    upx=True,
+    upx=False,
     upx_exclude=[],
     name='Tisic',
 )

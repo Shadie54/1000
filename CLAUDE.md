@@ -9,6 +9,16 @@ python main.py --resolution 1366x768 --windowed   # iné rozlíšenie v okne (v�
 python main.py --safe                             # núdzový štart v okne 1280×720
 ```
 
+## Build exe (PyInstaller, onedir)
+```
+build.bat          # → dist\Tisic\Tisic.exe + dist\Tisic\_internal\
+```
+`Tisic.spec` pribalí `assets\` (v exe ležia v `_internal\`); main.py si
+na štarte nastaví pracovný priečinok na `sys._MEIPASS` (exe) / priečinok
+main.py (zdrojáky) — cesty `assets/...` preto ostávajú relatívne. Na
+rozdanie sa zbalí celý `dist\Tisic`. Nastavenia, uložená hra, trofeje a
+logy sú v `Documents\Tisic` (nie pri exe).
+
 ## Testy (headless, bez okna — nezapisujú do Documents/Tisic)
 ```
 python tester/regression_screen.py --out po.txt         # stopa 3 kôl (~1 min)
@@ -33,12 +43,19 @@ vždy z toho istého PC (fonty).
   `StaticLayer`/`draw_static` (výkon pri 4K).
 - `gui/layout.py` — rozloženie hernej obrazovky podľa L_h (ruky, štich,
   talon, tlačidlá, bubliny…). Nové prvky hernej obrazovky pridávať sem.
+  Smer hry (Nastavenia → Hra, `settings["play_direction"]` "cw"/"ccw")
+  mení len miesta počítačov pri stole (`layout.seats()`); poradie ťahov
+  v hernej logike je vždy Hráč → Počítač 1 → Počítač 2. Pozície podľa
+  hráča brať vždy z layoutu (nie `if player_index == 1: vľavo`).
 
 Pravidlá pre GUI kód:
 - kresliť len cez `display.canvas()`, nikdy priamo na povrch okna,
 - výšku brať z `display.logical_height()` pri vytvorení obrazovky
   (mení sa za behu), šírka je vždy `SCREEN_WIDTH` (1920),
 - myš len cez `display.get_events()` / `display.mouse_pos()`,
+- prehľady cez hru (Pravidlá `InfoOverlay`, Trofeje `AchievementsOverlay`)
+  dostanú udalosti v `_handle_events` ako prvé (Esc ich zavrie); hra pod
+  nimi beží ďalej,
 - statický obsah hernej obrazovky je v `Screen._draw_static` — ak nový
   prvok mení vzhľad stola alebo rúk, pridať jeho stav do `_hands_key()`.
 

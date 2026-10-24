@@ -17,8 +17,14 @@ from achievements.storage import load_achievements
 
 
 class AchievementsScreen:
-    def __init__(self, screen: pygame.Surface):
+    """Zoznam trofejí. Dva spôsoby použitia:
+      - z menu: run() — vlastná slučka, pozadie stola (draw_backdrop),
+      - počas hry: AchievementsOverlay nižšie — handle_event() + draw_overlay()
+        z hernej slučky, pod panelom je stmavená rozohratá hra."""
+
+    def __init__(self, screen: pygame.Surface | None = None, data: dict | None = None):
         # `screen` (logický povrch) sa už nepoužíva — kreslí sa cez Canvas.
+        # data: živé dáta trofejí (AchievementTracker.data); inak zo súboru.
         self.canvas = display.canvas()
         self.H = display.logical_height()
         self.clock = pygame.time.Clock()
@@ -38,7 +44,7 @@ class AchievementsScreen:
             path = f"assets/graphics/trophy_{tier_name}.png"
             self.trophy_icons[tier_name] = path if os.path.exists(path) else None
 
-        self.data = load_achievements()
+        self.data = data if data is not None else load_achievements()
         self.scroll_offset = 0
         self.max_scroll = 0
 
@@ -99,19 +105,25 @@ class AchievementsScreen:
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE:
-                        return
-                if event.type == pygame.MOUSEBUTTONDOWN:
-                    if event.button == 1 and self.back_button.collidepoint(event.pos):
-                        return
-                    if event.button == 4:
-                        self.scroll_offset = max(0, self.scroll_offset - 50)
-                    if event.button == 5:
-                        self.scroll_offset = min(self.max_scroll, self.scroll_offset + 50)
+                if self.handle_event(event) == "close":
+                    return
 
             self._draw(mouse_pos)
             display.present()
+
+    def handle_event(self, event) -> str | None:
+        """Klávesy a myš zoznamu trofejí. Vráti "close" pri Esc / Späť."""
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                return "close"
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 1 and self.back_button.collidepoint(event.pos):
+                return "close"
+            if event.button == 4:
+                self.scroll_offset = max(0, self.scroll_offset - 50)
+            if event.button == 5:
+                self.scroll_offset = min(self.max_scroll, self.scroll_offset + 50)
+        return None
 
     # ------------------------------------------------------------------
     # Kreslenie
@@ -125,10 +137,29 @@ class AchievementsScreen:
 
     def _draw_static(self):
         draw_backdrop(self.canvas, (0, 0, 0, 200))
+        self._draw_content()
+
+    def _draw_content(self):
         self._draw_panel_bg()
         self._draw_title()
         self._draw_progress()
         self._draw_rows()
+
+    def draw_overlay(self, mouse_pos):
+        """Kreslenie počas hry — cez stmavenú hernú obrazovku. Pod panelom
+        ostáva obraz hry z chvíle otvorenia (vidno z neho len okraje), aby
+        sa celý zoznam nekreslil každú snímku (pri 4K ~40 ms)."""
+        if getattr(self, "_game_frame", None) is None:
+            # Volá sa na konci kreslenia hernej snímky — okno ju práve obsahuje
+            self._game_frame = self.canvas.target.copy()
+        draw_static(self, self.canvas, ("hra", self.scroll_offset),
+                    self._draw_over_game)
+        self._draw_back_button(mouse_pos)
+
+    def _draw_over_game(self):
+        self.canvas.target.blit(self._game_frame, (0, 0))
+        self.canvas.overlay_window((0, 0, 0, 200))
+        self._draw_content()
 
     def _draw_panel_bg(self):
         self.canvas.overlay((self.PANEL_X, self.PANEL_Y, self.PANEL_W, self.PANEL_H),
@@ -313,3 +344,50 @@ class AchievementsScreen:
 
     def __repr__(self):
         return "AchievementsScreen()"
+
+
+class AchievementsOverlay:
+    """Trofeje počas hry (tlačidlo Trofeje na hernej obrazovke) — rovnaký
+    vzhľad ako obrazovka Trofeje v menu. Hra pod ním beží ďalej rovnako
+    ako pod prehľadom Pravidlá."""
+
+    def __init__(self, tracker=None):
+        self.tracker = tracker
+        self.view: AchievementsScreen | None = None
+
+    @property
+    def visible(self) -> bool:
+        return self.view is not None
+
+    @property
+    def covers_screen(self) -> bool:
+        """True keď už má obraz hry pod sebou — kreslí celé okno sám."""
+        return getattr(self.view, "_game_frame", None) is not None
+
+    def show(self):
+        # Živé dáta trackera — trofej odomknutá v tejto hre je hneď vidieť
+        data = self.tracker.data if self.tracker is not None else None
+        self.view = AchievementsScreen(data=data)
+
+    def hide(self):
+        self.view = None
+
+    def toggle(self):
+        if self.visible:
+            self.hide()
+        else:
+            self.show()
+
+    def handle_event(self, event) -> bool:
+        """True = udalosť spracovaná (klik cez overlay sa do hry nedostane)."""
+        if self.view is None or event.type == pygame.QUIT:
+            return False
+        if self.view.handle_event(event) == "close":
+            self.hide()
+            return True
+        return event.type in (pygame.KEYDOWN, pygame.MOUSEBUTTONDOWN,
+                              pygame.MOUSEBUTTONUP)
+
+    def draw(self):
+        if self.view is not None:
+            self.view.draw_overlay(display.mouse_pos())

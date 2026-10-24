@@ -23,6 +23,7 @@ from gui.bid_slider import BidSlider
 from gui.card_renderer import CardRenderer
 from gui.deal_animation import DealAnimation
 from gui.info_overlay import InfoOverlay
+from gui.achievements_screen import AchievementsOverlay
 from gui.scoreboard import Scoreboard
 from gui.speech_bubble import SpeechBubble
 from gui.trick_animation import TrickAnimation
@@ -42,12 +43,15 @@ class Screen:
                  debug: bool = DEBUG_MODE, new_game: bool = True,
                  table_bg: str = "table.jpg", achievement_tracker=None,
                  animation_speed: float = ANIMATION_SPEED_DEFAULT,
-                 restore_ui: dict | None = None, autosave: bool = True):
+                 restore_ui: dict | None = None, autosave: bool = True,
+                 clockwise: bool = True):
         pygame.init()
         # Okno otvára výhradne gui/display.py. Kreslí sa cez Canvas
         # (gui/canvas.py) v logických súradniciach priamo do okna;
         # rozloženie hernej obrazovky je v gui/layout.py.
         self.canvas = display.canvas()
+        # Smer hry (Nastavenia → Hra): mení len miesta počítačov pri stole
+        layout.set_clockwise(clockwise)
         self.layout = layout.game()
         self.H = self.layout.l_h
         path = f"assets/graphics/{table_bg}"
@@ -127,6 +131,8 @@ class Screen:
         self.autosave = autosave
 
         self.info_overlay = InfoOverlay(self.canvas)
+        # Trofeje počas hry (tlačidlo Trofeje vedľa Menu)
+        self.trophy_overlay = AchievementsOverlay(achievement_tracker)
     # ------------------------------------------------------------------
     # Hlavná slučka
     # ------------------------------------------------------------------
@@ -241,6 +247,9 @@ class Screen:
             self.deal_animation.update()
             self.deal_animation.draw(self._draw_table, self._draw_static)
             self.speech_bubble.draw()
+            # Prehľad otvorený z konca kola ostáva viditeľný aj pri rozdávaní
+            self.info_overlay.draw()
+            self.trophy_overlay.draw()
             if self.deal_animation.done:
                 self.dealing = False
                 self.deal_animation = None
@@ -308,6 +317,15 @@ class Screen:
             if event.type == pygame.QUIT:
                 self.running = False
 
+            # Otvorený prehľad (Trofeje / Pravidlá) dostane udalosť prvý —
+            # Esc ho zavrie a nevyhodí hráča do menu.
+            if self.trophy_overlay.visible:
+                if self.trophy_overlay.handle_event(event):
+                    continue
+            if self.info_overlay.visible:
+                if self.info_overlay.handle_event(event):
+                    continue
+
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_F1:
                     self.debug = not self.debug
@@ -322,10 +340,6 @@ class Screen:
                     pygame.event.clear()
                     self._auto_sort()
                 continue
-
-            if self.info_overlay.visible:
-                if self.info_overlay.handle_event(event):
-                    continue
 
             # Slider povinnosti
             if self.bid_slider.visible:
@@ -359,6 +373,9 @@ class Screen:
             return
         if self._button_info_rect().collidepoint(pos):
             self.info_overlay.toggle()
+            return
+        if self._button_trophies_rect().collidepoint(pos):
+            self.trophy_overlay.show()
             return
         if self._button_menu_rect().collidepoint(pos):
             # Rozohraný štich/talon dorovná _settle_for_save() v run()
@@ -1062,6 +1079,11 @@ class Screen:
 
     def _draw(self):
         """Nakreslí celú obrazovku."""
+        if self.trophy_overlay.covers_screen:
+            # Otvorené Trofeje prekryjú celé okno (s obrazom hry z chvíle
+            # otvorenia) — hru netreba kresliť (výkon pri 4K).
+            self.trophy_overlay.draw()
+            return
         # Stôl a ruky — zo statickej vrstvy, prekreslí sa len pri zmene
         self._draw_static(self._hands_key(),
                           lambda: (self._draw_table(), self._draw_hands()))
@@ -1086,6 +1108,7 @@ class Screen:
         self.info_overlay.draw()
         if self.show_last_trick:
             self._draw_last_trick_overlay()
+        self.trophy_overlay.draw()
 
     def _draw_static(self, key, draw_fn):
         """Nakreslí statický obsah cez StaticLayer: draw_fn() sa zavolá
@@ -1272,6 +1295,11 @@ class Screen:
             "Pravidlá",
             COLOR_BUTTON_SECONDARY
         )
+        self._draw_button(
+            self._button_trophies_rect(),
+            "Trofeje",
+            COLOR_BUTTON_SECONDARY
+        )
         # Menu tlačidlo — vždy viditeľné
         self._draw_button(
             self._button_menu_rect(),
@@ -1389,6 +1417,9 @@ class Screen:
 
     def _button_menu_rect(self) -> pygame.Rect:
         return self.layout.menu_rect()
+
+    def _button_trophies_rect(self) -> pygame.Rect:
+        return self.layout.trophies_rect()
     # ------------------------------------------------------------------
     # Pomocné metódy
     # ------------------------------------------------------------------

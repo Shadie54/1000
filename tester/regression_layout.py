@@ -94,6 +94,10 @@ def run_one(resolution: str, verbose: bool) -> list[str]:
         check(tag["text"] + screen_name, group, allow_outside)
 
     check_screens(display.get_surface(), tagged_check, problems)
+    # Smer hry proti smeru hodinových ručičiek (SR) — počítače vymenené
+    tag["text"] = "[SR] "
+    check_screens(display.get_surface(), tagged_check, problems, clockwise=False)
+    tag["text"] = ""
 
     if resolution == "1920x1080":
         # Prepnutie zobrazenia ZA BEHU (Nastavenia → Zobrazenie → Použiť →
@@ -118,7 +122,7 @@ def run_one(resolution: str, verbose: bool) -> list[str]:
     return problems
 
 
-def check_screens(window, check, problems: list[str]):
+def check_screens(window, check, problems: list[str], clockwise: bool = True):
     """Postaví všetky obrazovky pre AKTUÁLNE okno a skontroluje ich."""
     import random
     import pygame
@@ -140,7 +144,8 @@ def check_screens(window, check, problems: list[str]):
     settings = {"ai1_difficulty": "hard", "ai2_difficulty": "hard",
                 "table_bg": "table.jpg"}
     game_state, ai_players = game_main._create_game(settings)
-    screen = Screen(game_state, ai_players, debug=False, new_game=False)
+    screen = Screen(game_state, ai_players, debug=False, new_game=False,
+                    clockwise=clockwise)
     screen._start_round()
     screen.dealing = False
     screen.deal_animation = None
@@ -178,6 +183,7 @@ def check_screens(window, check, problems: list[str]):
     always = {
         "Zoradiť karty": screen._button_sort_rect(),
         "Pravidlá": screen._button_info_rect(),
+        "Trofeje": screen._button_trophies_rect(),
         "Menu": screen._button_menu_rect(),
         "ruka Počítač 1": ai_hand(1),
         "ruka Počítač 2": ai_hand(2),
@@ -212,6 +218,20 @@ def check_screens(window, check, problems: list[str]):
                         "ruka hráča": hand10},
           allow_outside=("ruka hráča",))
 
+    # Popis musí byť vo vnútri tlačidla
+    for text, rect in (("Trofeje", screen._button_trophies_rect()),
+                       ("Menu", screen._button_menu_rect()),
+                       ("Pravidlá", screen._button_info_rect())):
+        if screen.font_medium.size(text)[0] > rect.width - 12:
+            problems.append(f"hra: text „{text}“ sa nezmestí do tlačidla")
+
+    screen.trophy_overlay.show()
+    tv = screen.trophy_overlay.view
+    check("hra/trofeje", {"Späť": tv.back_button,
+                          "obsah": pygame.Rect(tv.PANEL_X, tv.CONTENT_Y,
+                                               tv.PANEL_W, tv.CONTENT_H)})
+    screen.trophy_overlay.hide()
+
     ov = screen.info_overlay
     group = {"Zavrieť": ov.btn_close}
     for key, rect in ov.tab_rects.items():
@@ -236,8 +256,11 @@ def check_screens(window, check, problems: list[str]):
     group["šípka ←"] = st.bg_arrow_left["rect"]
     group["šípka →"] = st.bg_arrow_right["rect"]
     group["posuvník"] = st.slider_rect.inflate(20, st.slider_handle_radius * 3)
+    for btn in st.dir_buttons:
+        group[f"smer {btn['value']}"] = btn["rect"]
     check("nastavenia", group)
     for name, panel in (("panel obtiažnosť", st.panel_ai),
+                        ("panel smer", st.panel_dir),
                         ("panel animácie", st.panel_anim),
                         ("panel pozadie", st.panel_bg)):
         if panel.colliderect(st.back_button["rect"]):

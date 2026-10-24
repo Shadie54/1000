@@ -22,7 +22,9 @@ class SpeechBubble:
         self.bubbles: list[dict] = []
 
         # Pozície bublín pre každého hráča
-        self.bubble_positions = dict(layout.game().bubble_positions)
+        lay = layout.game()
+        self.bubble_positions = dict(lay.bubble_positions)
+        self.seat_of = dict(lay.seat_of)        # chvost bubliny k hráčovi
 
     # ------------------------------------------------------------------
     # Pridanie bubliny
@@ -174,15 +176,16 @@ class SpeechBubble:
         tail_size = 12
         bx = cx - bubble_w // 2
 
-        if player_index == 0:
+        seat = self.seat_of.get(player_index, "bottom")
+        if seat == "bottom":
             # Hráč dole — chvost dole (zo spodku bubliny)
             points = [
                 (cx - tail_size, base_y),
                 (cx + tail_size, base_y),
                 (cx, base_y + tail_size * 2)
             ]
-        elif player_index == 1:
-            # PC3 vľavo — chvost doľava (z ľavého okraja bubliny)
+        elif seat == "left":
+            # Počítač vľavo — chvost doľava (z ľavého okraja bubliny)
             mid_y = by + bubble_h // 2
             points = [
                 (bx, mid_y - tail_size),
@@ -190,7 +193,7 @@ class SpeechBubble:
                 (bx - tail_size * 2, mid_y)
             ]
         else:
-            # PC1 vpravo — chvost doprava (z pravého okraja bubliny)
+            # Počítač vpravo — chvost doprava (z pravého okraja bubliny)
             mid_y = by + bubble_h // 2
             right_x = bx + bubble_w
             points = [

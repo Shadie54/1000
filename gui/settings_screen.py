@@ -1,7 +1,8 @@
 # gui/settings_screen.py
 #
 # Nastavenia so záložkami (štýl prevzatý z hry CHUJ):
-#   "Hra"        — panely Obtiažnosť počítačov, Rýchlosť animácií
+#   "Hra"        — panely Obtiažnosť počítačov, Smer hry (ČR/SR — miesta
+#                  počítačov pri stole), Rýchlosť animácií
 #                  (posuvník 0.5×–2.0×) a Pozadie stola (miniatúry so
 #                  šípkami; zoznam sa číta z assets/graphics — stačí pridať
 #                  súbor tableN.jpg a objaví sa sám),
@@ -28,7 +29,12 @@ from config import (
     FONT_SIZE_SMALL, FONT_SIZE_LARGE, FONT_SIZE_MEDIUM,
     BUTTON_RADIUS,
     ANIMATION_SPEED_MIN, ANIMATION_SPEED_MAX, ANIMATION_SPEED_DEFAULT,
+    PLAY_DIRECTION_DEFAULT,
 )
+
+# Smer hry — mení len miesta počítačov pri stole (gui/layout.py::seats)
+DIRECTIONS = (("cw", "V smere hodinových ručičiek (ČR)"),
+              ("ccw", "Proti smeru hodinových ručičiek (SR)"))
 
 TABS = (("hra", "Hra"), ("zobrazenie", "Zobrazenie"))
 _last_tab = "hra"
@@ -36,7 +42,7 @@ _last_tab = "hra"
 # Pás záložiek pod nadpisom (čiara pod nadpisom je na y 120)
 TAB_TOP, TAB_W, TAB_H, TAB_GAP = 140, 240, 46, 16
 CONTENT_TOP = 206          # začiatok panelov pod záložkami
-PANEL_GAP = 24
+PANEL_GAP = 14
 PANEL_BG = (25, 15, 8, 210)
 
 # Po prepnutí zobrazenia sa hra o toľko ms sama vráti k pôvodnému, ak
@@ -85,6 +91,7 @@ class SettingsScreen:
         self.clock = pygame.time.Clock()
         self.settings = settings.copy()
         self.settings.setdefault("animation_speed", ANIMATION_SPEED_DEFAULT)
+        self.settings.setdefault("play_direction", PLAY_DIRECTION_DEFAULT)
 
         self.font_title  = self.canvas.font(72)
         self.font_large  = self.canvas.font(FONT_SIZE_LARGE)
@@ -136,19 +143,32 @@ class SettingsScreen:
         self.ai2_buttons = self.ai_rows[1][2]
 
         # --------------------------------------------------------------
-        # Panel 2 — Rýchlosť animácií (posuvník)
+        # Panel 2 — Smer hry (dve prepínacie tlačidlá)
+        # --------------------------------------------------------------
+        self.panel_dir = pygame.Rect(
+            panel_x, self.panel_ai.bottom + PANEL_GAP, self.panel_width, 125)
+        dw, dh, dgap = 440, 48, 30
+        dx0 = center_x - (2 * dw + dgap) // 2
+        self.dir_buttons = [
+            {"value": value, "label": label, "hover": False,
+             "rect": pygame.Rect(dx0 + i * (dw + dgap), self.panel_dir.top + 64, dw, dh)}
+            for i, (value, label) in enumerate(DIRECTIONS)
+        ]
+
+        # --------------------------------------------------------------
+        # Panel 3 — Rýchlosť animácií (posuvník)
         # --------------------------------------------------------------
         self.panel_anim = pygame.Rect(
-            panel_x, self.panel_ai.bottom + PANEL_GAP, self.panel_width, 165)
+            panel_x, self.panel_dir.bottom + PANEL_GAP, self.panel_width, 150)
         slider_pad = 80
         self.slider_rect = pygame.Rect(
-            self.panel_anim.left + slider_pad, self.panel_anim.top + 105,
+            self.panel_anim.left + slider_pad, self.panel_anim.top + 95,
             self.panel_anim.width - slider_pad * 2, 6)
         self.slider_handle_radius = 13
         self.slider_dragging = False
 
         # --------------------------------------------------------------
-        # Panel 3 — Pozadie stola (okno miniatúr posúvané šípkami)
+        # Panel 4 — Pozadie stola (okno miniatúr posúvané šípkami)
         # --------------------------------------------------------------
         self.bg_options = discover_table_backgrounds()
         self.bg_labels = [bg_label(i) for i in range(len(self.bg_options))]
@@ -450,6 +470,10 @@ class SettingsScreen:
                 if btn["rect"].collidepoint(pos):
                     self.settings[key] = btn["difficulty"]
                     return None
+        for btn in self.dir_buttons:
+            if btn["rect"].collidepoint(pos):
+                self.settings["play_direction"] = btn["value"]
+                return None
         if self.bg_arrow_left["rect"].collidepoint(pos):
             self.bg_scroll = max(0, self.bg_scroll - 1)
             return None
@@ -486,7 +510,7 @@ class SettingsScreen:
         self.back_button["hover"] = self.back_button["rect"].collidepoint(mouse_pos)
         self.bg_arrow_left["hover"] = self.bg_arrow_left["rect"].collidepoint(mouse_pos)
         self.bg_arrow_right["hover"] = self.bg_arrow_right["rect"].collidepoint(mouse_pos)
-        for btn in self.mode_buttons + self.size_buttons:
+        for btn in self.mode_buttons + self.size_buttons + self.dir_buttons:
             btn["hover"] = btn["rect"].collidepoint(mouse_pos)
         self.apply_hover = self._apply_rect().collidepoint(mouse_pos)
         self.confirm_hover = (
@@ -551,6 +575,12 @@ class SettingsScreen:
     def _draw_game_tab(self):
         self._draw_panel(self.panel_ai, "OBTIAŽNOSŤ POČÍTAČOV")
         self._draw_ai_rows()
+        self._draw_panel(self.panel_dir, "SMER HRY")
+        current = self.settings.get("play_direction", PLAY_DIRECTION_DEFAULT)
+        for btn in self.dir_buttons:
+            self._draw_choice(btn["rect"], btn["label"],
+                              selected=btn["value"] == current,
+                              hover=btn["hover"], enabled=True)
         self._draw_panel(self.panel_anim, "RÝCHLOSŤ ANIMÁCIÍ")
         self._draw_speed_slider()
         self._draw_panel(self.panel_bg, "POZADIE STOLA")

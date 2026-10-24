@@ -118,6 +118,10 @@ BUTTON_RADIUS = 8
 ANIMATION_SPEED_MIN = 0.5
 ANIMATION_SPEED_MAX = 2.0
 ANIMATION_SPEED_DEFAULT = 1.5
+
+# Smer hry (Nastavenia → Hra): "cw" = v smere hodinových ručičiek (zvyk
+# v ČR, predvolené — česká hra), "ccw" = proti smeru (zvyk na Slovensku).
+PLAY_DIRECTION_DEFAULT = "cw"
 CARD_DEAL_DELAY = 50
 
 # ------------------------------------------------------------------

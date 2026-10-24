@@ -13,6 +13,16 @@ except Exception:
         pass
 
 import sys
+
+# Pracovný priečinok = priečinok s hrou. Cesty k obrázkom a zvukom sú
+# relatívne ("assets/..."): v exe (PyInstaller onedir) ležia v _internal\
+# (sys._MEIPASS), pri spustení zo zdrojákov vedľa main.py. Bez toho by
+# hra spustená zo zástupcu alebo iného priečinka nenašla assets.
+if getattr(sys, "frozen", False):
+    os.chdir(sys._MEIPASS)
+else:
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
 import pygame
 from game.game_state import GameState
 from game.ai import AI
@@ -20,7 +30,7 @@ from gui.screen import Screen
 from gui.menu import Menu
 from gui.settings_screen import SettingsScreen
 from gui.game_over_screen import GameOverScreen
-from config import DEBUG_MODE, ANIMATION_SPEED_DEFAULT
+from config import DEBUG_MODE, ANIMATION_SPEED_DEFAULT, PLAY_DIRECTION_DEFAULT
 from achievements.tracker import AchievementTracker
 from gui.achievements_screen import AchievementsScreen
 from gui import display
@@ -38,6 +48,7 @@ def _load_settings() -> dict:
         "ai2_difficulty": "hard",
         "table_bg": "table.jpg",
         "animation_speed": ANIMATION_SPEED_DEFAULT,
+        "play_direction": PLAY_DIRECTION_DEFAULT,
     }
     try:
         with open(_get_settings_path(), "r") as f:
@@ -82,7 +93,9 @@ def _run_game(window, game_state, ai_players, new_game: bool = True,
                     achievement_tracker=achievement_tracker,
                     animation_speed=settings.get("animation_speed",
                                                  ANIMATION_SPEED_DEFAULT),
-                    restore_ui=restore_ui)
+                    restore_ui=restore_ui,
+                    clockwise=settings.get("play_direction",
+                                           PLAY_DIRECTION_DEFAULT) != "ccw")
     result = screen.run()
     return result, screen.exit_ui
 

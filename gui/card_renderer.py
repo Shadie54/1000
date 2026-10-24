@@ -77,7 +77,7 @@ class CardRenderer:
         show_faces = is_human or self.debug
 
         for i, card in enumerate(cards):
-            x, y = self._card_position(config, i)
+            x, y = self._card_position(config, i, len(cards))
 
             # Posun vybranej karty nahor
             if card in selected_cards:
@@ -114,14 +114,21 @@ class CardRenderer:
                     self._draw_highlight(x, y, CARD_SIZE_MEDIUM, COLOR_GOLD)
 
     @staticmethod
-    def _card_position(config: dict, index: int) -> tuple[int, int]:
-        """Vypočíta pozíciu karty v ruke podľa konfigurácie."""
+    def _card_position(config: dict, index: int,
+                       count: int | None = None) -> tuple[int, int]:
+        """Vypočíta pozíciu karty v ruke podľa konfigurácie. count = počet
+        kariet v ruke: zvislá ruka počítača s 11–12 kartami (talon pred
+        odhodením) sa zhustí na výšku 10 kariet — inak by siahala až na
+        tlačidlá vpravo dole."""
         if config["direction"] == "horizontal":
             x = config["x"] + index * config["offset"]
             y = config["y"]
         else:
+            offset = config["offset"]
+            if count and count > 10:
+                offset = offset * 9 // (count - 1)
             x = config["x"]
-            y = config["y"] + index * config["offset"]
+            y = config["y"] + index * offset
         return x, y
 
     def hand_card_center(self, player_index: int, cards: list[Card],
@@ -129,7 +136,7 @@ class CardRenderer:
         """Stred karty v ruke (odtiaľ letí pri zahratí — CardThrowAnimation)."""
         config = self.hand_configs[player_index]
         idx = cards.index(card) if card in cards else 0
-        x, y = self._card_position(config, idx)
+        x, y = self._card_position(config, idx, len(cards))
         cw, ch = CARD_SIZE_MEDIUM
         if config["direction"] == "vertical":
             return x + ch // 2, y + cw // 2      # karta otočená o 90°
@@ -207,7 +214,7 @@ class CardRenderer:
 
         # Prechádzame od konca (vrchná karta je naposledy kreslená)
         for i in range(len(cards) - 1, -1, -1):
-            x, y = self._card_position(config, i)
+            x, y = self._card_position(config, i, len(cards))
 
             if config["direction"] == "vertical":
                 # Rotovaná karta má prehodené rozmery

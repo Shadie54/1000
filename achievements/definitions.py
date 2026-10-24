@@ -24,7 +24,7 @@ ACHIEVEMENTS = [
     {"id": "bid_300", "name": "Podržte mi pivo", "description": "Vydraž 300 a splň povinnosť.", "group": "bid_tier", "tier": 3, "hidden": True},
     {"id": "modest_winner", "name": "Skromný víťaz", "description": "Splň minimálnu povinnosť 50.", "hidden": True},
     {"id": "barely_made_it", "name": "S odretými ušami", "description": "Splň tesne povinnosť 50 - bez jediného bodu navyše.", "hidden": True},
-    {"id": "passivist", "name": "Kto mlčí, vyhráva", "description": "Vyhraj celú hru bez toho, aby si čo i len raz vydražil."},
+    {"id": "passivist", "name": "Kto mlčí, vyhráva", "description": "Vyhraj celú hru bez toho, aby si čo i len raz prihodil v dražbe."},
 
     # 🃏 Tromfy
     {"id": "first_trump", "name": "Poslušne hlásim", "description": "Zahlás svoj prvý tromf.", "hidden": True},
