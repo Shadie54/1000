@@ -4,14 +4,14 @@ import pygame
 from gui import display
 import os
 import sys
-from gui.canvas import draw_backdrop, draw_static
-from config import (
-    SCREEN_WIDTH,
-    COLOR_WHITE, COLOR_GOLD,
-    COLOR_BUTTON_PRIMARY, COLOR_BUTTON_SECONDARY,
-    FONT_SIZE_MEDIUM, FONT_SIZE_LARGE,
-    BUTTON_RADIUS
-)
+from gui.canvas import draw_static
+from gui import ui_style
+from config import SCREEN_WIDTH, FONT_SIZE_MEDIUM, FONT_SIZE_LARGE
+
+# Vzhľad (grafický rework 2026-10-28, gui/ui_style.py)
+DIVIDER = (70, 54, 34)
+BORDER_DIM = (90, 72, 48)
+HEADER_H = 140          # nadpis + ozdobná linka + počet odomknutých
 from achievements.definitions import ACHIEVEMENTS
 from achievements.storage import load_achievements
 
@@ -56,8 +56,8 @@ class AchievementsScreen:
 
         # Vyhradený priestor pre tlačidlo späť (mimo scrollovateľnej oblasti)
         self.BACK_AREA_H = 80
-        self.CONTENT_Y = self.PANEL_Y + 105
-        self.CONTENT_H = self.PANEL_H - 105 - self.BACK_AREA_H
+        self.CONTENT_Y = self.PANEL_Y + HEADER_H
+        self.CONTENT_H = self.PANEL_H - HEADER_H - self.BACK_AREA_H
 
         self.back_button = pygame.Rect(
             SCREEN_WIDTH // 2 - 150,
@@ -136,7 +136,7 @@ class AchievementsScreen:
         self._draw_back_button(mouse_pos)
 
     def _draw_static(self):
-        draw_backdrop(self.canvas, (0, 0, 0, 200))
+        ui_style.draw_backdrop(self.canvas)
         self._draw_content()
 
     def _draw_content(self):
@@ -162,34 +162,24 @@ class AchievementsScreen:
         self._draw_content()
 
     def _draw_panel_bg(self):
-        self.canvas.overlay((self.PANEL_X, self.PANEL_Y, self.PANEL_W, self.PANEL_H),
-                            (12, 8, 4, 248))
-        self.canvas.rect(
-            COLOR_GOLD,
-            (self.PANEL_X, self.PANEL_Y, self.PANEL_W, self.PANEL_H),
-            width=2, border_radius=14
-        )
+        panel = pygame.Rect(self.PANEL_X, self.PANEL_Y, self.PANEL_W, self.PANEL_H)
+        ui_style.draw_panel(self.canvas, panel)
         line_y = self.PANEL_Y + self.PANEL_H - self.BACK_AREA_H
-        self.canvas.line(
-            COLOR_GOLD,
-            (self.PANEL_X + 20, line_y), (self.PANEL_X + self.PANEL_W - 20, line_y),
-            width=1
-        )
+        self.canvas.line(DIVIDER, (self.PANEL_X + 24, line_y),
+                         (self.PANEL_X + self.PANEL_W - 24, line_y), width=1)
 
     def _draw_title(self):
-        title = self.font_title.render("TROFEJE", True, COLOR_GOLD)
-        self.canvas.blit(title, title.get_rect(
-            centerx=SCREEN_WIDTH // 2, top=self.PANEL_Y + 16
-        ))
+        ui_style.draw_screen_title(self.canvas, "TROFEJE", self.font_title,
+                                   (SCREEN_WIDTH // 2, self.PANEL_Y + 44),
+                                   line_half_w=220, line_gap=36)
 
     def _draw_progress(self):
         total = len(ACHIEVEMENTS)
         unlocked = sum(1 for v in self.data["unlocked"].values() if v)
-        text = f"Odomknuté trofeje: {unlocked} / {total}"
-        surf = self.font_large.render(text, True, COLOR_WHITE)
-        self.canvas.blit(surf, surf.get_rect(
-            centerx=SCREEN_WIDTH // 2, top=self.PANEL_Y + 64
-        ))
+        surf = self.font_desc.render(f"Odomknuté {unlocked} z {total}", True,
+                                     ui_style.TEXT_DIM)
+        self.canvas.blit(surf, surf.get_rect(centerx=SCREEN_WIDTH // 2,
+                                             centery=self.PANEL_Y + 112))
 
     def _draw_rows(self):
         clip_rect = pygame.Rect(
@@ -272,9 +262,9 @@ class AchievementsScreen:
 
     def _draw_row_bg(self, y: int, unlocked: bool):
         rect = pygame.Rect(self.PANEL_X + 20, y + 8, self.PANEL_W - 40, self.row_h - 16)
-        color = (42, 32, 12, 190) if unlocked else (22, 17, 12, 150)
-        self.canvas.overlay(rect, color)
-        border = COLOR_GOLD if unlocked else (90, 80, 65)
+        color = (52, 37, 18, 200) if unlocked else (20, 14, 9, 170)
+        self.canvas.overlay(rect, color, border_radius=10)
+        border = ui_style.GOLD_SOFT if unlocked else BORDER_DIM
         self.canvas.rect(border, rect, width=1, border_radius=10)
 
     def _draw_trophy_slot(self, tier_name: str, cx: int, cy: int,
@@ -286,17 +276,17 @@ class AchievementsScreen:
             if icon_path:
                 scaled = self.canvas.image(icon_path, (w, h), smooth=False)
                 self.canvas.blit(scaled, rect.topleft)
-                self.canvas.rect(COLOR_GOLD, rect, width=2, border_radius=6)
+                self.canvas.rect(ui_style.GOLD, rect, width=2, border_radius=6)
             else:
                 r = min(w, h) // 2
-                self.canvas.circle(COLOR_GOLD, (cx, cy), r)
+                self.canvas.circle(ui_style.GOLD, (cx, cy), r)
                 self.canvas.circle((15, 9, 4), (cx, cy), r - 4)
         else:
             # Prázdny rám s otáznikom — jediný vizuál pre zamknuté
-            self.canvas.overlay(rect, (25, 18, 10, 180))
-            self.canvas.rect((90, 80, 65), rect, width=2, border_radius=6)
+            self.canvas.overlay(rect, (14, 10, 6, 200), border_radius=6)
+            self.canvas.rect(BORDER_DIM, rect, width=2, border_radius=6)
             q_font = self.canvas.font(int(h * 0.4))
-            q_surf = q_font.render("?", True, (90, 80, 65))
+            q_surf = q_font.render("?", True, BORDER_DIM)
             self.canvas.blit(q_surf, q_surf.get_rect(center=(cx, cy)))
 
     def _draw_row_text(self, name: str, description: str, y: int,
@@ -304,14 +294,14 @@ class AchievementsScreen:
         text_x = self.PANEL_X + icon_slot_w
         text_max_w = self.PANEL_X + self.PANEL_W - 30 - text_x
 
-        name_color = COLOR_GOLD if unlocked else (160, 150, 135)
+        name_color = ui_style.GOLD if unlocked else ui_style.TEXT_DIM
         name_surf = self.font_name.render(name, True, name_color)
         self.canvas.blit(name_surf, (text_x, y + 30))
 
         # ← Zobraz popis ak je odomknuté ALEBO ak achievement nie je hidden
         show_description = unlocked or not hidden
         if show_description:
-            desc_color = (225, 210, 185) if unlocked else (150, 140, 125)
+            desc_color = ui_style.TEXT if unlocked else ui_style.TEXT_DIM
             desc_lines = self._wrap_text(description, self.font_desc, text_max_w)
             line_h = self.font_desc.get_height() + 2
             for i, line in enumerate(desc_lines[:2]):
@@ -335,12 +325,9 @@ class AchievementsScreen:
         return lines
 
     def _draw_back_button(self, mouse_pos):
-        hover = self.back_button.collidepoint(mouse_pos)
-        color = COLOR_BUTTON_PRIMARY if hover else COLOR_BUTTON_SECONDARY
-        self.canvas.overlay(self.back_button, (*color, 220))
-        self.canvas.rect(COLOR_GOLD, self.back_button, width=2, border_radius=BUTTON_RADIUS)
-        text = self.font_large.render("← Späť", True, COLOR_WHITE)
-        self.canvas.blit(text, text.get_rect(center=self.back_button.center))
+        ui_style.draw_button(self.canvas, self.back_button, "← Späť",
+                             self.font_large, 3,
+                             self.back_button.collidepoint(mouse_pos))
 
     def __repr__(self):
         return "AchievementsScreen()"

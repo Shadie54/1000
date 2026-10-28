@@ -1,18 +1,24 @@
 # gui/game_over_screen.py
+#
+# Koniec hry — výsledky (grafický rework 2026-10-28: ui_style, panel
+# FINÁLNE SKÓRE s poradím v medailónoch, tlačidlá v úrovniach).
 
 import sys
 
 import pygame
 from gui import display
 
-from gui.canvas import draw_backdrop, draw_static
-from config import (
-    SCREEN_WIDTH,
-    COLOR_WHITE, COLOR_GOLD, COLOR_GRAY,
-    COLOR_RED,
-    COLOR_BUTTON_PRIMARY, COLOR_BUTTON_SECONDARY,
-    FONT_SIZE_MEDIUM, FONT_SIZE_LARGE, BUTTON_RADIUS, WINNING_SCORE
-)
+from gui.canvas import draw_static
+from gui import ui_style
+from config import SCREEN_WIDTH, FONT_SIZE_MEDIUM, FONT_SIZE_LARGE, WINNING_SCORE
+
+# Vzhľad (grafický rework 2026-10-28, gui/ui_style.py)
+LOSS_COLOR = (200, 96, 74)          # nadpis PREHRA — stlmená červená
+BORDER_DIM = (98, 76, 46)
+TRACK_EMPTY = (52, 40, 26)
+RANK_COLORS = ((222, 172, 64), (214, 206, 190), (176, 120, 72))   # zlato, striebro, bronz
+PANEL_HEADER = 70                   # nadpis panela + čiara
+ROW_H, ROW_GAP, ROW_PAD = 84, 12, 22
 
 
 class GameOverScreen:
@@ -26,15 +32,21 @@ class GameOverScreen:
         self.round_number = round_number
         self.clock = pygame.time.Clock()
 
-        self.font_title  = self.canvas.font(96)
+        self.font_title  = self.canvas.font(84)
         self.font_large  = self.canvas.font(FONT_SIZE_LARGE)       # 32
         self.font_medium = self.canvas.font(FONT_SIZE_MEDIUM)      # 24
         self.font_small  = self.canvas.font(FONT_SIZE_MEDIUM - 4)  # 20
 
-        # Tlačidlá
-        btn_w, btn_h = 240, 60
+        # Rozloženie: nadpis, panel skóre, info a tlačidlá ako jeden blok
+        # zvislo na strede okna
         cx = SCREEN_WIDTH // 2
-        btn_y = self.H - 120
+        panel_h = PANEL_HEADER + 3 * ROW_H + 2 * ROW_GAP + ROW_PAD
+        block_h = 170 + panel_h + 70 + 60
+        top = (self.H - block_h) // 2
+        self.title_cy = top + 40
+        self.score_panel = pygame.Rect(cx - 330, top + 170, 660, panel_h)
+        btn_w, btn_h = 240, 60
+        btn_y = self.score_panel.bottom + 70
         self.btn_new_game = pygame.Rect(cx - btn_w - 20, btn_y, btn_w, btn_h)
         self.btn_menu     = pygame.Rect(cx + 20,         btn_y, btn_w, btn_h)
 
@@ -68,128 +80,86 @@ class GameOverScreen:
     # ------------------------------------------------------------------
 
     def _draw(self, mouse_pos):
-        # Všetko okrem tlačidiel (hover) je statické — kreslí sa raz
+        # Všetko okrem zvýraznenia tlačidiel (hover) je statické
         draw_static(self, self.canvas, "koniec", self._draw_static)
         self._draw_buttons(mouse_pos)
 
     def _draw_static(self):
-        # Pozadie
-        draw_backdrop(self.canvas, (0, 0, 0, 170))
+        # Vzhľad: gui/ui_style.py (grafický rework 2026-10-28)
+        ui_style.draw_backdrop(self.canvas)
         self._draw_title()
         self._draw_scores()
         self._draw_info()
 
     def _draw_title(self):
-        is_human_winner = self.winner.is_human
-        title_text  = "VYHRAL SI!" if is_human_winner else "PREHRA!"
-        title_color = COLOR_GOLD   if is_human_winner else COLOR_RED
-
-        # Hlavný nadpis
-        title = self.font_title.render(title_text, True, title_color)
-        self.canvas.blit(title, title.get_rect(
-            center=(SCREEN_WIDTH // 2, 110)
-        ))
-
-        # Meno víťaza
-        sub = self.font_large.render(
-            f"{self.winner.name} vyhral hru!", True, COLOR_WHITE
-        )
+        won = self.winner.is_human
+        ui_style.draw_screen_title(
+            self.canvas, "VYHRAL SI!" if won else "PREHRA",
+            self.font_title, (SCREEN_WIDTH // 2, self.title_cy),
+            line_half_w=300, line_gap=62,
+            color=ui_style.GOLD if won else LOSS_COLOR)
+        sub = self.font_large.render(f"{self.winner.name} vyhral hru!", True,
+                                     ui_style.TEXT)
         self.canvas.blit(sub, sub.get_rect(
-            center=(SCREEN_WIDTH // 2, 185)
-        ))
-
-        # Čiara
-        self.canvas.line(
-            COLOR_GOLD,
-            (SCREEN_WIDTH // 2 - 350, 215),
-            (SCREEN_WIDTH // 2 + 350, 215),
-            width=1
-        )
+            center=(SCREEN_WIDTH // 2, self.title_cy + 106)))
 
     def _draw_scores(self):
-        # Nadpis sekcie
-        title = self.font_medium.render("FINÁLNE SKÓRE", True, COLOR_GOLD)
-        self.canvas.blit(title, title.get_rect(
-            center=(SCREEN_WIDTH // 2, 245)
-        ))
+        c = self.canvas
+        panel = self.score_panel
+        ui_style.draw_panel(c, panel, "FINÁLNE SKÓRE", self.font_medium)
 
-        sorted_players = sorted(
-            self.players, key=lambda p: p.total_score, reverse=True
-        )
-
-        panel_w = 560
-        panel_x = SCREEN_WIDTH // 2 - panel_w // 2
-        row_h   = 80
-        start_y = 280
-
-        for i, player in enumerate(sorted_players):
-            y         = start_y + i * (row_h + 12)
+        ranked = sorted(self.players, key=lambda p: p.total_score, reverse=True)
+        x = panel.x + ROW_PAD
+        w = panel.width - 2 * ROW_PAD
+        for i, player in enumerate(ranked):
+            y = panel.y + PANEL_HEADER + i * (ROW_H + ROW_GAP)
+            row = pygame.Rect(x, y, w, ROW_H)
             is_winner = player == self.winner
+            c.overlay(row, (64, 46, 20, 210) if is_winner else (24, 17, 11, 200),
+                      border_radius=10)
+            c.rect(ui_style.GOLD if is_winner else BORDER_DIM, row,
+                   width=2, border_radius=10)
 
-            # Panel pozadie
-            self.canvas.overlay((panel_x, y, panel_w, row_h),
-                                (212, 160, 40, 60) if is_winner else (20, 12, 5, 180))
+            # Poradie v medailóne
+            mc = (row.x + 40, row.centery)
+            c.circle((14, 10, 6), mc, 24)
+            c.circle(RANK_COLORS[i], mc, 24, width=2)
+            rank = self.font_medium.render(str(i + 1), True, RANK_COLORS[i])
+            c.blit(rank, rank.get_rect(center=mc))
 
-            # Okraj
-            self.canvas.rect(
-                COLOR_GOLD if is_winner else COLOR_GRAY,
-                (panel_x, y, panel_w, row_h),
-                width=2, border_radius=10
-            )
+            text_color = ui_style.GOLD if is_winner else ui_style.TEXT
+            name = self.font_large.render(player.name, True, text_color)
+            c.blit(name, (row.x + 84, row.y + 12))
+            score = self.font_large.render(str(player.total_score), True, text_color)
+            c.blit(score, score.get_rect(right=row.right - 20, top=row.y + 12))
 
-            # Poradie — veľké, vľavo
-            rank_colors = [COLOR_GOLD, COLOR_WHITE, COLOR_GRAY]
-            rank_surf = self.font_large.render(f"#{i+1}", True, rank_colors[i])
-            self.canvas.blit(rank_surf, (panel_x + 18, y + row_h // 2 - rank_surf.get_height() // 2))
-
-            # Meno
-            name_color = COLOR_GOLD if is_winner else COLOR_WHITE
-            name_surf  = self.font_large.render(player.name, True, name_color)
-            self.canvas.blit(name_surf, (panel_x + 80, y + 10))
-
-            # Skóre — vpravo
-            score_surf = self.font_large.render(str(player.total_score), True, name_color)
-            self.canvas.blit(score_surf, score_surf.get_rect(
-                right=panel_x + panel_w - 18,
-                top=y + 10
-            ))
-
-            # Progress bar — pod menom a skóre
-            bar_x = panel_x + 80
-            bar_w = panel_w - 80 - 18
-            bar_y = y + row_h - 16
-            bar_h = 6
-
-            self.canvas.rect((60, 45, 30),
-                             (bar_x, bar_y, bar_w, bar_h), border_radius=3)
-
-            ratio   = min(max(player.total_score, 0) / WINNING_SCORE, 1.0)
-            fill_w  = int(bar_w * ratio)
-            if fill_w > 0:
-                color = COLOR_GOLD if is_winner else COLOR_GRAY
-                self.canvas.rect(color,
-                                 (bar_x, bar_y, fill_w, bar_h), border_radius=3)
+            # Ukazovateľ k 1000 bodom
+            bar = pygame.Rect(row.x + 84, row.bottom - 20, row.width - 84 - 20, 6)
+            c.rect(TRACK_EMPTY, bar, border_radius=3)
+            ratio = min(max(player.total_score, 0) / WINNING_SCORE, 1.0)
+            if int(bar.width * ratio) > 0:
+                c.rect(ui_style.GOLD if is_winner else ui_style.GOLD_SOFT,
+                       (bar.x, bar.y, int(bar.width * ratio), bar.height),
+                       border_radius=3)
 
     def _draw_info(self):
         surf = self.font_small.render(
-            f"Hra trvala {self.round_number} kôl", True, COLOR_GRAY
-        )
+            f"Hra trvala {self.round_number} kôl", True, ui_style.TEXT_DIM)
         self.canvas.blit(surf, surf.get_rect(
-            center=(SCREEN_WIDTH // 2, self.H - 160)
-        ))
+            center=(SCREEN_WIDTH // 2, self.score_panel.bottom + 34)))
+        # Tlačidlá v pokojovom stave patria do statickej vrstvy
+        ui_style.draw_button(self.canvas, self.btn_new_game, "Nová hra",
+                             self.font_large, 1)
+        ui_style.draw_button(self.canvas, self.btn_menu, "Menu",
+                             self.font_large, 3)
 
     def _draw_buttons(self, mouse_pos):
-        self._draw_btn(self.btn_new_game, "Nová hra",
-                       COLOR_BUTTON_PRIMARY,   self.btn_new_game.collidepoint(mouse_pos))
-        self._draw_btn(self.btn_menu,     "Menu",
-                       COLOR_BUTTON_SECONDARY, self.btn_menu.collidepoint(mouse_pos))
-
-    def _draw_btn(self, rect: pygame.Rect, text: str, color: tuple, hover: bool):
-        alpha = 245 if hover else 200
-        self.canvas.overlay(rect, (*color, alpha))
-
-        self.canvas.rect(COLOR_WHITE if hover else COLOR_GOLD,
-                         rect, width=2, border_radius=BUTTON_RADIUS)
-
-        text_surf = self.font_large.render(text, True, COLOR_WHITE)
-        self.canvas.blit(text_surf, text_surf.get_rect(center=rect.center))
+        for rect, label in ((self.btn_new_game, "Nová hra"),
+                            (self.btn_menu, "Menu")):
+            if rect.collidepoint(mouse_pos):
+                c = self.canvas
+                c.overlay(rect, (255, 214, 140, 24), border_radius=ui_style.BTN_RADIUS)
+                c.rect(ui_style.BTN_BORDER_HOVER, rect, width=2,
+                       border_radius=ui_style.BTN_RADIUS)
+                surf = self.font_large.render(label, True, ui_style.BTN_TEXT_HOVER)
+                c.blit(surf, surf.get_rect(center=rect.center))

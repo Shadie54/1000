@@ -3,12 +3,15 @@
 import os
 from game.player import Player
 from game.round import Round
-from config import (
-    SCREEN_WIDTH,
-    COLOR_WHITE, COLOR_YELLOW, COLOR_GREEN, COLOR_RED,
-    COLOR_GRAY, COLOR_GOLD,
-    WINNING_SCORE, SUIT_ICONS_PATH
-)
+from gui import ui_style
+from config import SCREEN_WIDTH, WINNING_SCORE, SUIT_ICONS_PATH
+
+# Vzhľad panelov (grafický rework 2026-10-28, štýl gui/ui_style.py)
+DIVIDER = (70, 54, 34)
+TRACK_EMPTY = (52, 40, 26)
+ACTIVE = ui_style.BTN_TEXT_HOVER          # hráč na ťahu
+GOOD = (122, 200, 110)                    # povinnosť splnená, 800+ bodov
+BAD = (232, 112, 84)                      # záporné skóre
 
 
 class Scoreboard:
@@ -70,6 +73,11 @@ class Scoreboard:
         self._draw_panel_title("TROMF", self.trump_x, self.panel_y, self.trump_w)
 
         if not current_round or not current_round.trump_suit:
+            if current_round:
+                none = self.font_small.render("zatiaľ žiadny", True, ui_style.TEXT_DIM)
+                self.canvas.blit(none, none.get_rect(
+                    centerx=self.trump_x + self.trump_w // 2,
+                    centery=self.panel_y + 45 + (self.panel_h - 45) // 2))
             return
 
         trump_suit = current_round.trump_suit
@@ -97,11 +105,11 @@ class Scoreboard:
         label = trump_labels.get(trump_suit, trump_suit)
         points = trump_points.get(trump_suit, 0)
 
-        label_surf = self.font_medium.render(label, True, COLOR_GOLD)
+        label_surf = self.font_medium.render(label, True, ui_style.GOLD)
         label_rect = label_surf.get_rect(centerx=cx, top=self.panel_y + 135)
         self.canvas.blit(label_surf, label_rect)
 
-        points_surf = self.font_small.render(f"{points} bodov", True, COLOR_WHITE)
+        points_surf = self.font_small.render(f"{points} bodov", True, ui_style.TEXT)
         points_rect = points_surf.get_rect(centerx=cx, top=self.panel_y + 158)
         self.canvas.blit(points_surf, points_rect)
 
@@ -109,7 +117,7 @@ class Scoreboard:
         if current_round and hasattr(current_round, 'trump_declarer'):
             declarer = current_round.trump_declarer
             if declarer:
-                decl_surf = self.font_small.render(declarer, True, COLOR_GRAY)
+                decl_surf = self.font_small.render(declarer, True, ui_style.TEXT_DIM)
                 decl_rect = decl_surf.get_rect(centerx=cx, top=self.panel_y + 178)
                 self.canvas.blit(decl_surf, decl_rect)
 
@@ -144,7 +152,7 @@ class Scoreboard:
             )
             )
 
-            name_color = COLOR_YELLOW if is_current else COLOR_WHITE
+            name_color = ACTIVE if is_current else ui_style.TEXT
             obligation = f" (P{current_round.bidding.current_bid})" if is_obligation else ""
             name_text = f"{player.name}{obligation}"
 
@@ -155,7 +163,7 @@ class Scoreboard:
             if is_current:
                 cy = y + name_surf.get_height() // 2
                 tx = self.score_x + 10
-                self.canvas.polygon(COLOR_YELLOW, [
+                self.canvas.polygon(ACTIVE, [
                     (tx, cy - 6), (tx + 10, cy), (tx, cy + 6)
                 ])
             self.canvas.blit(name_surf, (self.score_x + 10 + indent, y))
@@ -202,7 +210,7 @@ class Scoreboard:
             "done": "Koniec kola"
         }
         phase_text = phase_labels.get(current_round.phase, current_round.phase)
-        self._draw_info_row("Fáza:", phase_text, y, COLOR_WHITE)
+        self._draw_info_row("Fáza:", phase_text, y, ui_style.TEXT)
         y += line_h
 
         # štich
@@ -210,7 +218,7 @@ class Scoreboard:
             self._draw_info_row(
                 "Štich:",
                 f"{current_round.trick_number + 1} / 10",
-                y, COLOR_WHITE
+                y, ui_style.TEXT
             )
             y += line_h
 
@@ -221,7 +229,7 @@ class Scoreboard:
             self._draw_info_row(
                 "Povinnosť:",
                 f"{winner.name} / {bid_val}",
-                y, COLOR_YELLOW
+                y, ui_style.GOLD
             )
             y += line_h
 
@@ -236,10 +244,10 @@ class Scoreboard:
         current_points = bidder.round_points
         bid = bidder.bid
 
-        label = self.font_small.render("Body zatiaľ:", True, COLOR_GRAY)
+        label = self.font_small.render("Body zatiaľ:", True, ui_style.TEXT_DIM)
         self.canvas.blit(label, (self.info_x + 10, y))
 
-        color = COLOR_GREEN if current_points >= bid else COLOR_YELLOW
+        color = GOOD if current_points >= bid else ui_style.GOLD
         points_surf = self.font_small.render(
             f"{current_points} / {bid}", True, color
         )
@@ -263,18 +271,17 @@ class Scoreboard:
     # ------------------------------------------------------------------
 
     def _draw_panel_bg(self, x: int, y: int, w: int, h: int):
-        """Nakreslí pozadie panelu."""
-        self.canvas.overlay((x, y, w, h), (20, 12, 5, 210))
-        self.canvas.rect(COLOR_GOLD, (x, y, w, h), width=2, border_radius=10)
+        """Pozadie panelu — spoločný štýl (gui/ui_style.py)."""
+        ui_style.draw_panel(self.canvas, (x, y, w, h))
 
     def _draw_panel_title(self, title: str, x: int, y: int, w: int):
         """Nakreslí nadpis panelu."""
-        surf = self.font_medium.render(title, True, COLOR_GOLD)
+        surf = self.font_medium.render(title, True, ui_style.GOLD)
         rect = surf.get_rect(centerx=x + w // 2, top=y + 8)
         self.canvas.blit(surf, rect)
 
         self.canvas.line(
-            COLOR_GOLD,
+            DIVIDER,
             (x + 10, y + 38),
             (x + w - 10, y + 38),
             width=1
@@ -282,7 +289,7 @@ class Scoreboard:
 
     def _draw_info_row(self, label: str, value: str, y: int, color: tuple):
         """Nakreslí jeden riadok label: value."""
-        label_surf = self.font_small.render(label, True, COLOR_GRAY)
+        label_surf = self.font_small.render(label, True, ui_style.TEXT_DIM)
         value_surf = self.font_small.render(value, True, color)
         self.canvas.blit(label_surf, (self.info_x + 10, y))
         value_rect = value_surf.get_rect(
@@ -294,31 +301,31 @@ class Scoreboard:
     def _score_color(self, score: int) -> tuple:
         """Vráti farbu skóre."""
         if score < 0:
-            return COLOR_RED
+            return BAD
         if score >= WINNING_SCORE:
-            return COLOR_GOLD
+            return ui_style.GOLD
         if score >= 800:
-            return COLOR_GREEN
-        return COLOR_WHITE
+            return GOOD
+        return ui_style.TEXT
 
     def _draw_progress_bar(self, x: int, y: int, width: int, height: int,
                            value: int, max_value: int):
         """Nakreslí progress bar."""
-        self.canvas.rect(COLOR_GRAY, (x, y, width, height), border_radius=4)
+        self.canvas.rect(TRACK_EMPTY, (x, y, width, height), border_radius=4)
 
         fill_ratio = max(0, min(value / max_value, 1.0)) if max_value > 0 else 0
         fill_width = int(width * fill_ratio)
 
         if fill_width > 0:
             if value < 0:
-                color = COLOR_RED
+                color = BAD
             elif value >= max_value:
-                color = COLOR_GREEN
+                color = GOOD
             else:
-                color = COLOR_GOLD
+                color = ui_style.GOLD_SOFT
             self.canvas.rect(color, (x, y, fill_width, height), border_radius=4)
 
-        self.canvas.rect(COLOR_WHITE, (x, y, width, height), width=1, border_radius=4)
+        self.canvas.rect(DIVIDER, (x, y, width, height), width=1, border_radius=4)
 
     def __repr__(self) -> str:
         return "Scoreboard()"

@@ -79,7 +79,7 @@ class GameLayout:
     # --- tlačidlá vpravo dole --------------------------------------------
 
     def _side_button(self, row: int) -> pygame.Rect:
-        return pygame.Rect(LOGICAL_W - 320, self.side_buttons_y + row * 60, 200, 50)
+        return pygame.Rect(LOGICAL_W - 340, self.side_buttons_y + row * 60, 240, 50)
 
     # Stĺpec zdola: Menu, Trofeje, Pravidlá, Zoradiť karty, Posledný štich
     # (posledný len počas štichov). Horné tlačidlo pri 1080 končí 12 px

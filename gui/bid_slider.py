@@ -3,12 +3,15 @@
 import pygame
 from gui import display
 
-from gui import layout
+from gui import layout, ui_style
 from config import (
-    COLOR_WHITE, COLOR_GOLD, COLOR_GRAY,
-    COLOR_BUTTON_PRIMARY, FONT_SIZE_MEDIUM, FONT_SIZE_LARGE, FONT_SIZE_XLARGE,
-    BUTTON_RADIUS, MIN_BID, BID_STEP, MAX_BID
+    FONT_SIZE_MEDIUM, FONT_SIZE_LARGE, FONT_SIZE_XLARGE,
+    MIN_BID, BID_STEP, MAX_BID
 )
+
+# Vzhľad (grafický rework 2026-10-28, gui/ui_style.py)
+DIVIDER = (70, 54, 34)
+TRACK_EMPTY = (52, 40, 26)
 
 
 class BidSlider:
@@ -152,99 +155,59 @@ class BidSlider:
     def draw(self):
         if not self.visible:
             return
+        c = self.canvas
+        mouse = display.mouse_pos()
 
-        # Panel pozadie
-        self.canvas.overlay((self.panel_x, self.panel_y, self.panel_w, self.panel_h),
-                            (15, 9, 4, 230))
-        self.canvas.rect(COLOR_GOLD,
-                         (self.panel_x, self.panel_y, self.panel_w, self.panel_h),
-                         width=2, border_radius=14)
+        # Panel (gui/ui_style.py, rework 2026-10-28) s nadpisom v strede
+        panel = pygame.Rect(self.panel_x, self.panel_y, self.panel_w, self.panel_h)
+        c.overlay(panel.move(0, 5), (0, 0, 0, 110), border_radius=ui_style.PANEL_RADIUS)
+        ui_style.draw_panel(c, panel)
+        title = self.font_small.render("NAVÝŠIŤ POVINNOSŤ", True, ui_style.GOLD)
+        c.blit(title, title.get_rect(centerx=panel.centerx, top=panel.y + 14))
+        c.line(DIVIDER, (panel.x + 24, panel.y + 48), (panel.right - 24, panel.y + 48), width=1)
 
-        # Nadpis
-        title_surf = self.font_small.render("NAVÝŠIŤ POVINNOSŤ", True, COLOR_GOLD)
-        title_rect = title_surf.get_rect(
-            centerx=self.panel_x + self.panel_w // 2,
-            top=self.panel_y + 14
-        )
-        self.canvas.blit(title_surf, title_rect)
-
-        # Oddeľovacia čiara pod nadpisom
-        self.canvas.line(
-            COLOR_GOLD,
-            (self.panel_x + 15, self.panel_y + 44),
-            (self.panel_x + self.panel_w - 15, self.panel_y + 44),
-            width=1
-        )
-
-        # Track pozadie
-        self.canvas.rect(
-            (60, 45, 30),
-            (self.track_x, self.track_y - self.track_h // 2,
-             self.track_w, self.track_h),
-            border_radius=5
-        )
-
-        # Track výplň
+        # Dráha posuvníka
+        track = pygame.Rect(self.track_x, self.track_y - self.track_h // 2,
+                            self.track_w, self.track_h)
+        c.rect(TRACK_EMPTY, track, border_radius=5)
         hx = self._handle_x()
-        fill_w = hx - self.track_x
-        if fill_w > 0:
-            self.canvas.rect(
-                COLOR_GOLD,
-                (self.track_x, self.track_y - self.track_h // 2,
-                 fill_w, self.track_h),
-                border_radius=5
-            )
+        if hx - self.track_x > 0:
+            c.rect(ui_style.GOLD_SOFT, (track.x, track.y, hx - self.track_x, track.height),
+                   border_radius=5)
 
-        # Min / Max hodnoty pod trackom
-        min_surf = self.font_small.render(str(self.min_value), True, COLOR_GRAY)
-        self.canvas.blit(min_surf, (self.track_x, self.track_y + 14))
+        # Min / max pod dráhou
+        min_surf = self.font_small.render(str(self.min_value), True, ui_style.TEXT_DIM)
+        c.blit(min_surf, (self.track_x, self.track_y + 14))
+        max_surf = self.font_small.render(str(self.max_value), True, ui_style.TEXT_DIM)
+        c.blit(max_surf, max_surf.get_rect(right=self.track_x + self.track_w,
+                                           top=self.track_y + 14))
 
-        max_surf = self.font_small.render(str(self.max_value), True, COLOR_GRAY)
-        max_rect = max_surf.get_rect(right=self.track_x + self.track_w)
-        self.canvas.blit(max_surf, (max_rect.x, self.track_y + 14))
+        # Úchyt
+        c.circle(ui_style.BTN_TEXT_HOVER if self.dragging else ui_style.GOLD,
+                 (hx, self.track_y), self.handle_r)
+        c.circle((40, 28, 14), (hx, self.track_y), self.handle_r, width=2)
 
-        # Handle — dvojitý kruh
-        self.canvas.circle(COLOR_GOLD, (hx, self.track_y), self.handle_r)
-        self.canvas.circle((15, 9, 4), (hx, self.track_y), self.handle_r - 5)
-        self.canvas.circle(COLOR_GOLD, (hx, self.track_y), self.handle_r - 9)
+        # Hodnota nad úchytom
+        val = self.font_medium.render(str(self.current_value), True, ui_style.TEXT)
+        c.blit(val, val.get_rect(centerx=hx, bottom=self.track_y - self.handle_r - 8))
 
-        # Hodnota nad handle
-        val_surf = self.font_medium.render(str(self.current_value), True, COLOR_WHITE)
-        val_rect = val_surf.get_rect(
-            centerx=hx,
-            bottom=self.track_y - self.handle_r - 8
-        )
-        self.canvas.blit(val_surf, val_rect)
+        self._draw_round_btn(self.btn_minus, "−", mouse)
+        self._draw_round_btn(self.btn_plus, "+", mouse)
+        ui_style.draw_button(c, self.btn_confirm, "Potvrdiť", self.font_medium, 1,
+                             self.btn_confirm.collidepoint(mouse))
 
-        # Tlačidlo mínus
-        self._draw_round_btn(self.btn_minus, "−")
-
-        # Tlačidlo plus
-        self._draw_round_btn(self.btn_plus, "+")
-
-        # Tlačidlo Potvrdiť
-        mouse_pos = display.mouse_pos()
-        is_hover = self.btn_confirm.collidepoint(mouse_pos)
-        alpha = 255 if is_hover else 210
-        self.canvas.overlay(self.btn_confirm, (*COLOR_BUTTON_PRIMARY, alpha))
-        self.canvas.rect(COLOR_WHITE if is_hover else COLOR_GOLD,
-                         self.btn_confirm, width=2, border_radius=BUTTON_RADIUS)
-        confirm_surf = self.font_medium.render("Potvrdiť", True, COLOR_WHITE)
-        self.canvas.blit(confirm_surf, confirm_surf.get_rect(center=self.btn_confirm.center))
-
-    def _draw_round_btn(self, rect: pygame.Rect, text: str):
-        """Nakreslí okrúhle +/- tlačidlo."""
-        mouse_pos = display.mouse_pos()
-        is_hover = rect.collidepoint(mouse_pos)
+    def _draw_round_btn(self, rect: pygame.Rect, text: str, mouse):
+        """Okrúhle −/+ tlačidlo — medailón ako v stĺpci tlačidiel."""
+        hover = rect.collidepoint(mouse)
         cx, cy = rect.center
         r = rect.width // 2
-
-        color_fill = (100, 70, 30) if is_hover else (50, 35, 15)
-        self.canvas.circle(color_fill, (cx, cy), r)
-        self.canvas.circle(COLOR_GOLD, (cx, cy), r, width=2)
-
-        surf = self.font_medium.render(text, True, COLOR_WHITE)
-        self.canvas.blit(surf, surf.get_rect(center=(cx, cy)))
+        c = self.canvas
+        c.circle((0, 0, 0), (cx + 1, cy + 3), r)
+        c.circle((52, 36, 18) if hover else (22, 14, 8), (cx, cy), r)
+        c.circle(ui_style.BTN_BORDER_HOVER if hover else ui_style.GOLD, (cx, cy), r, width=2)
+        surf = self.font_medium.render(text, True,
+                                       ui_style.BTN_TEXT_HOVER if hover else ui_style.TEXT)
+        c.blit(surf, surf.get_rect(center=(cx, cy)))
 
     def __repr__(self) -> str:
         return f"BidSlider(value={self.current_value}, visible={self.visible})"

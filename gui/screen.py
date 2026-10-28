@@ -8,10 +8,8 @@ from gui.canvas import draw_backdrop, StaticLayer
 
 from config import (
     SCREEN_WIDTH, FPS, DEBUG_MODE,
-    COLOR_BG, COLOR_BG_DARK, COLOR_YELLOW, COLOR_GRAY,
-    COLOR_WHITE, COLOR_GOLD,
+    COLOR_BG, COLOR_BG_DARK,
     FONT_SIZE_MEDIUM, FONT_SIZE_LARGE, FONT_SIZE_SMALL,
-    BUTTON_RADIUS,
     COLOR_BUTTON_PRIMARY, COLOR_BUTTON_SECONDARY,
     CARD_FAN_OFFSET, TRUMP_POINTS, ANIMATION_SPEED_DEFAULT,
 )
@@ -23,7 +21,24 @@ from gui.bid_slider import BidSlider
 from gui.card_renderer import CardRenderer
 from gui.deal_animation import DealAnimation
 from gui.info_overlay import InfoOverlay
+from gui.last_trick_overlay import LastTrickOverlay
 from gui.achievements_screen import AchievementsOverlay
+from gui import ui_style
+
+# Stĺpec tlačidiel vpravo dole — tlačidlo s okrúhlym medailónom a ikonkou
+# vľavo (grafický rework 2026-10-28, z CHUJ). Chýbajúca ikonka sa vynechá;
+# pre "sort" je kreslená náhrada (_draw_sort_icon), kým nepribudne sort.png.
+COLUMN_ICON_FILES = {
+    "last_trick": "last_trick.png",
+    "sort": "sort.png",
+    "info": "rules.png",
+    "trophies": "trophy.png",
+    "menu": "menu.png",
+}
+COLUMN_MEDALLION_R = 28        # polomer medailónu (tlačidlo je vysoké 50)
+COLUMN_ICON_SIZE = 38          # ikonka vnútri medailónu
+COLUMN_RADIUS = 12             # zaoblenie rohov tlačidla
+COLUMN_TEXT_X = 66             # začiatok textu od ľavého okraja tlačidla
 from gui.scoreboard import Scoreboard
 from gui.speech_bubble import SpeechBubble
 from gui.trick_animation import TrickAnimation
@@ -131,7 +146,18 @@ class Screen:
         self.autosave = autosave
 
         self.info_overlay = InfoOverlay(self.canvas)
-        # Trofeje počas hry (tlačidlo Trofeje vedľa Menu)
+        self.last_trick_overlay = LastTrickOverlay(self.canvas, self.card_renderer)
+        # Ikonky stĺpca tlačidiel vpravo dole (assets/graphics, 512×512 —
+        # Canvas ich zmenší z plného rozlíšenia, ostré aj pri 4K)
+        self._column_icons = {}
+        for key, name in COLUMN_ICON_FILES.items():
+            path = os.path.join("assets", "graphics", name)
+            try:
+                self._column_icons[key] = self.canvas.image(
+                    path, (COLUMN_ICON_SIZE, COLUMN_ICON_SIZE))
+            except (FileNotFoundError, pygame.error):
+                self._column_icons[key] = None
+        # Trofeje počas hry (tlačidlo Trofeje v stĺpci)
         self.trophy_overlay = AchievementsOverlay(achievement_tracker)
     # ------------------------------------------------------------------
     # Hlavná slučka
@@ -317,6 +343,9 @@ class Screen:
             if event.type == pygame.QUIT:
                 self.running = False
 
+            # Popup trofeje leží navrch všetkého — klik naň ho zavrie
+            if not self.dealing and self.achievement_popup.handle_event(event):
+                continue
             # Otvorený prehľad (Trofeje / Pravidlá) dostane udalosť prvý —
             # Esc ho zavrie a nevyhodí hráča do menu.
             if self.trophy_overlay.visible:
@@ -1079,6 +1108,11 @@ class Screen:
 
     def _draw(self):
         """Nakreslí celú obrazovku."""
+        if self.info_overlay.covers_screen:
+            # Okno Pravidlá prekryje celé okno (s obrazom hry z chvíle
+            # otvorenia) — hru netreba kresliť (výkon pri 4K).
+            self.info_overlay.draw()
+            return
         if self.trophy_overlay.covers_screen:
             # Otvorené Trofeje prekryjú celé okno (s obrazom hry z chvíle
             # otvorenia) — hru netreba kresliť (výkon pri 4K).
@@ -1180,29 +1214,35 @@ class Screen:
 
             )
 
+    def _active_player_index(self) -> int | None:
+        """Kto je práve na rade (menovka sa zvýrazní): dražba — ďalší
+        dražiteľ, talon — víťaz dražby, štichy — hráč na ťahu."""
+        rnd = self.game_state.current_round
+        if rnd is None or self.dealing:
+            return None
+        if rnd.phase == "bidding":
+            return self._get_next_bidder_index()
+        if rnd.phase == "talon":
+            return rnd.bidding.winner_index
+        if rnd.phase == "tricks" and not self.trick_waiting:
+            return rnd.get_current_player_index()
+        return None
+
     def _draw_player_labels(self):
-        """Nakreslí menovky hráčov."""
-
+        """Menovky hráčov — tmavý štítok so zlatohnedým rámom; hráč na rade
+        má zlatý rám a zlaté meno (gui/ui_style.py, rework 2026-10-28)."""
         font = self.canvas.font(28)
-        label_positions = self.layout.label_positions
-
+        active_index = self._active_player_index()
         for i, player in enumerate(self.game_state.players):
-            pos = label_positions[i]
-
-            surf = font.render(player.name, True, COLOR_WHITE)
-            rect = surf.get_rect(center=pos)
-
-            bg_rect = rect.inflate(16, 8)
-
-            self.canvas.overlay(bg_rect, (0, 0, 0, 160))
-
-            self.canvas.rect(
-                COLOR_GOLD,
-                bg_rect,
-                width=1,
-                border_radius=6
-            )
-
+            active = i == active_index
+            surf = font.render(player.name, True,
+                               ui_style.BTN_TEXT_HOVER if active else ui_style.TEXT)
+            rect = surf.get_rect(center=self.layout.label_positions[i])
+            bg_rect = rect.inflate(24, 10)
+            self.canvas.overlay(bg_rect.move(0, 3), (0, 0, 0, 90), border_radius=8)
+            self.canvas.overlay(bg_rect, (17, 11, 7, 225), border_radius=8)
+            self.canvas.rect(ui_style.GOLD if active else ui_style.GOLD_SOFT,
+                             bg_rect, width=2, border_radius=8)
             self.canvas.blit(surf, rect)
 
     def _draw_current_trick(self):
@@ -1214,55 +1254,13 @@ class Screen:
                 exclude_players=set(self.card_throw_animation.in_flight))
 
     def _draw_last_trick_overlay(self):
-        """Nakreslí overlay s posledným štichom."""
-        from config import CARD_SIZE_MEDIUM
+        """Okno s posledným štichom (gui/last_trick_overlay.py, z CHUJ)."""
         current_round = self.game_state.current_round
         if not current_round or not current_round.tricks:
             self.show_last_trick = False
             return
-
-        self.canvas.overlay_window((0, 0, 0, 200))
-
-        last_trick = current_round.tricks[-1]
-        winner_index = last_trick.get_winner_index()
-        played = last_trick.played_cards  # [(player_idx, card), ...]
-
-        card_w, card_h = CARD_SIZE_MEDIUM
-        gap = 30
-        total_w = len(played) * (card_w + gap) - gap
-        x0 = SCREEN_WIDTH // 2 - total_w // 2
-        y0 = self.H // 2 - card_h // 2 - 40
-
-        title = self.font_large.render("POSLEDNÝ ŠTICH", True, COLOR_GOLD)
-        self.canvas.blit(title, title.get_rect(
-            centerx=SCREEN_WIDTH // 2, top=y0 - 60
-        ))
-
-        for i, (player_idx, card) in enumerate(played):
-            cx = x0 + i * (card_w + gap)
-            is_winner = (player_idx == winner_index)
-
-            img = self.card_renderer._get_card_image(card)
-            self.canvas.blit(img, (cx, y0))
-
-            border_color = COLOR_GOLD if is_winner else COLOR_GRAY
-            border_width = 3 if is_winner else 1
-            self.canvas.rect(border_color,
-                             (cx, y0, card_w, card_h),
-                             width=border_width, border_radius=6)
-
-            name = self.game_state.players[player_idx].name
-            name_surf = self.font_large.render(
-                name, True, COLOR_GOLD if is_winner else COLOR_WHITE
-            )
-            self.canvas.blit(name_surf, name_surf.get_rect(
-                centerx=cx + card_w // 2, top=y0 + card_h + 8
-            ))
-
-        hint = self.font_medium.render("Klikni pre zavretie", True, COLOR_GRAY)
-        self.canvas.blit(hint, hint.get_rect(
-            centerx=SCREEN_WIDTH // 2, top=y0 + card_h + 50
-        ))
+        self.last_trick_overlay.update_hover(display.mouse_pos())
+        self.last_trick_overlay.draw(current_round.tricks[-1], self.game_state.players)
 
     def _draw_talon(self):
         """Nakreslí talon."""
@@ -1285,35 +1283,16 @@ class Screen:
             self.canvas.blit(img, (tx + i * CARD_FAN_OFFSET, ty))
 
     def _draw_buttons(self):
-        self._draw_button(
-            self._button_sort_rect(),
-            "Zoradiť karty",
-            COLOR_BUTTON_SECONDARY
-        )
-        self._draw_button(
-            self._button_info_rect(),
-            "Pravidlá",
-            COLOR_BUTTON_SECONDARY
-        )
-        self._draw_button(
-            self._button_trophies_rect(),
-            "Trofeje",
-            COLOR_BUTTON_SECONDARY
-        )
-        # Menu tlačidlo — vždy viditeľné
-        self._draw_button(
-            self._button_menu_rect(),
-            "Menu",
-            COLOR_BUTTON_SECONDARY
-        )
+        # Stĺpec vpravo dole — tlačidlá s medailónom a ikonkou
+        self._draw_column_button(self._button_sort_rect(), "Zoradiť karty", "sort")
+        self._draw_column_button(self._button_info_rect(), "Pravidlá", "info")
+        self._draw_column_button(self._button_trophies_rect(), "Trofeje", "trophies")
+        self._draw_column_button(self._button_menu_rect(), "Menu", "menu")
         current_round = self.game_state.current_round
         if (current_round and current_round.tricks and
                 current_round.phase == "tricks"):
-            self._draw_button(
-                self._button_last_trick_rect(),
-                "Posledný štich",
-                COLOR_BUTTON_SECONDARY
-            )
+            self._draw_column_button(self._button_last_trick_rect(),
+                                     "Posledný štich", "last_trick")
 
         if not self.game_state.is_human_turn:
             return
@@ -1322,8 +1301,9 @@ class Screen:
             label = TRUMP_LABELS.get(self.pending_trump_suit, self.pending_trump_suit)
 
             if self.pending_trump_first_trick:
-                # ← prvý štich: šedé/disabled tromf tlačidlo + bez tromfu
-                self._draw_button(self._button_trump_yes_rect(), f"Tromf: {label}", COLOR_BUTTON_SECONDARY)
+                # ← prvý štich: tromf sa ešte nedá hlásiť — neaktívne tlačidlo
+                self._draw_button(self._button_trump_yes_rect(), f"Tromf: {label}",
+                                  COLOR_BUTTON_SECONDARY, enabled=False)
                 self._draw_button(self._button_trump_no_rect(), "Bez tromfu", COLOR_BUTTON_SECONDARY)
             else:
                 self._draw_button(self._button_trump_yes_rect(), f"Tromf: {label}", COLOR_BUTTON_PRIMARY)
@@ -1345,45 +1325,73 @@ class Screen:
 
 
 
-    def _draw_button(self, rect: pygame.Rect, text: str, color: tuple):
-        """Nakreslí jedno tlačidlo."""
-        mouse_pos = display.mouse_pos()
-        is_hover = rect.collidepoint(mouse_pos)
+    def _draw_button(self, rect: pygame.Rect, text: str, color: tuple,
+                     enabled: bool = True):
+        """Tlačidlo v strede stola (dražba, tromf, odhodenie) v štýle
+        gui/ui_style.py: COLOR_BUTTON_PRIMARY = úroveň 1, inak úroveň 3."""
+        ui_style.draw_button(self.canvas, rect, text, self.font_medium,
+                             1 if color == COLOR_BUTTON_PRIMARY else 3,
+                             rect.collidepoint(display.mouse_pos()),
+                             enabled=enabled)
 
-        alpha = 240 if is_hover else 200
-        self.canvas.overlay(rect, (*color, alpha))
+    def _draw_column_button(self, rect: pygame.Rect, text: str, icon_key: str):
+        """Tlačidlo stĺpca vpravo dole (z CHUJ): tmavé zaoblené tlačidlo so
+        zlatohnedým rámom, vľavo okrúhly medailón so zlatou ikonkou."""
+        c = self.canvas
+        hover = rect.collidepoint(display.mouse_pos())
+        radius = COLUMN_RADIUS
+        fill, highlight, border, text_color = ui_style.BTN_TIERS[3]
+        c.overlay(rect.move(0, 3), (0, 0, 0, 100), border_radius=radius)
+        c.overlay(rect, fill, border_radius=radius)
+        top = pygame.Rect(rect.x + 2, rect.y + 2, rect.width - 4, rect.height // 2 - 2)
+        c.overlay(top, (255, 214, 140, highlight), border_radius=radius - 2)
+        if hover:
+            c.overlay(rect, (255, 214, 140, 24), border_radius=radius)
+            border, text_color = ui_style.BTN_BORDER_HOVER, ui_style.BTN_TEXT_HOVER
+        c.rect(border, rect, width=2, border_radius=radius)
 
-        border_color = COLOR_WHITE if is_hover else COLOR_GOLD
-        self.canvas.rect(border_color, rect, width=2, border_radius=BUTTON_RADIUS)
+        # Medailón s ikonkou (mierne presahuje výšku tlačidla)
+        mx, my = rect.x + rect.height // 2, rect.centery
+        r = COLUMN_MEDALLION_R
+        c.circle((0, 0, 0), (mx + 1, my + 3), r)
+        c.circle((22, 14, 8), (mx, my), r)
+        c.circle(ui_style.BTN_BORDER_HOVER if hover else ui_style.GOLD, (mx, my), r, width=2)
+        c.circle((96, 70, 34), (mx, my), r - 4, width=1)
+        icon = self._column_icons.get(icon_key)
+        if icon is not None:
+            c.blit(icon, icon.get_rect(center=(mx, my)))
+        elif icon_key == "sort":
+            self._draw_sort_icon(mx, my)
 
-        surf = self.font_medium.render(text, True, COLOR_WHITE)
-        text_rect = surf.get_rect(center=rect.center)
-        self.canvas.blit(surf, text_rect)
+        surf = self.font_medium.render(text, True, text_color)
+        c.blit(surf, surf.get_rect(midleft=(rect.x + COLUMN_TEXT_X, rect.centery)))
+
+    def _draw_sort_icon(self, cx: int, cy: int):
+        """Náhradná ikonka „Zoradiť karty“, kým nie je assets/graphics/
+        sort.png: tri karty zoradené podľa veľkosti (zlaté obdĺžniky)."""
+        c = self.canvas
+        for i, h in enumerate((14, 20, 26)):
+            x = cx - 13 + i * 9
+            rect = pygame.Rect(x, cy + 13 - h, 8, h)
+            c.rect(ui_style.GOLD, rect, border_radius=2)
+            c.rect((120, 84, 30), rect, width=1, border_radius=2)
 
     def _draw_message(self):
-        """Zobrazí správu s priehľadným pozadím tesne nad kartami hráča."""
+        """Dočasná správa tesne nad kartami hráča — panel v štýle
+        gui/ui_style.py."""
         if not self.message or pygame.time.get_ticks() >= self.message_timer:
             return
-
-        surf = self.font_large.render(self.message, True, COLOR_YELLOW)
+        surf = self.font_large.render(self.message, True, ui_style.BTN_TEXT_HOVER)
         msg_w = surf.get_width() + 60
         msg_h = surf.get_height() + 20
-
-        # Pozícia — tesne nad karty hráča (gui/layout.py)
         cx = self.layout.table_center[0]
         msg_x = cx - msg_w // 2
         msg_y = self.layout.message_bottom_y - msg_h // 2
-
-        # Priehľadný overlay
-        self.canvas.overlay((msg_x, msg_y, msg_w, msg_h), (25, 15, 8, 200))
-
-        # Zlatý okraj
-        self.canvas.rect(COLOR_GOLD, (msg_x, msg_y, msg_w, msg_h),
-                         width=2, border_radius=8)
-
-        # Text
-        text_rect = surf.get_rect(center=(cx, msg_y + msg_h // 2))
-        self.canvas.blit(surf, text_rect)
+        if self.bid_slider.visible:
+            # Panel navýšenia povinnosti siaha až k hláške — hláška nad neho
+            msg_y = self.bid_slider.panel_y - msg_h - 16
+        ui_style.draw_panel(self.canvas, (msg_x, msg_y, msg_w, msg_h))
+        self.canvas.blit(surf, surf.get_rect(center=(cx, msg_y + msg_h // 2)))
 
     # ------------------------------------------------------------------
     # Rects — tlačidlá

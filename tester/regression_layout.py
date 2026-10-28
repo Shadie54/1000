@@ -237,6 +237,9 @@ def check_screens(window, check, problems: list[str], clockwise: bool = True):
     for key, rect in ov.tab_rects.items():
         group[f"záložka {key}"] = rect
     check("pravidlá", group)
+    # Obsah okna Pravidlá a bodovanie nesmie presahovať svoje panely
+    for p in ov.layout_problems():
+        problems.append(f"pravidlá: {p}")
 
     # --- menu ------------------------------------------------------------
     menu = Menu(window, show_continue=True)

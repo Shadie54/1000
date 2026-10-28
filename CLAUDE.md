@@ -25,6 +25,7 @@ python tester/regression_screen.py --out po.txt         # stopa 3 kôl (~1 min)
 python tester/regression_screen.py --full --out po.txt  # celá hra
 python tester/regression_layout.py                      # rozloženie pri 15 rozlíšeniach
 python tester/regression_savegame.py                    # uloženie/obnova hry (~5 min)
+python tester/regression_rules_demo.py                  # ukážka štichov v Pravidlách vs. logika hry
 python tools/screenshot_gallery.py --out gallery/po --compare gallery/ref_1920x1080
 python tools/screenshot_gallery.py --out gallery/po --compare gallery/ref_1920x1080 --compare-only
 python tools/screenshot_gallery.py --resolution 3840x2160   # vizuálna kontrola
@@ -47,6 +48,20 @@ vždy z toho istého PC (fonty).
   mení len miesta počítačov pri stole (`layout.seats()`); poradie ťahov
   v hernej logike je vždy Hráč → Počítač 1 → Počítač 2. Pozície podľa
   hráča brať vždy z layoutu (nie `if player_index == 1: vľavo`).
+- `gui/ui_style.py` — spoločný vzhľad (z CHUJ, doc 15 v projekte):
+  farby `GOLD/GOLD_SOFT/TEXT/TEXT_DIM`, tlačidlá v 3 úrovniach
+  (`draw_button`, tier 1 = hlavná akcia), `draw_panel`,
+  `draw_screen_title`, `draw_backdrop` (stôl + svetlo), `blit_soft_ellipse`.
+  Grafický rework (2026-10-28) je hotový na všetkých obrazovkách: menu,
+  Nastavenia, Trofeje, Koniec hry, panely, menovky, bubliny, tlačidlá
+  v hre (stĺpec s medailónmi — `COLUMN_ICON_FILES` v screen.py; chýbajúci
+  sort.png nahrádza kreslená ikonka), posuvník povinnosti, okná Posledný
+  štich (`gui/last_trick_overlay.py`, z CHUJ) a Pravidlá a bodovanie
+  (`gui/info_overlay.py` + animovaná ukážka štichov `gui/rules_demo.py` —
+  príklady musia prejsť regression_rules_demo; texty pravidiel musia
+  zodpovedať logike v game/), popup trofeje
+  (vpravo dole, 15 s, klik naň ho zavrie). Nové prvky kresliť cez ui_style.
+  K `table.jpg` patrí `table_4k.jpg` (použije sa pri okne > Full HD).
 
 Pravidlá pre GUI kód:
 - kresliť len cez `display.canvas()`, nikdy priamo na povrch okna,

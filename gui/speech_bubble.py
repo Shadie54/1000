@@ -3,11 +3,21 @@
 import random
 
 import pygame
-from config import (
-    COLOR_WHITE, COLOR_GOLD, COLOR_YELLOW, COLOR_GREEN, COLOR_RED,
-)
-from gui import layout
+from gui import layout, ui_style
 from gui.scoreboard import load_suit_icon
+
+# Vzhľad bublín (grafický rework 2026-10-28, štýl gui/ui_style.py, z CHUJ):
+# tmavé nepriehľadné telo so zaoblenými rohmi a tieňom, rám aj text vo
+# farbe významu bubliny, chvost plynulo napojený na telo.
+BUBBLE_BODY = (20, 13, 8)
+BUBBLE_RADIUS = 14
+TAIL_SIZE = 12
+
+COLOR_TRUMP_BUBBLE = ui_style.GOLD               # tromf
+COLOR_BID = ui_style.BTN_TEXT_HOVER              # DÁVAM …, inštrukcia
+COLOR_BID_NONE = (170, 155, 135)                 # Ja som DOBRÝ …
+COLOR_POINTS_GOOD = (122, 200, 110)              # body / splnená povinnosť
+COLOR_POINTS_BAD = (232, 112, 84)                # nesplnená povinnosť
 
 
 class SpeechBubble:
@@ -39,7 +49,7 @@ class SpeechBubble:
             text=text,
             suit=suit,
             duration_ms=duration_ms,
-            color=COLOR_GOLD
+            color=COLOR_TRUMP_BUBBLE
         )
 
     def show_bid(self, player_index: int, amount: int | None,
@@ -55,10 +65,10 @@ class SpeechBubble:
             ]
 
             text = random.choice(answers)
-            color = COLOR_WHITE
+            color = COLOR_BID_NONE
         else:
             text = f"DÁVAM {amount}!"
-            color = COLOR_YELLOW
+            color = COLOR_BID
 
         self._add_bubble(
             player_index=player_index,
@@ -78,7 +88,7 @@ class SpeechBubble:
             text=text,
             suit=None,
             duration_ms=99999999,  # "nekonečno" — zmizne manuálne
-            color=COLOR_YELLOW
+            color=COLOR_BID
         )
 
     def hide_instruction(self, player_index: int):
@@ -144,12 +154,14 @@ class SpeechBubble:
         bx = cx - bubble_w // 2
         by = cy - bubble_h
 
-        # Pozadie bubliny
-        self.canvas.overlay((bx, by, bubble_w, bubble_h), (20, 12, 5, 220))
-
-        # Okraj
-        self.canvas.rect(bubble["color"], (bx, by, bubble_w, bubble_h),
-                         width=2, border_radius=12)
+        rect = pygame.Rect(bx, by, bubble_w, bubble_h)
+        c = self.canvas
+        # Tieň, telo, jemné presvetlenie hornej časti, rám
+        c.overlay(rect.move(0, 4), (0, 0, 0, 110), border_radius=BUBBLE_RADIUS)
+        c.rect(BUBBLE_BODY, rect, border_radius=BUBBLE_RADIUS)
+        c.overlay((bx + 2, by + 2, bubble_w - 4, bubble_h // 2 - 2),
+                  (255, 214, 140, 10), border_radius=BUBBLE_RADIUS - 2)
+        c.rect(bubble["color"], rect, width=2, border_radius=BUBBLE_RADIUS)
 
         # Chvost bubliny (trojuholník)
         self._draw_tail(cx, by + bubble_h, by, bubble_w, bubble_h, player_index, bubble["color"])
@@ -173,35 +185,28 @@ class SpeechBubble:
 
     def _draw_tail(self, cx: int, base_y: int, by: int, bubble_w: int, bubble_h: int,
                    player_index: int, color: tuple):
-        tail_size = 12
+        """Chvost k hráčovi podľa jeho miesta pri stole: výplň farbou tela
+        (prekryje rám v mieste napojenia, takže chvost plynulo vychádza
+        z bubliny) + dve hrany vo farbe rámu."""
+        t = TAIL_SIZE
         bx = cx - bubble_w // 2
-
+        mid_y = by + bubble_h // 2
         seat = self.seat_of.get(player_index, "bottom")
         if seat == "bottom":
-            # Hráč dole — chvost dole (zo spodku bubliny)
-            points = [
-                (cx - tail_size, base_y),
-                (cx + tail_size, base_y),
-                (cx, base_y + tail_size * 2)
-            ]
+            a, tip, b = (cx - t, base_y), (cx, base_y + 2 * t), (cx + t, base_y)
+            inward = (0, -3)
         elif seat == "left":
-            # Počítač vľavo — chvost doľava (z ľavého okraja bubliny)
-            mid_y = by + bubble_h // 2
-            points = [
-                (bx, mid_y - tail_size),
-                (bx, mid_y + tail_size),
-                (bx - tail_size * 2, mid_y)
-            ]
+            a, tip, b = (bx, mid_y - t), (bx - 2 * t, mid_y), (bx, mid_y + t)
+            inward = (3, 0)
         else:
-            # Počítač vpravo — chvost doprava (z pravého okraja bubliny)
-            mid_y = by + bubble_h // 2
             right_x = bx + bubble_w
-            points = [
-                (right_x, mid_y - tail_size),
-                (right_x, mid_y + tail_size),
-                (right_x + tail_size * 2, mid_y)
-            ]
-        self.canvas.polygon(color, points)
+            a, tip, b = (right_x, mid_y - t), (right_x + 2 * t, mid_y), (right_x, mid_y + t)
+            inward = (-3, 0)
+        a_in = (a[0] + inward[0], a[1] + inward[1])
+        b_in = (b[0] + inward[0], b[1] + inward[1])
+        self.canvas.polygon(BUBBLE_BODY, [a_in, a, tip, b, b_in])
+        self.canvas.line(color, a, tip, width=2)
+        self.canvas.line(color, tip, b, width=2)
 
     def _load_icon(self, suit: str, size: int):
         """Načíta ikonku farby (LSurf, pomer strán zachovaný)."""
@@ -216,13 +221,13 @@ class SpeechBubble:
         if is_bidder:
             if fulfilled:
                 text = f"+{points}"
-                color = COLOR_GREEN
+                color = COLOR_POINTS_GOOD
             else:
                 text = f"-{points}"
-                color = COLOR_RED
+                color = COLOR_POINTS_BAD
         else:
             text = f"+{points}"
-            color = COLOR_GREEN
+            color = COLOR_POINTS_GOOD
 
         self._add_bubble(
             player_index=player_index,

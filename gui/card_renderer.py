@@ -4,6 +4,8 @@ import os
 
 import pygame
 
+from gui import ui_style
+
 from config import (
     CARDS_MEDIUM_PATH, CARD_BACK_IMAGE,
     CARD_SIZE_MEDIUM, CARD_SIZE_SMALL,
@@ -181,7 +183,7 @@ class CardRenderer:
 
         # Popisok
         font = self.canvas.font(22)
-        label = font.render("Talon", True, COLOR_WHITE)
+        label = font.render("Talon", True, ui_style.TEXT)
         self.canvas.blit(label, (tx, ty - 40))
 
     def draw_talon_debug(self, talon_cards: list):
