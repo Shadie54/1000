@@ -8,6 +8,20 @@ from config import SUITS, RANKS, TRUMP_POINTS, CARD_POINTS
 class AIEvaluator:
     def __init__(self, memory: AIMemory):
         self.memory = memory
+        # Ktoré hlášky (páry) sa započítajú do odhadu — nastavuje AIStrategy
+        # podľa fázy (dražba / po talóne): callable(hand, [farby]) → [farby].
+        # None = všetky páry (pôvodné správanie).
+        self.pair_filter = None
+
+    def _pair_suits(self, hand: list[Card]) -> list[str]:
+        """Farby párov (horník + kráľ) na ruke, ktoré sa dajú reálne
+        zahlásiť (filter z AIStrategy)."""
+        pairs = [s for s in SUITS
+                 if any(c.suit == s and c.rank == "over" for c in hand)
+                 and any(c.suit == s and c.rank == "king" for c in hand)]
+        if self.pair_filter is not None:
+            pairs = self.pair_filter(hand, pairs)
+        return pairs
 
     # ------------------------------------------------------------------
     # Hodnotenie sily ruky
@@ -118,13 +132,7 @@ class AIEvaluator:
         Vráti body za tromfy ktoré môže hráč zahlásil.
         Počíta len páry (over + king) v ruke.
         """
-        total = 0
-        for suit in SUITS:
-            has_over = any(c.suit == suit and c.rank == "over" for c in hand)
-            has_king = any(c.suit == suit and c.rank == "king" for c in hand)
-            if has_over and has_king:
-                total += TRUMP_POINTS[suit]
-        return total
+        return sum(TRUMP_POINTS[s] for s in self._pair_suits(hand))
 
     def get_best_trump_suit(self, hand: list[Card]) -> str | None:
         """
@@ -282,12 +290,8 @@ class AIEvaluator:
         long_suit_bonus = self.get_long_suit_bid_bonus(hand)
         estimated += long_suit_bonus
 
-        for suit in SUITS:
-            has_over = any(c.suit == suit and c.rank == "over" for c in hand)
-            has_king = any(c.suit == suit and c.rank == "king" for c in hand)
-            if has_over and has_king:
-                trump_val = TRUMP_POINTS[suit]
-                estimated = max(estimated, trump_val + 20)
+        for suit in self._pair_suits(hand):
+            estimated = max(estimated, TRUMP_POINTS[suit] + 20)
 
         rounded = int(estimated // 10) * 10
         return max(50, rounded)
@@ -356,12 +360,7 @@ class AIEvaluator:
         guaranteed_points = sum(c.points for c in guaranteed)
 
         # 100% zahlásiteľné hlášky
-        guaranteed_trump_points = 0
-        for suit in SUITS:
-            has_over = any(c.suit == suit and c.rank == "over" for c in hand)
-            has_king = any(c.suit == suit and c.rank == "king" for c in hand)
-            if has_over and has_king:
-                guaranteed_trump_points += TRUMP_POINTS[suit]
+        guaranteed_trump_points = self.get_playable_trump_points(hand)
 
         # Pravdepodobné štichy
         probable = self.get_probable_tricks(hand, trump_suit, guaranteed)
@@ -432,4 +431,4 @@ class AIEvaluator:
         return candidates
 
     def __repr__(self) -> str:
-        return "AIEvaluator()"
+        return "AIEvaluator()"

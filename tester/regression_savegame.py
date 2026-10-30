@@ -183,7 +183,10 @@ def run_checkpoint(name, cond, clock, verbose) -> list[str]:
 def main():
     parser = argparse.ArgumentParser(description="Test uloženia rozohratej hry.")
     parser.add_argument("--verbose", action="store_true")
+    parser.add_argument("--first-trick-trump", action="store_true",
+                        help="variant pravidiel: tromf aj v 1. štichu")
     args = parser.parse_args()
+    rs.FIRST_TRICK_TRUMP = args.first_trick_trump
 
     rs.ensure_hashseed()
     rs.isolate_home("tisic_save_")

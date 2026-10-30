@@ -238,6 +238,15 @@ class Scoreboard:
                 self._draw_bid_progress(current_round, y)
                 y += line_h + 8
 
+            # Variant "tromf aj v 1. štichu": víťaz dražby, ktorý hlásil
+            # v 1. štichu, musí za kolo zobrať aspoň jeden štich
+            if (current_round.phase == "tricks"
+                    and getattr(current_round, "declared_in_first_trick", False)):
+                done = current_round.tricks_won_by(
+                    current_round.bidding.winner_index) > 0
+                self._draw_info_row("Aspoň 1 štich:", "splnené" if done else "chýba",
+                                    y + 12, GOOD if done else BAD)
+
     def _draw_bid_progress(self, current_round: Round, y: int):
         """Nakreslí progress bodov dražiteľa."""
         bidder = current_round.bidding.winner

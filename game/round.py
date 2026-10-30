@@ -5,15 +5,31 @@ from game.deck import Deck
 from game.player import Player
 from game.trick import Trick
 from game.bidding import Bidding
-from config import TALON_SIZE, NUM_PLAYERS
+from config import TALON_SIZE, NUM_PLAYERS, TRUMP_POINTS
+
+# Variant first_trick_trump: v 1. štichu smie víťaz dražby hlásiť len tromf,
+# ktorého hodnota + FIRST_TRICK_MARGIN nepresahuje jeho povinnosť.
+FIRST_TRICK_MARGIN = 10
+
+
+def first_trick_min_bid(suit: str) -> int:
+    """Najnižšia povinnosť, s ktorou sa smie hlásiť `suit` v 1. štichu."""
+    return TRUMP_POINTS[suit] + FIRST_TRICK_MARGIN
 
 
 class Round:
-    def __init__(self, players: list[Player], obligation_index: int):
+    def __init__(self, players: list[Player], obligation_index: int,
+                 first_trick_trump: bool = False):
         """
         players: zoznam všetkých hráčov
         obligation_index: index hráča s povinnosťou
+        first_trick_trump: variant pravidiel (Nastavenia → Hra) — víťaz
+            dražby smie hlásiť tromf už v 1. štichu; potom však musí za kolo
+            zobrať aspoň jeden štich, inak má povinnosť nesplnenú; povinnosť
+            musí byť aspoň hodnota hlášky + 10 (first_trick_min_bid).
         """
+        self.first_trick_trump = first_trick_trump
+        self.declared_in_first_trick = False   # víťaz dražby hlásil v 1. štichu
         self.players = players
         self.obligation_index = obligation_index
         self.deck = Deck()
@@ -120,15 +136,14 @@ class Round:
     def declare_trump(self, player_index: int, suit: str) -> bool:
         """
         Hráč hlási tromf.
-        Podmienky: nie prvé kolo, hráč je leader, má over+king v danej farbe.
+        Podmienky: hráč je leader, má over+king v danej farbe, nie prvý
+        štich (variant first_trick_trump to dovolí — pozri can_declare_trump).
         Vráti True ak je tromf platný.
         """
+        if not self.can_declare_trump(player_index, suit):
+            return False
         if self.trick_number == 0:
-            return False
-        if player_index != self.current_leader_index:
-            return False
-        if not self.players[player_index].hand.has_trump_pair(suit):
-            return False
+            self.declared_in_first_trick = True
 
         self.trump_suit = suit
         self.trump_declarer = self.players[player_index].name  # ← pridané
@@ -136,6 +151,40 @@ class Round:
         # Aktualizujeme tromf aj v aktuálnom štichu
         if self.current_trick:
             self.current_trick.trump_suit = suit
+        return True
+
+    def trump_allowed_now(self, player_index: int) -> bool:
+        """Smie hráč v tomto štichu hlásiť tromf (bez ohľadu na karty)?
+        Len vynášajúci; v 1. štichu len pri variante first_trick_trump
+        (vynáša vtedy víťaz dražby)."""
+        if player_index != self.current_leader_index:
+            return False
+        if self.current_trick is not None and self.current_trick.played_cards:
+            return False
+        if self.trick_number == 0:
+            return self.first_trick_trump
+        return True
+
+    def can_declare_trump(self, player_index: int, suit: str) -> bool:
+        if not (self.trump_allowed_now(player_index)
+                and self.players[player_index].hand.has_trump_pair(suit)):
+            return False
+        if self.trick_number == 0:
+            return self.bidding.current_bid >= first_trick_min_bid(suit)
+        return True
+
+    def tricks_won_by(self, player_index: int) -> int:
+        return sum(1 for t in self.tricks if t.get_winner_index() == player_index)
+
+    def bidder_fulfilled(self) -> bool:
+        """Splnil víťaz dražby povinnosť? Body kola ≥ vydražená hodnota;
+        pri hlásení v 1. štichu musí navyše zobrať aspoň jeden štich."""
+        bidder = self.bidding.winner
+        if bidder.round_points < bidder.bid:
+            return False
+        if self.declared_in_first_trick and self.tricks_won_by(
+                self.bidding.winner_index) == 0:
+            return False
         return True
 
     def play_card(self, player_index: int, card: Card) -> bool:
@@ -180,8 +229,7 @@ class Round:
         """
         Uzavrie kolo a aktualizuje skóre všetkých hráčov.
         """
-        bidder = self.bidding.winner
-        bidder_fulfilled = bidder.round_points >= bidder.bid
+        bidder_fulfilled = self.bidder_fulfilled()
 
         for player in self.players:
             player.finalize_round(bidder_fulfilled)

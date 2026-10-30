@@ -22,6 +22,9 @@ class GameState:
         self.round_history: list[dict] = [] # história kôl pre scoresheet
         self.phase: str = "setup"           # fázy: setup > playing > game_over
         self.logger = GameLogger()
+        # Variant pravidiel pre celú hru (Nastavenia → Hra; ukladá sa aj do
+        # savegame — zmena nastavenia rozohratú hru nemení)
+        self.first_trick_trump: bool = False
 
     # ------------------------------------------------------------------
     # Správa kôl
@@ -32,7 +35,8 @@ class GameState:
         for player in self.players:
             player.reset_round()
 
-        self.current_round = Round(self.players, self.obligation_index)
+        self.current_round = Round(self.players, self.obligation_index,
+                                   self.first_trick_trump)
         self.current_round.deal()
         self.round_number += 1
         self.phase = "playing"
@@ -67,10 +71,7 @@ class GameState:
                 player.name: player.round_points
                 for player in self.players
             },
-            "bid_fulfilled": (
-                self.current_round.bidding.winner.round_points >=
-                self.current_round.bidding.current_bid
-            )
+            "bid_fulfilled": self.current_round.bidder_fulfilled()
         }
         self.round_history.append(round_data)
 

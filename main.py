@@ -49,6 +49,7 @@ def _load_settings() -> dict:
         "table_bg": "table.jpg",
         "animation_speed": ANIMATION_SPEED_DEFAULT,
         "play_direction": PLAY_DIRECTION_DEFAULT,
+        "first_trick_trump": False,
     }
     try:
         with open(_get_settings_path(), "r") as f:
@@ -69,6 +70,8 @@ def _create_game(settings: dict) -> tuple:
     player_names = ["Hráč", "Počítač 1", "Počítač 2"]
     human_index = 0
     game_state = GameState(player_names, human_index)
+    # Variant pravidiel platí pre celú hru (uloží sa aj do savegame)
+    game_state.first_trick_trump = bool(settings.get("first_trick_trump", False))
     ai_players = []
     for i, player in enumerate(game_state.players):
         if player.is_human:
@@ -79,7 +82,8 @@ def _create_game(settings: dict) -> tuple:
                 else settings["ai2_difficulty"]
             )
             ai_players.append(
-                AI(player, difficulty=difficulty, logger=game_state.logger)
+                AI(player, difficulty=difficulty, logger=game_state.logger,
+                   first_trick_trump=game_state.first_trick_trump)
             )
     return game_state, ai_players
 

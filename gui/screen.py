@@ -24,6 +24,7 @@ from gui.info_overlay import InfoOverlay
 from gui.last_trick_overlay import LastTrickOverlay
 from gui.achievements_screen import AchievementsOverlay
 from gui import ui_style
+from game.round import first_trick_min_bid
 
 # Stĺpec tlačidiel vpravo dole — tlačidlo s okrúhlym medailónom a ikonkou
 # vľavo (grafický rework 2026-10-28, z CHUJ). Chýbajúca ikonka sa vynechá;
@@ -145,7 +146,8 @@ class Screen:
         self.exit_ui: dict = {}
         self.autosave = autosave
 
-        self.info_overlay = InfoOverlay(self.canvas)
+        self.info_overlay = InfoOverlay(self.canvas,
+                                        game_state.first_trick_trump)
         self.last_trick_overlay = LastTrickOverlay(self.canvas, self.card_renderer)
         # Ikonky stĺpca tlačidiel vpravo dole (assets/graphics, 512×512 —
         # Canvas ich zmenší z plného rozlíšenia, ostré aj pri 4K)
@@ -683,6 +685,8 @@ class Screen:
             return False
         if current_round.current_leader_index != player_index:
             return False
+        if current_round.current_trick and current_round.current_trick.played_cards:
+            return False
         if card.rank not in ("over", "king"):
             return False
         if not self.game_state.players[player_index].hand.has_trump_pair(card.suit):
@@ -691,7 +695,9 @@ class Screen:
         self.pending_trump_card = card
         self.pending_trump_suit = card.suit
         # ← NOVÉ: zapamätaj či je prvý štich
-        self.pending_trump_first_trick = (current_round.trick_number == 0)
+        # Tromf sa (zatiaľ) hlásiť nedá — tlačidlo ostane neaktívne
+        self.pending_trump_first_trick = not current_round.can_declare_trump(
+            player_index, card.suit)
         return True
 
     def _handle_trump_decision_click(self, pos: tuple[int, int]):
@@ -702,7 +708,11 @@ class Screen:
         if self._button_trump_yes_rect().collidepoint(pos):
             # ← prvý štich: zobraz info a nič nerob
             if self.pending_trump_first_trick:
-                self._show_message("Tromf nie je možný v prvom štichu!")
+                if current_round.first_trick_trump:
+                    need = first_trick_min_bid(self.pending_trump_suit)
+                    self._show_message(f"V 1. štichu len s povinnosťou aspoň {need}!")
+                else:
+                    self._show_message("Tromf nie je možný v prvom štichu!")
                 return
 
             trump_suit = self.pending_trump_suit
@@ -729,6 +739,9 @@ class Screen:
                 TRUMP_POINTS[trump_suit]
             )
             self._show_message(f"Tromf: {TRUMP_LABELS.get(trump_suit, trump_suit)}!")
+            if current_round.declared_in_first_trick and current_round.trick_number == 0:
+                self._show_message("Tromf v 1. štichu — musíš ešte zobrať "
+                                   "aspoň jeden štich!", 5000)
             self._play_card(player_index, self.pending_trump_card)
             self.pending_trump_card = None
             self.pending_trump_suit = None
@@ -818,7 +831,8 @@ class Screen:
             if self.achievement_tracker:
                 human_index = self.game_state.human_index
                 human = self.game_state.players[human_index]
-                human_fulfilled = human.round_points >= human.bid if human.is_bidder else True
+                human_fulfilled = (current_round.bidder_fulfilled()
+                                   if human.is_bidder else True)
 
                 self.achievement_tracker.on_round_finished(
                     human_is_bidder=human.is_bidder,
@@ -832,7 +846,7 @@ class Screen:
             # Bubliny s výsledkami
             for i, player in enumerate(self.game_state.players):
                 if player.is_bidder:
-                    fulfilled = player.round_points >= player.bid
+                    fulfilled = current_round.bidder_fulfilled()
                     points = player.bid
                     self.speech_bubble.show_round_result(i, points, True, fulfilled)
                 else:
@@ -848,10 +862,8 @@ class Screen:
                     "bid": player.bid,
                     "round_points": player.round_points,
                     "total_score": player.total_score,
-                    "fulfilled": (
-                        player.round_points >= player.bid
-                        if player.is_bidder else True
-                    )
+                    "fulfilled": (current_round.bidder_fulfilled()
+                                  if player.is_bidder else True)
                 }
             self.game_state.logger.log_round_result(results)
             self.game_state.logger.save_round()
@@ -962,6 +974,9 @@ class Screen:
             current_round.bidding.current_bid = new_bid
             self.game_state.players[player_index].bid = new_bid
             self._show_message(f"{self.game_state.players[player_index].name} navýšil na {new_bid}")
+            for a in self.ai_players:
+                if a is not None:
+                    a.memory.set_bidder(player_index, new_bid)
 
         # Zahodenie
         cards = ai.decide_discard(self.game_state.players[player_index].hand.cards)
@@ -989,12 +1004,10 @@ class Screen:
             playable, current_round.current_trick, current_round.trick_number
         )
 
-        if (current_round.trick_number > 0
-                and current_round.get_current_player_index() == player_index
-                and current_round.current_leader_index == player_index
+        if (current_round.get_current_player_index() == player_index
                 and card.rank in ("over", "king")):
 
-            if player.hand.has_trump_pair(card.suit):
+            if current_round.can_declare_trump(player_index, card.suit):
                 trump_suit = card.suit
                 is_new = current_round.trump_suit is not None
                 current_round.declare_trump(player_index, trump_suit)
@@ -1037,6 +1050,9 @@ class Screen:
             current_round.bidding.current_bid = new_bid
             self.game_state.players[player_index].bid = new_bid
             self._show_message(f"Povinnosť navýšená na {new_bid}", 5000)
+            for ai in self.ai_players:
+                if ai is not None:
+                    ai.memory.set_bidder(player_index, new_bid)
             self.game_state.logger.log_raise(
                 self.game_state.players[player_index].name,
                 new_bid

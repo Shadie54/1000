@@ -143,6 +143,12 @@ class Gallery:
             st._draw()
             self.shot("menu_03d_nastavenia_potvrdenie")
             st.confirm = None
+            st.active_tab = "pravidla"
+            st._draw()
+            self.shot("menu_03e_nastavenia_pravidla")
+            st.settings["first_trick_trump"] = True
+            st._draw()
+            self.shot("menu_03f_nastavenia_tromf_1_stich")
             st.active_tab = "hra"
 
         ach = AchievementsScreen(self.window)
@@ -255,10 +261,54 @@ class Gallery:
         screen.info_overlay.active_tab = "bodovanie"
         self.frame(screen)
         self.shot("game_11_pravidla_bodovanie")
+        # Hodnoty kariet striedajú farbu — stojaci žaluď (2. farba cyklu)
+        cyc = screen.info_overlay.card_cycle
+        cyc._t0 = self.pygame.time.get_ticks() - int((cyc.HOLD + cyc.FADE + 1.0) * 1000)
+        self.frame(screen)
+        self.shot("game_11b_bodovanie_karty_zalud")
         screen.info_overlay.active_tab = "pravidla"
         self.frame(screen)
         self.shot("game_12_pravidla_pravidla")
+        # Priebeh kola ako navigácia: krok Bodovanie (scéna 1 a 3), krok Dražba
+        ov = screen.info_overlay
+        ov.select_step(4)
+        ov.scoring_demo._t0 -= 2000            # po nábehu scény
+        self.frame(screen)
+        self.shot("game_12d_pravidla_krok_bodovanie")
+        ov.scoring_demo.select(2)
+        ov.scoring_demo._t0 -= 2000
+        self.frame(screen)
+        self.shot("game_12e_pravidla_bodovanie_povinnost")
+        # Dražba (víťaz dražby) a Talón (eso ani desiatku nie) — scéna stojí
+        # na výsledku (HOLD_AT), obrázok nezávisí od času snímky
+        ov.select_step(1)
+        ov.bidding_demo.select(4)
+        ov.bidding_demo._t0 -= 100000
+        self.frame(screen)
+        self.shot("game_12f_pravidla_krok_drazba")
+        ov.select_step(2)
+        ov.talon_demo.select(1)
+        ov.talon_demo._t0 -= 100000
+        self.frame(screen)
+        self.shot("game_12g_pravidla_krok_talon")
+        # Štichy a tromfy — podzáložka Hlásenie tromfu (zatiaľ zástupný obsah)
+        ov.select_step(3)
+        ov.tricks_step.select_tab(1)
+        ov.trump_demo._t0 -= 100000
+        self.frame(screen)
+        self.shot("game_12h_pravidla_hlasenie_tromfu")
+        ov.select_step(3)
+        ov.tricks_step.reset()
         screen.info_overlay.visible = False
+        # Pravidlá pri variante „tromf aj v 1. štichu“
+        from gui.info_overlay import InfoOverlay
+        normal_ov = screen.info_overlay
+        screen.info_overlay = InfoOverlay(screen.canvas, first_trick_trump=True)
+        screen.info_overlay.visible = True
+        screen.info_overlay.active_tab = "pravidla"
+        self.frame(screen)
+        self.shot("game_12c_pravidla_tromf_1_stich")
+        screen.info_overlay = normal_ov
 
         screen.trophy_overlay.show()
         self.frame(screen)

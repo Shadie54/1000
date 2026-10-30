@@ -240,6 +240,9 @@ def check_screens(window, check, problems: list[str], clockwise: bool = True):
     # Obsah okna Pravidlá a bodovanie nesmie presahovať svoje panely
     for p in ov.layout_problems():
         problems.append(f"pravidlá: {p}")
+    from gui.info_overlay import InfoOverlay
+    for p in InfoOverlay(screen.canvas, first_trick_trump=True).layout_problems():
+        problems.append(f"pravidlá (tromf v 1. štichu): {p}")
 
     # --- menu ------------------------------------------------------------
     menu = Menu(window, show_continue=True)
@@ -259,11 +262,19 @@ def check_screens(window, check, problems: list[str], clockwise: bool = True):
     group["šípka ←"] = st.bg_arrow_left["rect"]
     group["šípka →"] = st.bg_arrow_right["rect"]
     group["posuvník"] = st.slider_rect.inflate(20, st.slider_handle_radius * 3)
-    for btn in st.dir_buttons:
-        group[f"smer {btn['value']}"] = btn["rect"]
     check("nastavenia", group)
+    # Záložka Pravidlá
+    rgroup = {"Späť": st.back_button["rect"]}
+    for key, rect in st.tab_rects.items():
+        rgroup[f"záložka {key}"] = rect
+    for btn in st.dir_buttons:
+        rgroup[f"smer {btn['value']}"] = btn["rect"]
+    for btn in st.trump_buttons:
+        rgroup[f"tromf {btn['value']}"] = btn["rect"]
+    check("nastavenia/pravidlá", rgroup)
     for name, panel in (("panel obtiažnosť", st.panel_ai),
                         ("panel smer", st.panel_dir),
+                        ("panel hlásenie tromfu", st.panel_trump),
                         ("panel animácie", st.panel_anim),
                         ("panel pozadie", st.panel_bg)):
         if panel.colliderect(st.back_button["rect"]):

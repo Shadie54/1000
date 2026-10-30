@@ -2,10 +2,15 @@
 #
 # Okno "Pravidlá a bodovanie" (tlačidlo Pravidlá v hre). Grafický rework
 # 2026-10-28 podľa konceptu usera (ChatGPT) a štruktúry okna v hre CHUJ:
-#   Bodovanie — hodnoty kariet, tromfové hlásenia, povinnosť, ostatní hráči,
-#   Pravidlá  — cieľ hry, priebeh kola v 5 krokoch, animovaná ukážka
-#               pravidiel štichov (gui/rules_demo.py), dražba a talón,
-#               hlásenie tromfu.
+#   Prehľad bodovania — hodnoty kariet (karty cyklicky menia farbu —
+#               SuitCycle), tromfové hlášky, povinnosť, ostatní hráči,
+#   Pravidlá  — cieľ hry, priebeh kola v 5 krokoch = navigácia (klik na
+#               krok vyberie obsah veľkého panela: Štichy a tromfy =
+#               podzáložky Pravidlá štichov (gui/rules_demo.py) a Hlásenie
+#               tromfu (gui/trump_demo.py), Bodovanie = ukážka
+#               bodovania gui/scoring_demo.py z blokov Prehľadu bodovania,
+#               Dražba a Talón = gui/round_demos.py, Rozdanie zatiaľ
+#               obrázok a popis); ukážka má celú šírku pod Priebehom kola.
 # Medailóny s bodmi sú zlaté (v CHUJ červené = trestné).
 #
 # Všetky texty zodpovedajú logike hry (game/hand.py, game/round.py,
@@ -14,15 +19,23 @@
 #
 # Výkon: statický obsah okna (vrátane obrazu hry pod ním z chvíle otvorenia)
 # sa kreslí raz do vrstvy (canvas.draw_static), každú snímku sa kreslí len
-# hover záložiek a krížika a animovaná ukážka štichov.
+# hover záložiek a krížika, animovaná ukážka štichov a rad kariet v Hodnotách
+# kariet (hotové obrázky radu pre každú farbu, prelínanie).
+#
+# Terminológia (user 2026-10-29): „Prehľad bodovania“ = záložka, „Tromfové
+# hlášky“ = body za kráľa a horníka, „Hlásenie tromfu“ = úkon hráča.
 
 import os
+from contextlib import contextmanager
 
 import pygame
 
 from gui import display, ui_style
-from gui.canvas import draw_static
+from gui.canvas import LSurf, draw_static
 from gui.rules_demo import TrickRulesDemo
+from gui.scoring_demo import ScoringDemo
+from gui.round_demos import BiddingDemo, TalonDemo
+from gui.trump_demo import TrumpPlaceholder
 from config import (
     SCREEN_WIDTH, CARD_POINTS, TRUMP_POINTS, MIN_BID, BID_STEP,
     CARD_BACK_IMAGE,
@@ -53,11 +66,147 @@ RANK_NAMES = (("ace", "Eso"), ("ten", "Desiatka"), ("king", "Kráľ"),
               ("eight", "Osmička"), ("seven", "Sedmička"))
 TRUMP_ORDER = (("acorn", "ŽALUĎ"), ("leaf", "ZELEŇ"), ("bell", "GUĽA"),
                ("heart", "SRDCE"))
+TAB_LABELS = {"bodovanie": "Prehľad bodovania", "pravidla": "Pravidlá"}
+
+
+class SuitCycle:
+    """Rad kariet, ktorý pokojne strieda farbu: zeleň → žaluď → guľa →
+    srdce → … (všetky karty naraz, mení sa len obrázok — poloha, názvy
+    a body ostávajú). Bodová hodnota závisí od karty, nie od farby.
+
+    Obrázok radu pre každú farbu sa pripraví raz (pozadie zo statickej
+    vrstvy + karty + medailóny) — každú snímku sa kreslí len hotový obrázok,
+    pri prechode dva cez seba. Kreslí sa len keď je záložka viditeľná
+    (volá ho draw() okna), takže na pozadí nebeží. Dá sa použiť aj inde
+    (napr. krok Bodovanie v Pravidlách): stačí oblasť a funkcia, ktorá
+    nakreslí rad v danej farbe."""
+
+    SUITS = ("leaf", "acorn", "bell", "heart")
+    HOLD = 3.0          # s — farba stojí
+    FADE = 0.9          # s — plynulé prelínanie do ďalšej
+
+    def __init__(self):
+        self._rows: dict = {}
+        self._key = None
+        self.reset()
+
+    def reset(self):
+        """Od začiatku (zeleň) — pri otvorení okna / prepnutí záložky."""
+        self._t0 = pygame.time.get_ticks()
+
+    def state(self) -> tuple[int, float]:
+        """(index aktuálnej farby, podiel prelínania do ďalšej 0…1)."""
+        period = self.HOLD + self.FADE
+        t = (pygame.time.get_ticks() - self._t0) / 1000.0
+        i = int(t // period)
+        f = t - i * period - self.HOLD
+        a = 0.0 if f <= 0 else min(1.0, f / self.FADE)
+        a = a * a * (3 - 2 * a)                     # smoothstep — bez trhnutia
+        return i % len(self.SUITS), a
+
+    def draw(self, canvas, region: pygame.Rect, draw_row):
+        """region — logická oblasť radu (karty + medailóny), v ktorej je
+        v cieli práve nakreslená statická vrstva; draw_row(suit) nakreslí
+        rad v danej farbe."""
+        key = (canvas.target.get_size(), tuple(region))
+        if key != self._key:
+            self._rows = {}
+            self._key = key
+            prect = canvas.prect(region).clip(canvas.target.get_rect())
+            if prect.width <= 1 or prect.height <= 1:
+                return
+            bg = canvas.target.subsurface(prect).copy()
+            for suit in self.SUITS:
+                canvas.target.blit(bg, prect)
+                draw_row(suit)
+                self._rows[suit] = LSurf(canvas.target.subsurface(prect).copy(),
+                                         region.width, region.height)
+            canvas.target.blit(bg, prect)
+        if not self._rows:
+            return
+        i, a = self.state()
+        canvas.blit(self._rows[self.SUITS[i]], region.topleft)
+        if a > 0:
+            nxt = self._rows[self.SUITS[(i + 1) % len(self.SUITS)]]
+            nxt.set_alpha(round(255 * a))
+            canvas.blit(nxt, region.topleft)
+            nxt.set_alpha(None)
+
+
+STEP_BIDDING, STEP_TALON, STEP_TRICKS, STEP_SCORING = 1, 2, 3, 4   # kroky s ukážkou
+
+
+class TricksTrumpStep:
+    """Krok „Štichy a tromfy“: dve podzáložky nad ukážkou — Pravidlá
+    štichov (ukážka štichov bez zmeny) a Hlásenie tromfu (zatiaľ zástupný
+    obsah). Podzáložky ležia v hlavičke panela (namiesto nadpisu ukážky),
+    vybraná ukážka má vždy celý animačný priestor. Prepnutie podzáložky
+    zastaví predchádzajúcu ukážku (reset — znova od 1. scény)."""
+
+    TABS = ("Pravidlá štichov", "Hlásenie tromfu")
+
+    def __init__(self, canvas, tricks, trump):
+        self.canvas = canvas
+        self.demos = (tricks, trump)
+        for d in self.demos:
+            d.show_title = False
+        trump.show_counter = False
+        self.font_tab = canvas.font(24)
+        self.tab = 0
+        self.tab_rects = []
+
+    def layout(self, rect):
+        r = pygame.Rect(rect)
+        self.rect = r
+        w = max(self.font_tab.size(t)[0] for t in self.TABS) + 70
+        self.tab_rects = [pygame.Rect(r.x + 20 + i * (w + 12), r.y + 7, w, 44)
+                          for i in range(len(self.TABS))]
+        for d in self.demos:
+            d.layout(r)
+
+    @property
+    def current(self):
+        return self.demos[self.tab]
+
+    def reset(self):
+        """Predvolená podzáložka (Pravidlá štichov) od 1. scény."""
+        self.tab = 0
+        for d in self.demos:
+            d.reset()
+
+    def select_tab(self, index: int):
+        if index != self.tab:
+            self.tab = index
+            for d in self.demos:
+                d.reset()
+
+    def handle_click(self, pos) -> bool:
+        for i, r in enumerate(self.tab_rects):
+            if r.collidepoint(pos):
+                self.select_tab(i)
+                return True
+        return self.current.handle_click(pos)
+
+    def draw(self, mouse):
+        self.current.draw(mouse)
+        for i, (r, label) in enumerate(zip(self.tab_rects, self.TABS)):
+            active = i == self.tab
+            ui_style.draw_button(self.canvas, r, label, self.font_tab,
+                                 1 if active else 3,
+                                 hover=not active and r.collidepoint(mouse),
+                                 shadow=False)
 
 
 class InfoOverlay:
-    def __init__(self, canvas):
+    SECTION_FILL = SECTION_FILL
+
+    def __init__(self, canvas, first_trick_trump: bool = False):
+        # first_trick_trump — variant pravidiel rozohratej hry (tromf aj
+        # v 1. štichu); Pravidlá ukazujú pravidlá, podľa ktorých sa hrá
         self.canvas = canvas
+        self.trump_bullets = (self.TRUMP_BULLETS_FIRST_TRICK if first_trick_trump
+                              else self.TRUMP_BULLETS)     # podklad pre ukážku
+        self.bullet_gap = self.BULLET_GAP
         self.H = display.logical_height()
         self._visible = False
         self._game_frame = None
@@ -76,7 +225,7 @@ class InfoOverlay:
         ccx, ccy = self.frame.right - 48, self.frame.top + 46
         self.btn_close = pygame.Rect(ccx - CLOSE_R - 4, ccy - CLOSE_R - 4,
                                      2 * CLOSE_R + 8, 2 * CLOSE_R + 8)
-        tab_w, tab_h = 240, 46
+        tab_w, tab_h = 300, 46
         cx = SCREEN_WIDTH // 2
         self.tab_rects = {
             "bodovanie": pygame.Rect(cx - tab_w - 8, self.frame.top + 82, tab_w, tab_h),
@@ -88,8 +237,25 @@ class InfoOverlay:
 
         self._checks: list = []           # presahy obsahu (layout_problems)
         self.rules_demo = TrickRulesDemo(canvas)
-        self._demo_rect = self._rules_layout()["demo"]
+        self.card_cycle = SuitCycle()             # Hodnoty kariet
+        self._card_row = None                     # oblasť radu kariet
+        self.step = STEP_TRICKS                   # vybraný krok Priebehu kola
+        lay = self._rules_layout()
+        self._demo_rect = lay["demo"]
+        self._flow_rect = lay["flow"]
         self.rules_demo.layout(self._demo_rect)
+        self.scoring_demo = ScoringDemo(canvas, self)
+        self.scoring_demo.layout(self._demo_rect)
+        self.bidding_demo = BiddingDemo(canvas)
+        self.bidding_demo.layout(self._demo_rect)
+        self.talon_demo = TalonDemo(canvas)
+        self.talon_demo.layout(self._demo_rect)
+        self.trump_demo = TrumpPlaceholder(canvas)
+        self.tricks_step = TricksTrumpStep(canvas, self.rules_demo, self.trump_demo)
+        self.tricks_step.layout(self._demo_rect)
+        # krok Priebehu kola → animovaná ukážka (ostatné kroky: obrázok a popis)
+        self.step_demos = {STEP_BIDDING: self.bidding_demo, STEP_TALON: self.talon_demo,
+                           STEP_TRICKS: self.tricks_step, STEP_SCORING: self.scoring_demo}
 
     # ------------------------------------------------------------------
     # Viditeľnosť
@@ -104,6 +270,9 @@ class InfoOverlay:
         if value and not self._visible:
             self._game_frame = None          # nový obraz hry pod oknom
             self.rules_demo.reset()          # ukážka štichov od scény 1
+            self.card_cycle.reset()          # karty od zelene
+            self.step = STEP_TRICKS
+            self.tricks_step.reset()         # podzáložka Pravidlá štichov
         self._visible = bool(value)
 
     @property
@@ -119,6 +288,13 @@ class InfoOverlay:
 
     def toggle(self):
         self.visible = not self.visible
+
+    def select_step(self, index: int):
+        """Krok Priebehu kola — ukážka v ňom začne od začiatku."""
+        if index != self.step:
+            self.step = index
+            for demo in self.step_demos.values():
+                demo.reset()
 
     # ------------------------------------------------------------------
     # Udalosti
@@ -139,10 +315,18 @@ class InfoOverlay:
                 if rect.collidepoint(event.pos):
                     if key == "pravidla" and self.active_tab != key:
                         self.rules_demo.reset()
+                    if key == "bodovanie" and self.active_tab != key:
+                        self.card_cycle.reset()
                     self.active_tab = key
                     return True
             if self.active_tab == "pravidla":
-                self.rules_demo.handle_click(event.pos)
+                for i, col in enumerate(self._flow_columns(self._flow_rect)):
+                    if col.collidepoint(event.pos):
+                        self.select_step(i)
+                        return True
+                demo = self.step_demos.get(self.step)
+                if demo is not None:
+                    demo.handle_click(event.pos)
             return True  # blokuj klik cez okno
         return event.type in (pygame.KEYDOWN, pygame.MOUSEBUTTONUP)
 
@@ -157,13 +341,20 @@ class InfoOverlay:
         if self._game_frame is None:
             # Volá sa na konci kreslenia hernej snímky — okno ju obsahuje
             self._game_frame = c.target.copy()
-        draw_static(self, c, ("info", self.active_tab, id(self._game_frame)),
+        draw_static(self, c, ("info", self.active_tab, self.step, id(self._game_frame)),
                     self._draw_static)
         mouse = display.mouse_pos()
         self._draw_tabs(mouse)
         self._draw_close(self.btn_close.collidepoint(mouse))
         if self.active_tab == "pravidla":
-            self.rules_demo.draw(mouse)
+            self._draw_flow_hover(mouse)
+            demo = self.step_demos.get(self.step)
+            if demo is not None:
+                demo.draw(mouse)
+        elif self._card_row is not None:
+            rect, row = self._card_row
+            self.card_cycle.draw(self.canvas, row,
+                                 lambda suit: self._draw_card_row(rect, suit))
 
     def _draw_static(self):
         c = self.canvas
@@ -181,7 +372,7 @@ class InfoOverlay:
             self._draw_rules()
 
     def _draw_tabs(self, mouse):
-        labels = {"bodovanie": "Bodovanie", "pravidla": "Pravidlá"}
+        labels = TAB_LABELS
         for key, rect in self.tab_rects.items():
             active = self.active_tab == key
             ui_style.draw_button(self.canvas, rect, labels[key], self.font_tab,
@@ -208,17 +399,110 @@ class InfoOverlay:
         """Zapamätá si, kam siahol obsah panela — kontrola presahov."""
         self._checks.append((name, pygame.Rect(panel), pygame.Rect(content)))
 
+    @contextmanager
+    def unchecked(self):
+        """Kreslenie každú snímku (ukážky) — bez zápisu do kontroly
+        presahov (inak by zoznam rástol donekonečna)."""
+        saved = self._checks
+        self._checks = []
+        try:
+            yield
+        finally:
+            self._checks = saved
+
+    def _demo_spill(self, d, name: str) -> list[str]:
+        """Nakreslí každú scénu ukážky v niekoľkých okamihoch (bez ovládania)
+        a zistí, či obsah nezasiahne mimo javiska — do pásu s ovládaním
+        pod ním alebo do okrajov panela vedľa neho."""
+        c = self.canvas
+        r = d.rect
+        st = d.stage
+        strips = [pygame.Rect(r.x + 4, st.bottom + 2, r.width - 8, r.bottom - 4 - st.bottom - 2),
+                  pygame.Rect(r.x + 4, st.y, st.x - r.x - 6, st.height),
+                  pygame.Rect(st.right + 2, st.y, r.right - 4 - st.right - 2, st.height)]
+        strips = [c.prect(s).clip(c.target.get_rect()) for s in strips]
+        before = [c.target.subsurface(s).copy() for s in strips]
+        saved = (d.scene, d.playing, d.hold_at, d._t0)
+        d._draw_controls = lambda mouse: None
+        problems = []
+        try:
+            for scene in range(len(d.SCENES)):
+                for t in (0.5, 1.5, 2.5, 3.5, 4.5, 6.0, 7.5):
+                    d.scene, d.playing, d.hold_at = scene, False, t
+                    d._t0 = pygame.time.get_ticks() - int(t * 1000)
+                    with self.unchecked():
+                        d.draw((0, 0))
+                    for sr, b in zip(strips, before):
+                        now = c.target.subsurface(sr)
+                        if pygame.image.tostring(now, "RGB") != pygame.image.tostring(b, "RGB"):
+                            problems.append(f"{name}: scéna {scene + 1} v čase {t} s "
+                                            f"kreslí mimo javiska")
+                            break
+                        c.target.blit(b, sr)
+        finally:
+            del d._draw_controls
+            d.scene, d.playing, d.hold_at, d._t0 = saved
+        return sorted(set(problems))
+
+    def _round_demo_checks(self, d, step):
+        """Presahy ukážok Dražba / Talón: ovládanie, panely, karty, správy."""
+        name = "dražba" if step == STEP_BIDDING else "talón"
+        for nm, r in (("predchádzajúce", d.btn_prev), ("ďalšie", d.btn_next),
+                      ("prehrať", d.btn_play), ("javisko", d.stage)):
+            self._fit(f"{name}/{nm}", self._demo_rect, r)
+        for i in range(len(d.SCENES)):
+            self._fit(f"{name}/text {i + 1}", d.stage, d._text_box(i)[0])
+        self._fit(f"{name}/panel", d.stage, d.info_r)
+        if step == STEP_BIDDING:
+            for nm, r in (("Dám +10", d.btn_bid_r), ("Dobrý", d.btn_pass_r)):
+                self._fit(f"{name}/{nm}", d.table_area, r)
+        else:
+            ch = d.hh
+            for n in (10, 12):
+                for i in (0, n - 1):
+                    card = pygame.Rect(0, 0, d.hw, ch)
+                    card.center = (d._hand_x(i, n), d.hand_cy - d.lift)
+                    self._fit(f"{name}/ruka {n}", d.stage, card)
+            pile = pygame.Rect(0, 0, d.hw + round(d.hw * 0.56), ch)
+            pile.midleft = (d.discard_c[0] - d.hw // 2, d.discard_c[1])
+            self._fit(f"{name}/odhodené", d.stage, pile)
+
     def layout_problems(self) -> list[str]:
         """Nakreslí obe záložky a vráti zoznam presahov obsahu mimo panelov
         (text, obrázok alebo ovládací prvok mimo hraníc svojho panela)."""
         c = self.canvas
-        saved = (self.active_tab, self._game_frame)
+        saved = (self.active_tab, self._game_frame, self.step)
         self._game_frame = c.target.copy()
         problems = []
-        for tab in ("bodovanie", "pravidla"):
+        pages = [("bodovanie", None)] + [("pravidla", i)
+                                         for i in range(len(self.FLOW_STEPS))]
+        for tab, step in pages:
             self.active_tab = tab
+            if step is not None:
+                self.step = step
             self._draw_static()
-            if tab == "pravidla":
+            if step == STEP_SCORING:
+                for i in range(len(self.scoring_demo.SCENES)):
+                    self.scoring_demo.draw_scene(i)
+                d = self.scoring_demo
+                for nm, r in (("predchádzajúce", d.btn_prev), ("ďalšie", d.btn_next),
+                              ("prehrať", d.btn_play)):
+                    self._fit(f"bodovanie/{nm}", self._demo_rect, r)
+            if step in (STEP_BIDDING, STEP_TALON):
+                self._round_demo_checks(self.step_demos[step], step)
+            if step in self.step_demos:
+                d = self.step_demos[step]
+                inner = d.demos if isinstance(d, TricksTrumpStep) else (d,)
+                for dd in inner:
+                    problems += [f"pravidla/krok {step + 1}/{p}"
+                                 for p in self._demo_spill(dd, dd.TITLE.lower())]
+                if isinstance(d, TricksTrumpStep):
+                    for nm, r in zip(d.TABS, d.tab_rects):
+                        self._fit(f"podzáložka {nm}", self._demo_rect, r)
+                        hdr = pygame.Rect(d.rect.x, d.rect.y, d.rect.width,
+                                          d.demos[0].stage.y - d.rect.y)
+                        self._fit(f"podzáložka {nm} (hlavička)", hdr.inflate(8, 8), r)
+            if step == STEP_TRICKS:
                 d = self.rules_demo
                 for nm, r in (("predchádzajúce", d.btn_prev), ("ďalšie", d.btn_next),
                               ("prehrať", d.btn_play), ("javisko", d.stage)):
@@ -232,9 +516,10 @@ class InfoOverlay:
             for name, panel, content in self._checks:
                 inner = panel.inflate(-8, -8)
                 if not inner.contains(content):
-                    problems.append(f"{tab}/{name}: obsah {tuple(content)} "
+                    where = tab if step is None else f"{tab}/krok {step + 1}"
+                    problems.append(f"{where}/{name}: obsah {tuple(content)} "
                                     f"presahuje panel {tuple(panel)}")
-        self.active_tab, self._game_frame = saved
+        self.active_tab, self._game_frame, self.step = saved
         return problems
 
     # ------------------------------------------------------------------
@@ -258,10 +543,10 @@ class InfoOverlay:
         self._section(r1, "1. HODNOTY KARIET", (
             ("Každá karta má svoju bodovú hodnotu.", ui_style.TEXT_DIM),
             ("Desiatka je druhá najsilnejšia karta, hneď po ese.", ui_style.TEXT)))
-        self._draw_card_values(r1)
+        self._card_row = (pygame.Rect(r1), self._draw_card_values(r1))
 
         r2 = pygame.Rect(x0, r1.bottom + gap, x1 - x0, h2)
-        self._section(r2, "2. TROMFOVÉ HLÁSENIA", (
+        self._section(r2, "2. TROMFOVÉ HLÁŠKY", (
             ("Ak máš kráľa a horníka rovnakej farby, môžeš nahlásiť tromf "
              "a získať body navyše.", ui_style.TEXT_DIM),))
         self._draw_trump_values(r2)
@@ -274,26 +559,56 @@ class InfoOverlay:
         self._section(r4, "4. OSTATNÍ HRÁČI")
         self._draw_others(r4)
 
-    def _draw_card_values(self, rect: pygame.Rect):
-        c = self.canvas
+    def _card_values_geometry(self, rect: pygame.Rect):
+        """Rozloženie radu Hodnoty kariet v paneli `rect`: zoznam
+        (rank, názov, obdĺžnik karty, stred medailónu), polomer medailónu."""
         top = self._content_top(rect)
         name_h = self.font_text.get_height()
         medal_r = 24
         card_h = rect.bottom - 12 - name_h - 6 - medal_r - top
         card_w = round(card_h * CARD_RATIO)
         n = len(RANK_NAMES)
-        step = min(card_w + 70, (rect.width - 80) // n)
+        max_step = (rect.width - 80) // n
+        if card_w > max_step - 18:          # úzky panel (ukážka bodovania)
+            card_w = max_step - 18
+            free = card_h - round(card_w / CARD_RATIO)
+            card_h = round(card_w / CARD_RATIO)
+            top += free // 2                # rad zvislo v strede panela
+        step = min(card_w + 70, max_step)
         x_start = rect.centerx - (n - 1) * step // 2
+        items = []
         for i, (rank, name) in enumerate(RANK_NAMES):
             cx = x_start + i * step
-            self._card(f"heart-{rank}", (cx - card_w // 2, top), (card_w, card_h))
+            items.append((rank, name, pygame.Rect(cx - card_w // 2, top, card_w, card_h),
+                          (cx, top + card_h)))
+        return items, medal_r
+
+    def _draw_card_row(self, rect: pygame.Rect, suit: str):
+        """Karty a medailóny s bodmi v danej farbe (kreslí SuitCycle každú
+        snímku). Tiene kariet a názvy sa nemenia — sú v statickej vrstve."""
+        items, medal_r = self._card_values_geometry(rect)
+        for rank, _name, card, medal in items:
+            self._card(f"{suit}-{rank}", card.topleft, card.size, shadow=False)
             pts = CARD_POINTS[rank]
-            my = top + card_h
-            self._medal((cx, my), medal_r, str(pts), None, zero=pts == 0)
+            self._medal(medal, medal_r, str(pts), None, zero=pts == 0)
+
+    def _draw_card_values(self, rect: pygame.Rect):
+        c = self.canvas
+        items, medal_r = self._card_values_geometry(rect)
+        row = None
+        for _rank, name, card, (cx, my) in items:
+            self._card_shadow(card.topleft, card.size)
             s = self.font_text.render(name, True, ui_style.TEXT)
             r = s.get_rect(centerx=cx, top=my + medal_r + 6)
             c.blit(s, r)
             self._fit("hodnoty kariet", rect, r)
+            # oblasť pre striedanie farieb: karta + tieň + medailón (s tieňom)
+            part = pygame.Rect(card.x - 2, card.y - 2, card.width + 10, card.height + 10)
+            part.union_ip(pygame.Rect(cx - medal_r - 2, my - medal_r - 2,
+                                      2 * medal_r + 8, 2 * medal_r + 10))
+            row = part if row is None else row.union(part)
+        self._fit("hodnoty kariet/karty", rect, row)
+        return row
 
     def _draw_trump_values(self, rect: pygame.Rect):
         c = self.canvas
@@ -320,17 +635,22 @@ class InfoOverlay:
             card_h = box.bottom - ctop - medal_r - 6
             card_w = round(card_h * CARD_RATIO)
             g = 12
+            if 2 * card_w + g > box_w - 20:         # úzky panel
+                card_w = (box_w - 20 - g) // 2
+                free = card_h - round(card_w / CARD_RATIO)
+                card_h = round(card_w / CARD_RATIO)
+                ctop += free // 2                   # karty zvislo v strede
             self._card(f"{suit}-king", (box.centerx - card_w - g // 2, ctop), (card_w, card_h))
             self._card(f"{suit}-over", (box.centerx + g // 2, ctop), (card_w, card_h))
             my = ctop + card_h + 2
             self._medal((box.centerx, my), medal_r, str(TRUMP_POINTS[suit]), "bodov")
-            self._fit("tromfové hlásenia", rect,
+            self._fit("tromfové hlášky", rect,
                       pygame.Rect(box.x, box.y, box.width, my + medal_r - box.y))
 
     # --- 3. Povinnosť -----------------------------------------------------
 
     OBLIGATION_INTRO = ("Vyhral si dražbu? Musíš uhrať aspoň toľko bodov, koľko si "
-                        "vydražil. Počítajú sa štichy aj tromfové hlásenia.")
+                        "vydražil. Počítajú sa štichy aj tromfové hlášky.")
     OBLIGATION_BOXES = (
         (True, "Splnená povinnosť",
          "Uhral si dosť bodov. Pripíše sa ti vydražená hodnota.",
@@ -392,9 +712,9 @@ class InfoOverlay:
 
     # --- 4. Ostatní hráči ---------------------------------------------------
 
-    OTHERS_INTRO = ("Ak si nevyhral dražbu, získavaš body za svoje štichy a hlásenia. "
+    OTHERS_INTRO = ("Ak si nevyhral dražbu, získavaš body za svoje štichy a hlášky. "
                     "Výsledok sa zaokrúhli na desiatky – od 5 nahor.")
-    OTHERS_ROWS = (("Štichy 33 + hlásenie 40 = 73", "70 bodov"),
+    OTHERS_ROWS = (("Štichy 33 + hláška 40 = 73", "70 bodov"),
                    ("Štichy 25", "30 bodov"),
                    ("Štichy 14", "10 bodov"))
 
@@ -436,15 +756,18 @@ class InfoOverlay:
     # Záložka PRAVIDLÁ
     # ------------------------------------------------------------------
 
-    GOAL_TEXT = ("Zbieraj body za štichy a tromfové hlásenia. Kto ako prvý "
+    GOAL_TEXT = ("Zbieraj body za štichy a tromfové hlášky. Kto ako prvý "
                  "dosiahne 1000 bodov, vyhráva.")
     FLOW_STEPS = (
         ("Rozdanie", "Každý dostane 10 kariet, ďalšie 2 tvoria talón."),
         ("Dražba", f"Hráči prihadzujú po {BID_STEP}, začína sa na {MIN_BID}."),
         ("Talón", "Víťaz dražby si vezme talón a odhodí 2 karty."),
-        ("Štichy", "Hráči postupne odohrajú 10 štichov."),
+        ("Štichy a tromfy", "Hráči postupne odohrajú 10 štichov."),
         ("Bodovanie", "Spočítajú sa body a vyhodnotí povinnosť."),
     )
+    # Podklad pre ukážky (bývalé pravé panely Dražba a talón / Hlásenie
+    # tromfu — na obrazovke sa už nekreslia; Dražbu a Talón pokrývajú
+    # gui/round_demos.py, Hlásenie tromfu čaká na vlastné scény).
     BID_BULLETS = (
         f"Dražbu začína hráč s povinnosťou (P) na {MIN_BID} bodoch.",
         f"Môžeš prihodiť {BID_STEP} bodov alebo povedať „Dobrý“ a z dražby odstúpiť.",
@@ -461,10 +784,20 @@ class InfoOverlay:
         "Nahlásená farba sa stáva tromfovou – prebíja ostatné farby.",
         "Ak nahlásiš ďalší tromf, predchádzajúci prestáva platiť.",
     )
-    BID_ILL_H = 52                 # výška ilustrácie (ponuky → talón)
-    TRUMP_CARD_H = (96, 150)       # rozsah výšky kariet kráľ + horník
+    TRUMP_BULLETS_FIRST_TRICK = (
+        "Tromf môžeš nahlásiť, ak máš kráľa a horníka rovnakej farby.",
+        "Hlásiť môžeš, keď si na rade vynášať.",
+        "Víťaz dražby aj v 1. štichu (povinnosť aspoň hláška\u00a0+\u00a010), "
+        "potom musí zobrať aspoň jeden štich.",
+        "Tromf nahlásiš zahraním kráľa alebo horníka z tejto dvojice.",
+        "Nahlásená farba sa stáva tromfovou – prebíja ostatné farby.",
+        "Ak nahlásiš ďalší tromf, predchádzajúci prestáva platiť.",
+    )
 
     def _rules_layout(self) -> dict:
+        """Cieľ hry, Priebeh kola a pod nimi ukážka zvoleného kroku na celú
+        šírku (pravé textové panely Dražba a talón / Hlásenie tromfu sú
+        zrušené — ich obsah preberajú ukážky, user 2026-10-29)."""
         x0, x1 = self.x0, self.x1
         top, bottom = self.content_top, self.content_bottom
         gap = 16
@@ -472,37 +805,18 @@ class InfoOverlay:
         goal = pygame.Rect(x0, top, x1 - x0, goal_h)
         flow = pygame.Rect(x0, goal.bottom + gap, x1 - x0, 212)
         y = flow.bottom + gap
-        h = bottom - y
-        demo = pygame.Rect(x0, y, round((x1 - x0 - gap) * 0.565), h)
-        rx = demo.right + gap
-        w = x1 - rx
-        # Výšky pravých panelov podľa ich obsahu, voľné miesto rovnomerne
-        # Ak sa obsah nezmestí (písmo s väčšími metrikami pri niektorých
-        # mierkach), najprv sa zmenšia ilustrácie a medzery, nie písmo.
-        self.bid_ill_h, self.trump_card_lo, self.bullet_gap = (
-            self.BID_ILL_H, self.TRUMP_CARD_H[0], self.BULLET_GAP)
-        need_bid = self._bid_height(w)
-        need_trump = self._trump_height(w)
-        if need_bid + need_trump > h - gap:
-            self.bid_ill_h, self.trump_card_lo, self.bullet_gap = 40, 76, 3
-            need_bid = self._bid_height(w)
-            need_trump = self._trump_height(w)
-        slack = max(0, h - gap - need_bid - need_trump)
-        h_bid = need_bid + slack // 2
-        bid = pygame.Rect(rx, y, w, h_bid)
-        trump = pygame.Rect(rx, bid.bottom + gap, w, bottom - bid.bottom - gap)
-        return {"goal": goal, "flow": flow, "demo": demo, "bid": bid, "trump": trump}
+        demo = pygame.Rect(x0, y, x1 - x0, bottom - y)
+        return {"goal": goal, "flow": flow, "demo": demo}
 
     def _draw_rules(self):
         lay = self._rules_layout()
         self._draw_goal(lay["goal"])
-        self._section(lay["flow"], "PRIEBEH KOLA")
+        self._section(lay["flow"], "PRIEBEH KOLA", (
+            ("Klikni na krok — nižšie sa zobrazí jeho ukážka.", ui_style.TEXT_DIM),))
         self._draw_flow(lay["flow"])
-        self._panel_bg(lay["demo"])              # obsah kreslí rules_demo
-        self._section(lay["bid"], "DRAŽBA A TALÓN")
-        self._draw_bid_talon(lay["bid"])
-        self._section(lay["trump"], "HLÁSENIE TROMFU")
-        self._draw_trump_rules(lay["trump"])
+        self._panel_bg(lay["demo"])     # obsah kreslí ukážka zvoleného kroku
+        if self.step not in self.step_demos:
+            self._draw_step_info(lay["demo"], self.step)
 
     def _draw_goal(self, rect: pygame.Rect):
         c = self.canvas
@@ -524,8 +838,26 @@ class InfoOverlay:
             self._fit("cieľ hry", rect, s.get_rect(topleft=(x, y)))
             y += lh
 
+    def _flow_columns(self, rect: pygame.Rect) -> list[pygame.Rect]:
+        """Klikateľné stĺpce krokov Priebehu kola."""
+        n = len(self.FLOW_STEPS)
+        x_start, x_end = rect.x + 16, rect.right - 16
+        col_w = (x_end - x_start) / n
+        top = self._content_top(rect) - 10
+        return [pygame.Rect(round(x_start + i * col_w) + 5, top,
+                            round(col_w) - 10, rect.bottom - 5 - top)
+                for i in range(n)]
+
+    def _draw_flow_hover(self, mouse):
+        for i, col in enumerate(self._flow_columns(self._flow_rect)):
+            if i != self.step and col.collidepoint(mouse):
+                self.canvas.rect(ui_style.GOLD_SOFT, col, width=1, border_radius=10)
+
     def _draw_flow(self, rect: pygame.Rect):
         c = self.canvas
+        sel = self._flow_columns(rect)[self.step]
+        c.overlay(sel, (255, 214, 140, 16), border_radius=10)
+        c.rect(ui_style.GOLD, sel, width=2, border_radius=10)
         top = self._content_top(rect) - 6
         bottom = rect.bottom - 10
         n = len(self.FLOW_STEPS)
@@ -541,7 +873,7 @@ class InfoOverlay:
             cx0 = round(x_start + i * col_w)
             cw = round(col_w)
             mid = cx0 + cw // 2
-            if i > 0:
+            if i > 0 and self.step not in (i - 1, i):
                 c.line(DIVIDER, (cx0, top + 4), (cx0, bottom - 4), 1)
             t = self.font_section.render(title, True, ui_style.GOLD)
             r = 17
@@ -561,10 +893,34 @@ class InfoOverlay:
                 self._fit("priebeh kola", pygame.Rect(cx0 + 4, rect.y, cw - 8, rect.height), sr)
                 y += lh
 
-    def _flow_illustration(self, step: int, area: pygame.Rect):
+    def _draw_step_info(self, rect: pygame.Rect, step: int):
+        """Krok bez animovanej ukážky (zatiaľ): názov, väčší obrázok a popis
+        z Priebehu kola."""
+        c = self.canvas
+        title, desc = self.FLOW_STEPS[step]
+        # nadpis ako v ukážkach (TrickRulesDemo._draw_header)
+        t = c.font(30).render(f"{step + 1}. {title.upper()}", True, ui_style.GOLD)
+        c.blit(t, (rect.x + 22, rect.y + 14))
+        c.line(DIVIDER, (rect.x + 20, rect.y + 56), (rect.right - 20, rect.y + 56), 1)
+        lh = self.font_text.get_height() + 4
+        lines = self._wrap(desc, self.font_text, rect.width - 80)
+        text_h = len(lines) * lh
+        area = pygame.Rect(rect.x + 40, rect.y + 80, rect.width - 80,
+                           rect.bottom - 40 - text_h - 30 - (rect.y + 80))
+        self._flow_illustration(step, area, max_h=min(220, round(area.height * 0.8)))
+        self._fit("krok/obrázok", rect, area)
+        y = area.bottom + 30
+        for ln in lines:
+            s = self.font_text.render(ln, True, ui_style.TEXT)
+            r = s.get_rect(centerx=rect.centerx, top=y)
+            c.blit(s, r)
+            self._fit("krok/popis", rect, r)
+            y += lh
+
+    def _flow_illustration(self, step: int, area: pygame.Rect, max_h: int = 116):
         c = self.canvas
         cx, cy = area.center
-        h = min(area.height - 4, 116)
+        h = min(area.height - 4, max_h)
         w = round(h * CARD_RATIO)
         if step == 0:              # rozdanie — vejár rubov
             n, stp = 5, w * 0.34
@@ -575,7 +931,7 @@ class InfoOverlay:
                     c.blit(img, img.get_rect(center=(round(cx + t * (n - 1) * stp),
                                                      round(cy + abs(t) * h * 0.08))))
         elif step == 1:            # dražba — ponuky 50 / 60 / 70
-            self._bid_chips((cx, cy), 1.0)
+            self._bid_chips((cx, cy), min(1.6, max(1.0, h / 116)))
         elif step == 2:            # talón — dva ruby
             g = 10
             for j in range(2):
@@ -596,54 +952,6 @@ class InfoOverlay:
             icon = self._image("scoresheet.png", min(h, 112))
             if icon:
                 c.blit(icon, icon.get_rect(center=(cx, cy)))
-
-    def _bid_height(self, width: int) -> int:
-        return (self._header_h() + self.bid_ill_h + 12
-                + self._bullets_height(width - 44, self.BID_BULLETS) + 14)
-
-    def _trump_text_width(self, width: int, card_h: int) -> int:
-        card_w = round(card_h * CARD_RATIO)
-        return width - 22 - (2 * card_w + 10) - 22 - 18
-
-    def _trump_height(self, width: int) -> int:
-        lo = self.trump_card_lo
-        text_h = self._bullets_height(self._trump_text_width(width, lo), self.TRUMP_BULLETS)
-        return self._header_h() + max(lo, text_h) + 14
-
-    def _draw_bid_talon(self, rect: pygame.Rect):
-        c = self.canvas
-        top = self._content_top(rect)
-        ill_h = self.bid_ill_h
-        cy = top + ill_h // 2
-        self._bid_chips((rect.x + 110, cy), 0.7 * ill_h / self.BID_ILL_H)
-        self._arrow(rect.x + 196, cy, 26)
-        w = round(ill_h * CARD_RATIO)
-        for j in range(2):
-            img = self._card_img(CARD_BACK_IMAGE, (w, ill_h), 0)
-            if img:
-                c.blit(img, (rect.x + 240 + j * (w + 8), cy - ill_h // 2))
-        self._bullets(rect.x + 22, top + ill_h + 12, rect.width - 44, self.BID_BULLETS,
-                      rect, "dražba a talón")
-
-    def _draw_trump_rules(self, rect: pygame.Rect):
-        top = self._content_top(rect)
-        lo, hi = self.trump_card_lo, self.TRUMP_CARD_H[1]
-        avail = rect.bottom - 14 - top
-        # Najväčšie karty, pri ktorých sa text vedľa nich ešte zmestí
-        card_h = lo
-        for h in range(min(hi, avail), lo - 1, -4):
-            tw = self._trump_text_width(rect.width, h)
-            if self._bullets_height(tw, self.TRUMP_BULLETS) <= avail:
-                card_h = h
-                break
-        card_w = round(card_h * CARD_RATIO)
-        self._card("acorn-king", (rect.x + 22, top), (card_w, card_h))
-        self._card("acorn-over", (rect.x + 22 + card_w + 10, top), (card_w, card_h))
-        self._fit("hlásenie tromfu", rect,
-                  pygame.Rect(rect.x + 22, top, 2 * card_w + 10, card_h))
-        x = rect.x + 22 + 2 * card_w + 10 + 22
-        self._bullets(x, top, rect.right - 18 - x, self.TRUMP_BULLETS,
-                      rect, "hlásenie tromfu")
 
     # ------------------------------------------------------------------
     # Pomocné kreslenie
@@ -789,14 +1097,17 @@ class InfoOverlay:
                                     (x + length - hd, y + hd // 2 + 2),
                                     (x + length - hd, y + t // 2), (x, y + t // 2)])
 
-    def _card(self, name: str, pos, size):
-        c = self.canvas
+    def _card(self, name: str, pos, size, shadow: bool = True):
         img = self._card_img(f"{name}.png", size, 0)
         if not img:
             return
-        c.overlay((pos[0] + 4, pos[1] + 6, size[0], size[1]), (0, 0, 0, 110),
-                  border_radius=8)
-        c.blit(img, pos)
+        if shadow:
+            self._card_shadow(pos, size)
+        self.canvas.blit(img, pos)
+
+    def _card_shadow(self, pos, size):
+        self.canvas.overlay((pos[0] + 4, pos[1] + 6, size[0], size[1]),
+                            (0, 0, 0, 110), border_radius=8)
 
     def _card_img(self, filename: str, size, angle: int):
         try:

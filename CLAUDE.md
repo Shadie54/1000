@@ -59,7 +59,20 @@ vždy z toho istého PC (fonty).
   štich (`gui/last_trick_overlay.py`, z CHUJ) a Pravidlá a bodovanie
   (`gui/info_overlay.py` + animovaná ukážka štichov `gui/rules_demo.py` —
   príklady musia prejsť regression_rules_demo; texty pravidiel musia
-  zodpovedať logike v game/), popup trofeje
+  zodpovedať logike v game/; záložka Prehľad bodovania — karty v Hodnotách
+  kariet striedajú farbu cez `SuitCycle`; názvy: „Tromfové hlášky“ = body,
+  „Hlásenie tromfu“ = úkon; v Pravidlách je Priebeh kola navigácia — krok
+  vyberie obsah veľkého panela: Dražba a Talón = `gui/round_demos.py`
+  (stav dražby prehráva skutočná `Bidding`, overuje regression_rules_demo),
+  Štichy a tromfy = podzáložky Pravidlá štichov (rules_demo) a Hlásenie
+  tromfu (`gui/trump_demo.py`, zatiaľ zástupný obsah) — `TricksTrumpStep`
+  v info_overlay.py, Bodovanie = `gui/scoring_demo.py` (scény kreslia
+  bloky Prehľadu bodovania tým istým kódom, žiadne kópie), Rozdanie zatiaľ
+  obrázok a popis; všetky ukážky = podtriedy `TrickRulesDemo`; panel ukážky
+  je na celú šírku pod Priebehom kola — pravé textové panely sú zrušené, ich
+  texty (`BID_BULLETS`, `TRUMP_BULLETS…`) sú podklad pre ďalšie scény;
+  ovládanie má vlastný pás pod javiskom — layout_problems kontroluje, že
+  žiadna scéna nekreslí mimo javiska), popup trofeje
   (vpravo dole, 15 s, klik naň ho zavrie). Nové prvky kresliť cez ui_style.
   K `table.jpg` patrí `table_4k.jpg` (použije sa pri okne > Full HD).
 
@@ -73,6 +86,26 @@ Pravidlá pre GUI kód:
   nimi beží ďalej,
 - statický obsah hernej obrazovky je v `Screen._draw_static` — ak nový
   prvok mení vzhľad stola alebo rúk, pridať jeho stav do `_hands_key()`.
+
+## Variant pravidiel: tromf aj v 1. štichu (2026-10-29, od hráčov)
+Nastavenia → Pravidlá → Hlásenie tromfu, `settings["first_trick_trump"]`
+(predvolene vypnuté). Platí pre celú hru: `GameState.first_trick_trump` →
+`Round(first_trick_trump)` → `AI(first_trick_trump)`, ukladá sa do savegame.
+Víťaz dražby smie hlásiť už v 1. štichu (`Round.trump_allowed_now`,
+`can_declare_trump`) — len ak má povinnosť aspoň hodnota hlášky + 10
+(`round.first_trick_min_bid`) — potom musí za kolo zobrať aspoň jeden štich, inak
+povinnosť nesplnil (`Round.bidder_fulfilled` — jediné miesto vyhodnotenia).
+AI: B6 nepasuje kvôli hláške a po talóne navýši na hlášku + 10, L6 hlási v 1. štichu (len bez esa,
+bez istého štichu a s ≥ 4 tromfami alebo 3 a desiatkou — `_first_trick_candidates`), F5 obrancovia
+prebíjajú hlásiaceho bez štichu, F6 hlásiaci si štich zaistí (`_secure_first_trick`).
+Hláška bez esa sa do dražby a navýšenia nepočíta (aj v klasike, `_countable_pairs`); stredný
+počítač občas riskuje (`TALON_ACE_RISK`, `FIRST_TRICK_WEAK_RISK` v ai_strategy.py).
+```
+python tester/sim_first_trick_trump.py            # porovnanie pravidiel (AI vs AI)
+python tester/regression_screen.py --first-trick-trump --full --out po.txt
+python tester/regression_savegame.py --first-trick-trump
+```
+Pri vypnutom variante sa stopa hry nesmie zmeniť.
 
 ## Uloženie rozohratej hry
 `game/savegame.py` — `Documents/Tisic/savegame.json`. Ukladá sa „fotka“

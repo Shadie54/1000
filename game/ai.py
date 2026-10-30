@@ -10,10 +10,13 @@ from config import NUM_PLAYERS
 
 
 class AI:
-    def __init__(self, player: Player, difficulty: str = "hard", logger=None):
+    def __init__(self, player: Player, difficulty: str = "hard", logger=None,
+                 first_trick_trump: bool = False):
         """
         player: hráč ktorého táto AI ovláda
         difficulty: "easy" / "medium" / "hard"
+        first_trick_trump: variant pravidiel — víťaz dražby smie hlásiť
+            tromf už v 1. štichu (musí potom zobrať aspoň jeden štich)
         """
         self.player = player
         self.difficulty = difficulty
@@ -23,7 +26,7 @@ class AI:
         self.evaluator = AIEvaluator(self.memory)
         self.strategy = AIStrategy(
             self.memory, self.evaluator,
-            difficulty, logger, player.name
+            difficulty, logger, player.name, first_trick_trump
         )
 
     # ------------------------------------------------------------------

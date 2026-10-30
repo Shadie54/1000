@@ -75,6 +75,7 @@ def _memory_to_dict(m) -> dict:
         "bidder_index": m.bidder_index,
         "bid_amount": m.bid_amount,
         "claim_lead_active": m.claim_lead_active,
+        "first_trick_declarer": m.first_trick_declarer,
     }
 
 
@@ -118,6 +119,7 @@ def _round_to_dict(rnd: Round) -> dict | None:
         "current_leader_index": rnd.current_leader_index,
         "trick_number": rnd.trick_number,
         "trump_declarer": rnd.trump_declarer,
+        "declared_in_first_trick": rnd.declared_in_first_trick,
     }
 
 
@@ -147,6 +149,7 @@ def save_game(game_state: GameState, ai_players: list, tracker=None,
             for p in game_state.players
         ],
         "obligation_index": game_state.obligation_index,
+        "first_trick_trump": game_state.first_trick_trump,
         "round_number": game_state.round_number,
         "round_history": game_state.round_history,
         "round": _round_to_dict(game_state.current_round),
@@ -220,6 +223,7 @@ def _memory_from_dict(m, d: dict):
     m.bidder_index = d["bidder_index"]
     m.bid_amount = d["bid_amount"]
     m.claim_lead_active = d["claim_lead_active"]
+    m.first_trick_declarer = d.get("first_trick_declarer")
 
 
 def _trick_from_dict(players, d: dict) -> Trick:
@@ -246,6 +250,7 @@ def _rebuild(data: dict, tracker=None):
         player.declared_trumps = list(saved["declared_trumps"])
 
     game_state.obligation_index = data["obligation_index"]
+    game_state.first_trick_trump = bool(data.get("first_trick_trump", False))
     game_state.round_number = data["round_number"]
     game_state.round_history = data.get("round_history", [])
     game_state.phase = "playing"
@@ -258,7 +263,8 @@ def _rebuild(data: dict, tracker=None):
     if rd is not None:
         players = game_state.players
         # Round() by v konštruktore nič nerozdal — karty sú už na rukách
-        rnd = Round(players, rd["obligation_index"])
+        rnd = Round(players, rd["obligation_index"], game_state.first_trick_trump)
+        rnd.declared_in_first_trick = bool(rd.get("declared_in_first_trick", False))
         rnd.phase = rd["phase"]
         rnd.talon = [_card(c) for c in rd["talon"]]
         bd = rd["bidding"]
@@ -288,7 +294,8 @@ def _rebuild(data: dict, tracker=None):
             ai_players.append(None)
             continue
         ai = AI(game_state.players[i], difficulty=ad["difficulty"],
-                logger=game_state.logger)
+                logger=game_state.logger,
+                first_trick_trump=game_state.first_trick_trump)
         _memory_from_dict(ai.memory, ad["memory"])
         ai_players.append(ai)
 

@@ -142,6 +142,14 @@ def verify_scenes() -> list[str]:
 
 
 class TrickRulesDemo:
+    # Podtriedy (gui/scoring_demo.py) menia scény, dĺžku a nadpis
+    TITLE = "PRAVIDLÁ ŠTICHOV"
+    show_title = True            # nadpis v hlavičke panela
+    show_counter = True          # „1 / 6“ vpravo v hlavičke
+    SCENES = SCENES
+    SCENE_LEN = SCENE_LEN
+    HOLD_AT = HOLD_AT
+
     def __init__(self, canvas):
         self.canvas = canvas
         self.font_head = canvas.font(30)
@@ -150,6 +158,7 @@ class TrickRulesDemo:
         self.font_seat = canvas.font(18)
         self.font_btn = canvas.font(21)
         self.rect = pygame.Rect(0, 0, 1100, 516)
+        self.fs = 1.0
         self._stage_cache = None
         self.reset()
 
@@ -164,18 +173,18 @@ class TrickRulesDemo:
     def _elapsed(self) -> float:
         t = (pygame.time.get_ticks() - self._t0) / 1000.0
         if self.playing:
-            while t >= SCENE_LEN:
-                t -= SCENE_LEN
-                self.scene = (self.scene + 1) % len(SCENES)
-                self._t0 += int(SCENE_LEN * 1000)
+            while t >= self.SCENE_LEN:
+                t -= self.SCENE_LEN
+                self.scene = (self.scene + 1) % len(self.SCENES)
+                self._t0 += int(self.SCENE_LEN * 1000)
             return t
-        return min(t, self.hold_at if self.hold_at is not None else HOLD_AT)
+        return min(t, self.hold_at if self.hold_at is not None else self.HOLD_AT)
 
     def select(self, index: int):
         """Ručný výber scény — prehrá sa raz a zastane na výsledku."""
-        self.scene = index % len(SCENES)
+        self.scene = index % len(self.SCENES)
         self.playing = False
-        self.hold_at = HOLD_AT
+        self.hold_at = self.HOLD_AT
         self._t0 = pygame.time.get_ticks()
 
     def toggle_play(self):
@@ -186,8 +195,8 @@ class TrickRulesDemo:
         else:
             self.playing = True
             self.hold_at = None
-            if t >= HOLD_AT:          # zo zastaveného výsledku plynulo ďalej
-                t = HOLD_AT
+            if t >= self.HOLD_AT:     # zo zastaveného výsledku plynulo ďalej
+                t = self.HOLD_AT
         self._t0 = pygame.time.get_ticks() - int(t * 1000)
 
     # --- rozloženie -------------------------------------------------------
@@ -197,25 +206,42 @@ class TrickRulesDemo:
         r = self.rect
         self.stage = pygame.Rect(r.x + 20, r.y + 66, r.width - 40, r.height - 66 - 74)
         by = r.bottom - 62
-        self.btn_prev = pygame.Rect(r.x + 22, by, 220, 44)
-        self.btn_play = pygame.Rect(r.right - 22 - 200, by, 200, 44)
-        self.btn_next = pygame.Rect(self.btn_play.x - 16 - 150, by, 150, 44)
-        dots_x = (self.btn_prev.right + self.btn_next.left) // 2 - 75
+        # Ovládanie (user 2026-10-30): Predchádzajúce a Ďalšie tesne vedľa
+        # seba, Pozastaviť/Prehrať s odstupom, celá skupina v strede pod
+        # javiskom; bodky scén vľavo (počítadlo „1 / 6“ ostáva v hlavičke).
+        w_prev, w_next, w_play, g_nav, g_play = 220, 150, 200, 10, 36
+        total = w_prev + g_nav + w_next + g_play + w_play
+        x = r.centerx - total // 2
+        self.btn_prev = pygame.Rect(x, by, w_prev, 44)
+        self.btn_next = pygame.Rect(self.btn_prev.right + g_nav, by, w_next, 44)
+        self.btn_play = pygame.Rect(self.btn_next.right + g_play, by, w_play, 44)
+        dots_x = r.x + 40
         self.dots = [pygame.Rect(dots_x + i * 30 - 10, by + 12, 20, 20)
-                     for i in range(len(SCENES))]
+                     for i in range(len(self.SCENES))]
         # stôl vľavo, text a ruka hráča vpravo
         st = self.stage
         # mierka podľa výšky aj šírky javiska (pri 16:10 je javisko vyššie)
         k = min(st.height / 370, st.width / 1000)
         self.k = k
+        # Písmo rastie s javiskom (široký panel na celú šírku okna,
+        # 2026-10-29) — pri pôvodnej veľkosti javiska (k ≈ 0,93) ostáva
+        self.fs = fs = max(1.0, min(1.3, k / 0.934))
+        c = self.canvas
+        self.font_head = c.font(round(30 * fs))
+        self.font_title = c.font(round(30 * fs))
+        self.font_text = c.font(round(22 * fs))
+        self.font_seat = c.font(round(18 * fs))
+        self.font_btn = c.font(21)
+        # vodorovne sa stôl roztiahne viac (široké javisko), zvisle podľa k
+        kx = min(k * 1.3, st.width / 1000)
         self.cw = round(84 * k)
         cx, cy = st.x + round(st.width * 0.30), st.centery - round(10 * k)
         self.center = (cx, cy)
         seat_of = layout.game().seat_of           # 0 dole, 1/2 vľavo/vpravo
         side = {"left": -1, "right": 1}
         dy, dx = round(70 * k), round(105 * k)
-        ldy, ldx = round(172 * k), round(205 * k)
-        sdy, sdx = round(250 * k), round(300 * k)
+        ldy, ldx = round(172 * k), round(205 * kx)
+        sdy, sdx = round(250 * k), round(300 * kx)
         self.spot, self.label, self.seat = {}, {}, {}
         for idx in range(3):
             s = seat_of.get(idx, "bottom")
@@ -266,11 +292,7 @@ class TrickRulesDemo:
         c = self.canvas
         t = self._elapsed()
         r = self.rect
-        title = self.font_head.render("PRAVIDLÁ ŠTICHOV", True, ui_style.GOLD)
-        c.blit(title, (r.x + 22, r.y + 14))
-        num = self.font_head.render(f"{self.scene + 1} / {len(SCENES)}", True, ui_style.GOLD)
-        c.blit(num, num.get_rect(right=r.right - 24, top=r.y + 14))
-        c.line((70, 54, 34), (r.x + 20, r.y + 56), (r.right - 20, r.y + 56), 1)
+        self._draw_header()
 
         self._draw_stage()
         fade = 1.0
@@ -283,6 +305,19 @@ class TrickRulesDemo:
         getattr(self, f"_scene{self.scene + 1}")(t, fade)
         self._draw_text()
         self._draw_controls(mouse_pos)
+
+    def _draw_header(self):
+        c = self.canvas
+        r = self.rect
+        # bez nadpisu, keď hlavičku zaberajú podzáložky (krok Štichy a tromfy)
+        if self.show_title:
+            title = self.font_head.render(self.TITLE, True, ui_style.GOLD)
+            c.blit(title, (r.x + 22, r.y + 14))
+        if self.show_counter:
+            num = self.font_head.render(f"{self.scene + 1} / {len(self.SCENES)}", True,
+                                        ui_style.GOLD)
+            c.blit(num, num.get_rect(right=r.right - 24, top=r.y + 14))
+        c.line((70, 54, 34), (r.x + 20, r.y + 56), (r.right - 20, r.y + 56), 1)
 
     def _draw_stage(self):
         """Tmavý výrez dreveného stola so zaoblenými rohmi (cachované)."""
@@ -352,23 +387,33 @@ class TrickRulesDemo:
                    border_radius=6)
             c.blit(t, t.get_rect(center=pos))
 
-    def _draw_text(self):
-        """Názov pravidla a vysvetlenie na tmavom podklade vpravo hore."""
-        c = self.canvas
-        title, line = SCENES[self.scene]
+    def _text_box(self, scene: int) -> tuple[pygame.Rect, list[str]]:
+        """Rámik s názvom a vysvetlením scény vpravo hore + riadky textu."""
+        _title, line = self.SCENES[scene]
         x = self.text_x
         w = self.stage.right - 18 - x
         lines = _wrap(line, self.font_text, w - 36)
         line_h = self.font_text.get_height() + 4
         box_h = 20 + self.font_title.get_height() + 12 + len(lines) * line_h + 18
-        box = pygame.Rect(x, self.stage.y + 18, w, box_h)
+        return pygame.Rect(x, self.stage.y + 18, w, box_h), lines
+
+    def _show_hand_caption(self) -> bool:
+        return self.scene in (1, 2, 3, 4)
+
+    def _draw_text(self):
+        """Názov pravidla a vysvetlenie na tmavom podklade vpravo hore."""
+        c = self.canvas
+        title, _line = self.SCENES[self.scene]
+        box, lines = self._text_box(self.scene)
+        x, w, box_h = box.x, box.width, box.height
+        line_h = self.font_text.get_height() + 4
         c.overlay(box, (12, 8, 5, 215), border_radius=10)
         c.rect(ui_style.GOLD_SOFT, box, width=1, border_radius=10)
         c.rect(ui_style.GOLD, (box.x + 1, box.y + 14, 4, box_h - 28))   # zlatý akcent
         y = box.y + 20
         # Dlhý nadpis v užšom paneli — menšie písmo, aby nesiahal po okraj
         font = self.font_title
-        size = 30
+        size = round(30 * self.fs)
         while font.size(title)[0] > w - 40 and size > 22:
             size -= 1
             font = c.font(size)
@@ -379,7 +424,7 @@ class TrickRulesDemo:
         for ln in lines:
             c.blit(self.font_text.render(ln, True, ui_style.TEXT), (box.x + 20, y))
             y += line_h
-        if self.scene in (1, 2, 3, 4):
+        if self._show_hand_caption():
             cap = self.font_seat.render("Tvoja ruka", True, NAME_DIM)
             c.blit(cap, cap.get_rect(centerx=x + w // 2,
                                      bottom=self.hand_y - round(70 * self.k)))

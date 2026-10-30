@@ -119,6 +119,10 @@ def open_window(width: int, height: int):
 # Hra a "ľudský hráč"
 # ----------------------------------------------------------------------
 
+# Variant pravidiel "tromf aj v 1. štichu" (--first-trick-trump)
+FIRST_TRICK_TRUMP = False
+
+
 def new_screen(seed: int, with_tracker: bool = True):
     """Vytvorí hru rovnako ako main.py (_create_game + _run_game)."""
     import main as game_main
@@ -127,7 +131,7 @@ def new_screen(seed: int, with_tracker: bool = True):
 
     random.seed(seed)
     settings = {"ai1_difficulty": "hard", "ai2_difficulty": "hard",
-                "table_bg": "table.jpg"}
+                "table_bg": "table.jpg", "first_trick_trump": FIRST_TRICK_TRUMP}
     game_state, ai_players = game_main._create_game(settings)
     tracker = AchievementTracker() if with_tracker else None
     screen = Screen(game_state, ai_players, debug=False, new_game=True,
@@ -237,8 +241,8 @@ class HumanBot:
             card = playable[0]
             # Ako leader od 2. štichu vynesie kartu z tromfového páru,
             # aby sa otestoval aj dialóg "Tromf / Bez tromfu".
-            if (rnd.current_leader_index == hi and rnd.trick_number > 0
-                    and not rnd.current_trick.played_cards):
+            if (rnd.current_leader_index == hi and not rnd.current_trick.played_cards
+                    and (rnd.trick_number > 0 or rnd.first_trick_trump)):
                 for c in playable:
                     if (c.rank in ("over", "king")
                             and human.hand.has_trump_pair(c.suit)):
@@ -338,7 +342,11 @@ def main():
     parser.add_argument("--full", action="store_true",
                         help="hrať do konca hry (1000 bodov)")
     parser.add_argument("--out", default=None, help="súbor pre stopu")
+    parser.add_argument("--first-trick-trump", action="store_true",
+                        help="variant pravidiel: tromf aj v 1. štichu")
     args = parser.parse_args()
+    global FIRST_TRICK_TRUMP
+    FIRST_TRICK_TRUMP = args.first_trick_trump
 
     ensure_hashseed()
     isolate_home()

@@ -41,6 +41,9 @@ class AIMemory:
         self.bid_amount: int = 0
 
         self.claim_lead_active: bool = False
+        # Kto hlásil tromf v 1. štichu (variant first_trick_trump) — musí
+        # potom zobrať aspoň jeden štich, obrancovia mu ho nedajú
+        self.first_trick_declarer: int | None = None
     # ------------------------------------------------------------------
     # Aktualizácia pamäte
     # ------------------------------------------------------------------
@@ -73,6 +76,8 @@ class AIMemory:
         """Zaznamená zahlásený tromf."""
         self.declared_trumps[suit] = player_index
         self.current_trump = suit
+        if not self.trick_history:
+            self.first_trick_declarer = player_index
 
     def record_own_hand(self, cards: list[Card]):
         """Zaznamená vlastné karty (videné na začiatku)."""
@@ -197,6 +202,7 @@ class AIMemory:
         self.declared_trumps = {}
         self.current_trump = None
         self.trick_history = []
+        self.first_trick_declarer = None
 
     # ------------------------------------------------------------------
     # Sleduj biddera
