@@ -210,6 +210,8 @@ class InfoOverlay:
         self.H = display.logical_height()
         self._visible = False
         self._game_frame = None
+        self.focused = False
+        self._focus_left_at = pygame.time.get_ticks()
         self.active_tab = "bodovanie"
 
         self.font_title = canvas.font(46)
@@ -231,6 +233,7 @@ class InfoOverlay:
             "bodovanie": pygame.Rect(cx - tab_w - 8, self.frame.top + 82, tab_w, tab_h),
             "pravidla": pygame.Rect(cx + 8, self.frame.top + 82, tab_w, tab_h),
         }
+        self.btn_back = pygame.Rect(self.frame.x + 24, self.frame.y + 18, 330, 44)
         self.content_top = self.tab_rects["bodovanie"].bottom + 24
         self.content_bottom = self.frame.bottom - 24
         self.x0, self.x1 = self.frame.left + 30, self.frame.right - 30
@@ -270,6 +273,8 @@ class InfoOverlay:
     @visible.setter
     def visible(self, value: bool):
         if value and not self._visible:
+            self._set_focused(False)
+            self._focus_left_at = pygame.time.get_ticks()
             self._game_frame = None          # nový obraz hry pod oknom
             self.rules_demo.reset()          # ukážka štichov od scény 1
             self.card_cycle.reset()          # karty od zelene
@@ -291,12 +296,31 @@ class InfoOverlay:
     def toggle(self):
         self.visible = not self.visible
 
+    def _set_focused(self, value):
+        if value == self.focused:
+            return
+        now = pygame.time.get_ticks()
+        if value:
+            # Čas strávený na prehľade neposúva animácie v pozadí.
+            delta = now - self._focus_left_at
+            for d in (self.rules_demo, self.trump_demo, self.first_trump_demo,
+                      self.bidding_demo, self.talon_demo, self.scoring_demo):
+                d._t0 += delta
+        else:
+            self._focus_left_at = now
+        self.focused = value
+        self._demo_rect = self._rules_layout()["demo"]
+        for d in self.step_demos.values():
+            inner = d.demos if isinstance(d, TricksTrumpStep) else (d,)
+            for item in inner:
+                item.focus_layout = value
+            d.layout(self._demo_rect)
+
     def select_step(self, index: int):
-        """Krok Priebehu kola — ukážka v ňom začne od začiatku."""
-        if index != self.step:
+        """Otvorí vybranú fázu bez straty stavu ostatných ukážok."""
+        if 0 <= index < len(self.FLOW_STEPS):
             self.step = index
-            for demo in self.step_demos.values():
-                demo.reset()
+            self._set_focused(True)
 
     # ------------------------------------------------------------------
     # Udalosti
@@ -307,11 +331,22 @@ class InfoOverlay:
             return False
         if event.type == pygame.KEYDOWN:
             if event.key in (pygame.K_ESCAPE, pygame.K_i):
-                self.hide()
+                if self.focused:
+                    self._set_focused(False)
+                else:
+                    self.hide()
                 return True
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.btn_close.collidepoint(event.pos):
                 self.hide()
+                return True
+            if self.focused:
+                if self.btn_back.collidepoint(event.pos):
+                    self._set_focused(False)
+                else:
+                    demo = self.step_demos.get(self.step)
+                    if demo is not None:
+                        demo.handle_click(event.pos)
                 return True
             for key, rect in self.tab_rects.items():
                 if rect.collidepoint(event.pos):
@@ -326,9 +361,6 @@ class InfoOverlay:
                     if col.collidepoint(event.pos):
                         self.select_step(i)
                         return True
-                demo = self.step_demos.get(self.step)
-                if demo is not None:
-                    demo.handle_click(event.pos)
             return True  # blokuj klik cez okno
         return event.type in (pygame.KEYDOWN, pygame.MOUSEBUTTONUP)
 
@@ -343,15 +375,20 @@ class InfoOverlay:
         if self._game_frame is None:
             # Volá sa na konci kreslenia hernej snímky — okno ju obsahuje
             self._game_frame = c.target.copy()
-        draw_static(self, c, ("info", self.active_tab, self.step, id(self._game_frame)),
+        draw_static(self, c, ("info", self.active_tab, self.step, self.focused, id(self._game_frame)),
                     self._draw_static)
         mouse = display.mouse_pos()
-        self._draw_tabs(mouse)
+        if self.focused:
+            ui_style.draw_button(c, self.btn_back, "‹  Späť na priebeh kola", self.font_tab,
+                                 3, hover=self.btn_back.collidepoint(mouse), shadow=False)
+        else:
+            self._draw_tabs(mouse)
         self._draw_close(self.btn_close.collidepoint(mouse))
         if self.active_tab == "pravidla":
-            self._draw_flow_hover(mouse)
+            if not self.focused:
+                self._draw_flow_hover(mouse)
             demo = self.step_demos.get(self.step)
-            if demo is not None:
+            if self.focused and demo is not None:
                 demo.draw(mouse)
         elif self._card_row is not None:
             rect, row = self._card_row
@@ -365,9 +402,13 @@ class InfoOverlay:
         c.overlay_window((0, 0, 0, 200))
         c.overlay(self.frame, (17, 11, 7, 255), border_radius=ui_style.PANEL_RADIUS)
         ui_style.draw_panel(c, self.frame)
-        ui_style.draw_screen_title(c, "PRAVIDLÁ A BODOVANIE", self.font_title,
-                                   (SCREEN_WIDTH // 2, self.frame.top + 36),
-                                   line_half_w=300, line_gap=32)
+        if self.focused:
+            title = self.font_section.render(self.FLOW_STEPS[self.step][0], True, ui_style.GOLD)
+            c.blit(title, title.get_rect(center=(self.frame.centerx, self.btn_back.centery)))
+        else:
+            ui_style.draw_screen_title(c, "PRAVIDLÁ A BODOVANIE", self.font_title,
+                                       (SCREEN_WIDTH // 2, self.frame.top + 36),
+                                       line_half_w=300, line_gap=32)
         if self.active_tab == "bodovanie":
             self._draw_scoring()
         else:
@@ -809,17 +850,23 @@ class InfoOverlay:
         flow = pygame.Rect(x0, goal.bottom + gap, x1 - x0, 212)
         y = flow.bottom + gap
         demo = pygame.Rect(x0, y, x1 - x0, bottom - y)
+        if self.focused:
+            demo = pygame.Rect(x0, self.frame.y + 76, x1 - x0, bottom - self.frame.y - 76)
         return {"goal": goal, "flow": flow, "demo": demo}
 
     def _draw_rules(self):
         lay = self._rules_layout()
+        if self.focused:
+            self._panel_bg(lay["demo"])
+            if self.step not in self.step_demos:
+                self._draw_step_info(lay["demo"], self.step)
+            return
         self._draw_goal(lay["goal"])
         self._section(lay["flow"], "PRIEBEH KOLA", (
             ("Klikni na krok — nižšie sa zobrazí jeho ukážka.", ui_style.TEXT_DIM),))
         self._draw_flow(lay["flow"])
         self._panel_bg(lay["demo"])     # obsah kreslí ukážka zvoleného kroku
-        if self.step not in self.step_demos:
-            self._draw_step_info(lay["demo"], self.step)
+        self._draw_step_info(lay["demo"], self.step)
 
     def _draw_goal(self, rect: pygame.Rect):
         c = self.canvas

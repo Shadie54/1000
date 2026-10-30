@@ -129,6 +129,13 @@ class TrumpDemo(TrickRulesDemo):
         rect = pygame.Rect(0, 0, w, h)
         rect.bottomleft = (self.stage.x + round(16 * self.k),
                            self.stage.bottom - round(12 * self.k))
+        if getattr(self, "focus_layout", False):
+            top = self._text_box(self.scene)[0].bottom + 18
+            # Pri nízkom širokouhlom okne zostane panel na stole;
+            # vysvetlenie ani ruka sa nesmú prekryť.
+            hand_top = self.hand_y - round(70 * self.k) - self.font_seat.get_height()
+            if top + h + 12 <= hand_top:
+                rect.topleft = (self.text_x, top)
         c.blit(LSurf(image, w, h), rect)
 
     def _hand_demo(self, t, fade, play=False, allowed=True):

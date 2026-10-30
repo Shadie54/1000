@@ -67,3 +67,20 @@ Posledná aktualizácia: 2026-10-30
 - Overenie: regression_rules_demo OK; regression_layout všetkých 15 rozlíšení OK; regression_screen 167 riadkov identických s predchádzajúcim stavom; vizuálne overené oba panely, chýbajúci/splnený štich, klasický variant a skrytie bodov. CRLF zachované, diff bez chýb bielych znakov.
 - Zmenené v tomto kroku: gui/trump_demo.py, gui/rules_demo.py, gui/scoreboard.py, HANDOFF.md. Bez commitu a bez zmeny vetvy.
 - Návrh commit message: Doplniť panel kola do hlásenia tromfu a upraviť časovanie ukážok.
+
+## Dokončené — sústredená animácia (Codex, 2026-10-30)
+- gui/info_overlay.py: prehľad/fokus, návrat, kompaktná hlavička a rozšírené javisko; zachovať stav.
+- gui/trump_demo.py: umiestnenie KOLO do oblasti vysvetlenia v rozšírenom režime.
+- tester/regression_focus.py: navigácia, podzáložky a ovládanie, rozšírené rozloženie.
+- HANDOFF.md: výsledok a testy.
+
+### Výsledok
+- Prehľad Pravidiel zachováva Cieľ hry, päť fáz Priebehu kola a pôvodné ilustrácie/popisy. Klik na fázu otvorí sústredený režim s hlavičkou, návratom, existujúcim počítadlom scén a podzáložkami.
+- Späť aj Escape vrátia prehľad bez resetu scény, podzáložky či stavu prehrávania; čas na prehľade sa odpočíta od hodín ukážok. Krížik zatvára celé okno. Na prehľade zostávajú dostupné hlavné záložky.
+- Fokus využíva celú plochu pod kompaktnou hlavičkou. Existujúce layout() komponenty dostávajú väčší obdĺžnik, takže pri FHD má javisko 804 namiesto 408 logických pixelov na výšku, bez prepisovania scén a časovania.
+- Panel KOLO v Hlásení tromfu sa pri dostatku výšky zoskupuje vpravo pod vysvetlením; pri nízkom širokom okne zostáva na stole, aby neprekryl ruku.
+- Rozdanie zachováva pôvodný statický obrázok a popis, nevytvárala sa nová animácia ani ovládanie neexistujúcich scén. Texty, pravidlá, obsah scén a dĺžky bez zmien.
+- Overené: regression_focus (všetkých 5 fáz, 3 podzáložky, predchádzajúce/ďalšie/bodky/prehrávanie, návrat a zmrazenie času) pri 1920x1080, 1280x720, 1920x1200, 3440x1440 a 1024x768; rozšírené rozloženie všetkých scén bez presahov. regression_layout všetkých 15 rozlíšení OK; regression_rules_demo OK; regression_screen stopa 167 riadkov identická.
+- Vizuálne skontrolované FHD snímky rozšírenej Dražby, Talónu, Hlásenia tromfu a prehľadu, vykreslené aplikáciou bez viditeľného okna.
+- Zmenené v tomto kroku: gui/info_overlay.py, gui/trump_demo.py, tester/regression_focus.py, HANDOFF.md. Bez commitu a zmeny vetvy.
+- Návrh commit message: Pridať režim sústredenej animácie do tutoriálu pravidiel.
