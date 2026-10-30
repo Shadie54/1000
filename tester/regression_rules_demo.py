@@ -20,7 +20,8 @@ os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 def main():
     from gui.rules_demo import verify_scenes
     from gui.round_demos import verify_round_demos
-    errors = verify_scenes() + verify_round_demos()
+    from gui.trump_demo import verify_trump_demo
+    errors = verify_scenes() + verify_round_demos() + verify_trump_demo()
     for e in errors:
         print(f"  {e}")
     print("VÝSLEDOK: " + ("ukážka pravidiel zodpovedá logike hry" if not errors

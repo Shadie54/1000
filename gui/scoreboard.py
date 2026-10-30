@@ -65,7 +65,7 @@ class Scoreboard:
     # Panel 1 — TROMF
     # ------------------------------------------------------------------
 
-    def _draw_trump_panel(self, current_round: Round | None):
+    def _draw_trump_panel(self, current_round: Round | None, *, show_points=True):
         """Nakreslí panel tromfu."""
         self._draw_panel_bg(self.trump_x, self.panel_y, self.trump_w, self.panel_h)
 
@@ -109,9 +109,10 @@ class Scoreboard:
         label_rect = label_surf.get_rect(centerx=cx, top=self.panel_y + 135)
         self.canvas.blit(label_surf, label_rect)
 
-        points_surf = self.font_small.render(f"{points} bodov", True, ui_style.TEXT)
-        points_rect = points_surf.get_rect(centerx=cx, top=self.panel_y + 158)
-        self.canvas.blit(points_surf, points_rect)
+        if show_points:
+            points_surf = self.font_small.render(f"{points} bodov", True, ui_style.TEXT)
+            points_rect = points_surf.get_rect(centerx=cx, top=self.panel_y + 158)
+            self.canvas.blit(points_surf, points_rect)
 
         # Kto zahlásil
         if current_round and hasattr(current_round, 'trump_declarer'):

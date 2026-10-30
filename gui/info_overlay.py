@@ -35,7 +35,7 @@ from gui.canvas import LSurf, draw_static
 from gui.rules_demo import TrickRulesDemo
 from gui.scoring_demo import ScoringDemo
 from gui.round_demos import BiddingDemo, TalonDemo
-from gui.trump_demo import TrumpPlaceholder
+from gui.trump_demo import TrumpDemo
 from config import (
     SCREEN_WIDTH, CARD_POINTS, TRUMP_POINTS, MIN_BID, BID_STEP,
     CARD_BACK_IMAGE,
@@ -137,20 +137,20 @@ STEP_BIDDING, STEP_TALON, STEP_TRICKS, STEP_SCORING = 1, 2, 3, 4   # kroky s uk�
 
 
 class TricksTrumpStep:
-    """Krok „Štichy a tromfy“: dve podzáložky nad ukážkou — Pravidlá
-    štichov (ukážka štichov bez zmeny) a Hlásenie tromfu (zatiaľ zástupný
-    obsah). Podzáložky ležia v hlavičke panela (namiesto nadpisu ukážky),
+    """Krok „Štichy a tromfy“: Pravidlá štichov a oba varianty hlásenia
+    tromfu sú vždy dostupné v troch podzáložkách. Podzáložky ležia v hlavičke panela (namiesto nadpisu ukážky),
     vybraná ukážka má vždy celý animačný priestor. Prepnutie podzáložky
     zastaví predchádzajúcu ukážku (reset — znova od 1. scény)."""
 
-    TABS = ("Pravidlá štichov", "Hlásenie tromfu")
+    TABS = ("Pravidlá štichov", "Hlásenie tromfu od 2. štichu",
+            "Hlásenie tromfu v 1. štichu")
 
-    def __init__(self, canvas, tricks, trump):
+    def __init__(self, canvas, tricks, trump, first_trump):
         self.canvas = canvas
-        self.demos = (tricks, trump)
+        self.demos = (tricks, trump, first_trump)
         for d in self.demos:
             d.show_title = False
-        trump.show_counter = False
+        trump.show_counter = True
         self.font_tab = canvas.font(24)
         self.tab = 0
         self.tab_rects = []
@@ -250,8 +250,10 @@ class InfoOverlay:
         self.bidding_demo.layout(self._demo_rect)
         self.talon_demo = TalonDemo(canvas)
         self.talon_demo.layout(self._demo_rect)
-        self.trump_demo = TrumpPlaceholder(canvas)
-        self.tricks_step = TricksTrumpStep(canvas, self.rules_demo, self.trump_demo)
+        self.trump_demo = TrumpDemo(canvas, False)
+        self.first_trump_demo = TrumpDemo(canvas, True)
+        self.tricks_step = TricksTrumpStep(canvas, self.rules_demo, self.trump_demo,
+                                           self.first_trump_demo)
         self.tricks_step.layout(self._demo_rect)
         # krok Priebehu kola → animovaná ukážka (ostatné kroky: obrázok a popis)
         self.step_demos = {STEP_BIDDING: self.bidding_demo, STEP_TALON: self.talon_demo,
@@ -427,7 +429,8 @@ class InfoOverlay:
         problems = []
         try:
             for scene in range(len(d.SCENES)):
-                for t in (0.5, 1.5, 2.5, 3.5, 4.5, 6.0, 7.5):
+                for t in ((0.5, 1.5, 2.5, 3.5, 4.5, 6.0, 7.5, 9.5, 11.5, 12.8)
+                          if isinstance(d, TrumpDemo) else (0.5, 1.5, 2.5, 3.5, 4.5, 6.0, 7.5)):
                     d.scene, d.playing, d.hold_at = scene, False, t
                     d._t0 = pygame.time.get_ticks() - int(t * 1000)
                     with self.unchecked():

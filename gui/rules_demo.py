@@ -143,6 +143,7 @@ def verify_scenes() -> list[str]:
 
 class TrickRulesDemo:
     # Podtriedy (gui/scoring_demo.py) menia scény, dĺžku a nadpis
+    SHOW_TRUMP_POINTS = False
     TITLE = "PRAVIDLÁ ŠTICHOV"
     show_title = True            # nadpis v hlavičke panela
     show_counter = True          # „1 / 6“ vpravo v hlavičke
@@ -346,27 +347,44 @@ class TrickRulesDemo:
     def _scene_trump(self) -> str | None:
         return {3: S4_TRUMP, 4: S5_TRUMP, 5: S6_TRUMP}.get(self.scene)
 
+    def _trump_declarer(self):
+        # V príkladoch štichov nie je uvedené, kto tromf predtým hlásil.
+        return None
+
     def _draw_trump_note(self, fade: float):
-        """Vľavo hore na stole: aký je tromf (scény 4–6)."""
+        """Skutočný herný panel tromfu, zmenšený medzi menovky hráčov."""
         trump = self._scene_trump()
         if not trump:
             return
+        from types import SimpleNamespace
+        from gui.canvas import Canvas, LSurf
+        from gui.scoreboard import Scoreboard
+
         c = self.canvas
-        st = self.stage
-        size = round(34 * self.k)
-        x, y = st.x + 16, st.y + 14
-        lbl = self.font_seat.render("Tromf:", True, NAME_DIM)
-        c.blit(lbl, (x, y + (size - lbl.get_height()) // 2))
-        x += lbl.get_width() + 8
-        path = os.path.join("assets", "suit-icons", f"{trump}-icon@medium.png")
-        try:
-            ic = c.image(path, (size, size))
-            c.blit(ic, (x, y))
-            x += size + 6
-        except (FileNotFoundError, pygame.error):
-            pass
-        name = self.font_seat.render(TRUMP_NAME[trump], True, ui_style.GOLD)
-        c.blit(name, (x, y + (size - name.get_height()) // 2))
+        declarer = self._trump_declarer()
+        # Kreslí rovnaká metóda ako v hre; výsledok cachujeme podľa obsahu
+        # a fyzickej veľkosti. Písmo zostáva ostré aj pri vyššom rozlíšení.
+        w, h = round(112 * self.k), round(154 * self.k)
+        size = (max(1, round(w * c.s)), max(1, round(h * c.s)))
+        key = (trump, declarer, size, self.SHOW_TRUMP_POINTS)
+        if getattr(self, "_trump_panel_key", None) != key:
+            scale = size[0] / 160
+            surface = pygame.Surface((size[0], max(size[1], round(220 * scale))),
+                                     pygame.SRCALPHA)
+            panel = Scoreboard(Canvas(surface, scale))
+            panel.trump_x = panel.panel_y = 0
+            panel._draw_trump_panel(SimpleNamespace(trump_suit=trump,
+                                                   trump_declarer=declarer),
+                                    show_points=self.SHOW_TRUMP_POINTS)
+            if surface.get_size() != size:
+                surface = pygame.transform.smoothscale(surface, size)
+            self._trump_panel_key = key
+            self._trump_panel_image = surface
+        image = self._trump_panel_image.copy()
+        image.set_alpha(round(255 * max(0, min(1, fade))))
+        rect = pygame.Rect(0, 0, w, h)
+        rect.midtop = (self.center[0], self.stage.y + round(10 * self.k))
+        c.blit(LSurf(image, w, h), rect)
 
     def _glow_seat(self, t) -> int | None:
         s = self.scene
