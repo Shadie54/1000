@@ -18,7 +18,7 @@
 # tester/regression_rules_demo.py.
 #
 # Ovládanie: Predchádzajúce / Ďalšie / bodky (ručný výber = scéna sa prehrá
-# raz a ostane stáť na výsledku), Pozastaviť / Prehrať. Pri otvorení okna
+# v slučke bez automatického posunu), Pozastaviť / Prehrať. Pri otvorení okna
 # reset() — začína sa scénou 1.
 
 import math
@@ -143,6 +143,7 @@ def verify_scenes() -> list[str]:
 
 class TrickRulesDemo:
     # Podtriedy (gui/scoring_demo.py) menia scény, dĺžku a nadpis
+    VISIBLE_PLAY_HANDS = True
     SHOW_TRUMP_POINTS = False
     TITLE = "PRAVIDLÁ ŠTICHOV"
     show_title = True            # nadpis v hlavičke panela
@@ -176,16 +177,15 @@ class TrickRulesDemo:
         if self.playing:
             while t >= self.SCENE_LEN:
                 t -= self.SCENE_LEN
-                self.scene = (self.scene + 1) % len(self.SCENES)
                 self._t0 += int(self.SCENE_LEN * 1000)
             return t
         return min(t, self.hold_at if self.hold_at is not None else self.HOLD_AT)
 
     def select(self, index: int):
-        """Ručný výber scény — prehrá sa raz a zastane na výsledku."""
+        """Ručný výber scény — okamžite spustí jej opakované prehrávanie."""
         self.scene = index % len(self.SCENES)
-        self.playing = False
-        self.hold_at = self.HOLD_AT
+        self.playing = True
+        self.hold_at = None
         self._t0 = pygame.time.get_ticks()
 
     def toggle_play(self):
@@ -196,8 +196,6 @@ class TrickRulesDemo:
         else:
             self.playing = True
             self.hold_at = None
-            if t >= self.HOLD_AT:     # zo zastaveného výsledku plynulo ďalej
-                t = self.HOLD_AT
         self._t0 = pygame.time.get_ticks() - int(t * 1000)
 
     # --- rozloženie -------------------------------------------------------
@@ -262,9 +260,34 @@ class TrickRulesDemo:
                 self.seat[idx] = (cx + sx * min(sdx, room - half_w), cy - round(20 * k))
         self.text_x = st.x + round(st.width * 0.58)
         self.hand_y = st.bottom - round(88 * k)
+        if self._visible_hands():
+            # Samostatná ľavá oblasť stola; vysvetlenia zostávajú vpravo.
+            self.cw = min(self.cw, round(st.height * .14))
+            left, right = st.x + 24, self.text_x - 24
+            width = right - left
+            cx, cy = (left + right) // 2, st.y + round(st.height * .50)
+            self.center = (cx, cy)
+            ch = self.cw / CARD_RATIO
+            self.label = {1: (left + round(width * .20), st.y + 26),
+                          2: (left + round(width * .80), st.y + 26),
+                          0: (cx, st.bottom - 22)}
+            self.seat = {1: (self.label[1][0], st.y + 48 + ch * .4),
+                         2: (self.label[2][0], st.y + 48 + ch * .4),
+                         0: (cx, st.bottom - 48 - ch * .4)}
+            self.spot = {1: (cx - self.cw * 1.1, cy - self.cw * .25),
+                         2: (cx + self.cw * 1.1, cy - self.cw * .25),
+                         0: (cx, cy + self.cw * .65)}
+
+    def _visible_hands(self):
+        # Ostatné podtriedy (Dražba, Talón, Bodovanie) sa nemenia.
+        return (getattr(self, "focus_layout", False)
+                and type(self).__dict__.get("VISIBLE_PLAY_HANDS", False))
 
     def hand_pos(self, i: int, n: int) -> tuple[int, int]:
         step = round(76 * self.k)
+        if self._visible_hands():
+            step = min(step, self.cw * .85)
+            return (self.seat[0][0] + (i - (n - 1) / 2) * step, self.seat[0][1])
         w = self.stage.right - 18 - self.text_x
         x0 = self.text_x + w // 2 - (n - 1) * step // 2
         return (x0 + i * step, self.hand_y)
@@ -302,6 +325,9 @@ class TrickRulesDemo:
         if t < 0.4:
             fade = min(fade, _ease(t / 0.4))
         self._draw_labels(self._glow_seat(t))
+        if self._visible_hands():
+            active = (1, 2) if self.scene == 5 else (LEADER,)
+            self._draw_idle_hands([p for p in (1, 2) if p not in active], fade)
         self._draw_trump_note(fade)
         getattr(self, f"_scene{self.scene + 1}")(t, fade)
         self._draw_text()
@@ -384,6 +410,8 @@ class TrickRulesDemo:
         image.set_alpha(round(255 * max(0, min(1, fade))))
         rect = pygame.Rect(0, 0, w, h)
         rect.midtop = (self.center[0], self.stage.y + round(10 * self.k))
+        if self._visible_hands():
+            rect.topright = (self.stage.right - 18, self._text_box(self.scene)[0].bottom + 18)
         c.blit(LSurf(image, w, h), rect)
 
     def _glow_seat(self, t) -> int | None:
@@ -442,7 +470,7 @@ class TrickRulesDemo:
         for ln in lines:
             c.blit(self.font_text.render(ln, True, ui_style.TEXT), (box.x + 20, y))
             y += line_h
-        if self._show_hand_caption():
+        if self._show_hand_caption() and not self._visible_hands():
             cap = self.font_seat.render("Tvoja ruka", True, NAME_DIM)
             c.blit(cap, cap.get_rect(centerx=x + w // 2,
                                      bottom=self.hand_y - round(70 * self.k)))
@@ -474,7 +502,7 @@ class TrickRulesDemo:
     # --- karty --------------------------------------------------------------
 
     def _card(self, name: str, center, scale: float = 1.0, alpha: float = 1.0,
-              outline=None, mark: str | None = None, shadow: bool = True):
+              outline=None, mark: str | None = None, shadow: bool = True, width_scale=1.0):
         c = self.canvas
         w = round(self.cw * scale)
         h = round(w / CARD_RATIO)
@@ -482,6 +510,12 @@ class TrickRulesDemo:
             img = c.card(f"{name}.png", lsize=(w, h))
         except (FileNotFoundError, pygame.error):
             return
+        if width_scale != 1.0:
+            from gui.canvas import LSurf
+            nw = max(1, round(w * width_scale))
+            physical = pygame.transform.smoothscale(img.phys,
+                        (max(1, round(nw * c.s)), img.phys.get_height()))
+            img = LSurf(physical, nw, h)
         rect = img.get_rect(center=(round(center[0]), round(center[1])))
         a = int(255 * max(0.0, min(1.0, alpha)))
         if a <= 0:
@@ -512,6 +546,8 @@ class TrickRulesDemo:
         """Ruka hráča vpravo dole; zahraná karta ostane ako priesvitný tieň."""
         for i, n in enumerate(names):
             pos = self.hand_pos(i, len(names))
+            if n == moved and self._visible_hands():
+                continue
             if n == moved:
                 self._card(n, pos, 0.8, alpha=fade * (1 - 0.75 * moved_k), shadow=False)
             else:
@@ -520,13 +556,52 @@ class TrickRulesDemo:
                            outline=(outlines or {}).get(n),
                            mark=(marks or {}).get(n))
 
+    def _draw_idle_hands(self, players, fade):
+        from config import CARD_BACK_IMAGE
+        for player in players:
+            for i in range(3):
+                x, y = self.seat[player]
+                self._card(CARD_BACK_IMAGE[:-4], (x + i * self.cw * .25, y),
+                           .8, alpha=fade)
+
+    def _play_from_hand(self, player, name, t, start, duration, fade,
+                        hand=None, outline=None, mark=None, draw_hand=True, origin=None):
+        """Jedna karta existuje iba raz: v ruke, počas letu, potom v štichu."""
+        from config import CARD_BACK_IMAGE
+        k = _ease((t - start) / duration)
+        names = tuple(hand or (name,))
+        if origin is None:
+            origin = self.hand_pos(names.index(name), len(names)) if player == 0 else self.seat[player]
+        if draw_hand:
+            if player == 0:
+                for i, n in enumerate(names):
+                    if n != name:
+                        self._card(n, self.hand_pos(i, len(names)), .8, alpha=fade)
+            else:
+                # Dve zostávajúce rubové karty vedľa zahrávanej pozície.
+                for i in (1, 2):
+                    pos = (origin[0] + i * self.cw * .25, origin[1])
+                    self._card(CARD_BACK_IMAGE[:-4], pos, .8, alpha=fade)
+        face = player == 0 or k >= .5
+        card = name if face else CARD_BACK_IMAGE[:-4]
+        flip = max(.06, abs(1 - 2 * k)) if player != 0 and k < 1 else 1
+        pos = _arc(origin, self.spot[player], k, bend=.15)
+        self._card(card, pos, .8 + .2 * k, alpha=fade,
+                   width_scale=flip, outline=outline if face else None,
+                   mark=mark if k >= 1 else None)
+        return k
+
     # --- scény (t = čas v scéne, fade = priehľadnosť obsahu) ---------------
 
     def _scene1(self, t, fade):
         k = _ease((t - 1.0) / 2.0)
         pos = _arc(self.seat[LEADER], self.spot[LEADER], k)
-        self._card(S1_LEAD, pos, alpha=fade * min(1.0, 0.3 + k),
-                   outline=ui_style.GOLD if t >= 3.0 else None)
+        if self._visible_hands():
+            self._play_from_hand(LEADER, S1_LEAD, t, 1, 2, fade,
+                                 outline=ui_style.GOLD if t >= 3 else None)
+        else:
+            self._card(S1_LEAD, pos, alpha=fade * min(1.0, 0.3 + k),
+                       outline=ui_style.GOLD if t >= 3.0 else None)
         if t >= 3.0:
             a = _ease((t - 3.0) / 0.6) * fade
             c = self.canvas
@@ -546,7 +621,10 @@ class TrickRulesDemo:
         """Počítač 2 vynesie `lead`, Hráč odpovie kartou `play` z ruky.
         forbidden = karty, ktoré nesmie zahrať (červený rám a krížik),
         allowed = karty, ktoré smie (zelený rám)."""
-        self._card(lead, self.spot[LEADER], alpha=fade)
+        if self._visible_hands():
+            self._play_from_hand(LEADER, lead, t, .15, .45, fade)
+        else:
+            self._card(lead, self.spot[LEADER], alpha=fade)
         k = _ease((t - 1.0) / 2.0)
         show = t >= 0.6
         outlines = {}
@@ -562,9 +640,14 @@ class TrickRulesDemo:
                    outlines=outlines, marks=marks)
         start = self.hand_pos(hand.index(play), len(hand))
         pos = _arc(start, self.spot[0], k, bend=0.15)
-        self._card(play, pos, 0.8 + 0.2 * k, alpha=fade,
-                   outline=GREEN if show else None,
-                   mark="ok" if t >= 3.0 else None)
+        if self._visible_hands():
+            self._play_from_hand(0, play, t, 1, 2, fade, hand=hand,
+                                 outline=GREEN if show else None,
+                                 mark="ok" if t >= 3 else None, draw_hand=False)
+        else:
+            self._card(play, pos, 0.8 + 0.2 * k, alpha=fade,
+                       outline=GREEN if show else None,
+                       mark="ok" if t >= 3.0 else None)
 
     def _scene2(self, t, fade):
         self._respond(t, fade, S2_LEAD, S2_HAND, S2_PLAY,
@@ -583,6 +666,13 @@ class TrickRulesDemo:
 
     def _scene6(self, t, fade):
         res = t >= 3.0
+        if self._visible_hands():
+            for i, (idx, name) in enumerate(S6_TRICK):
+                won = res and idx == S6_WINNER
+                self._play_from_hand(idx, name, t, 1 + i * .45, .5, fade,
+                                     outline=ui_style.GOLD if won else None,
+                                     mark="ok" if won else None)
+            return
         for i, (idx, name) in enumerate(S6_TRICK):
             k = _ease((t - 1.0 - i * 0.45) / 0.5)
             if k <= 0:

@@ -143,7 +143,7 @@ class TricksTrumpStep:
     zastaví predchádzajúcu ukážku (reset — znova od 1. scény)."""
 
     TABS = ("Pravidlá štichov", "Hlásenie tromfu od 2. štichu",
-            "Hlásenie tromfu v 1. štichu")
+            "Hlásenie v 1. štichu (voliteľné)")
 
     def __init__(self, canvas, tricks, trump, first_trump):
         self.canvas = canvas

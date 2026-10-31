@@ -84,3 +84,132 @@ Posledná aktualizácia: 2026-10-30
 - Vizuálne skontrolované FHD snímky rozšírenej Dražby, Talónu, Hlásenia tromfu a prehľadu, vykreslené aplikáciou bez viditeľného okna.
 - Zmenené v tomto kroku: gui/info_overlay.py, gui/trump_demo.py, tester/regression_focus.py, HANDOFF.md. Bez commitu a zmeny vetvy.
 - Návrh commit message: Pridať režim sústredenej animácie do tutoriálu pravidiel.
+
+## Dokončené — viditeľné ruky a zahrávanie (Codex, 2026-10-30)
+- gui/rules_demo.py a gui/trump_demo.py: spoločný viditeľný pôvod, otočenie a odstránenie zahranej karty; len Štichy a tromfy.
+- tester/regression_card_play.py: kontrola pôvodu, poradia, odstránenia a rozloženia.
+- HANDOFF.md: výsledky. V aktuálnej verzii týchto dvoch súborov nie je zberný pohyb, iba výsledné zvýraznenie víťaza; zachovať ho.
+
+### Výsledok
+- Iba sústredené Štichy a tromfy používajú stabilné pozície Počítač 1 hore vľavo, Počítač 2 hore vpravo a Hráč dole. Rubové ruky počítačov, lícová ruka hráča a cieľové pozície sú oddelené od pravých vysvetlení a panelov.
+- Spoločné _play_from_hand kreslí konkrétnu kartu iba raz: najprv v ruke, potom po oblúku do štichu. Počítačová karta sa počas letu otočí rub/líce cez zúženie šírky. Dve zostávajúce rubové karty sú na pôvodnom mieste; hráčova zahraná karta nezanecháva priesvitnú kópiu.
+- Použité na classic/win, zahratie pri hlásení/effect/change, vynesenie a odpovede v Pravidlách štichov a výsledný štich. Karty počítačov v neaktívnych rukách zostávajú viditeľné aj pri vysvetľovaní dvojice a hlásenia. Ukážkové ruky nemusia mať desať kariet.
+- Počet scén, texty, dĺžky scén, existujúce časy zahrávania a zvýraznenie víťaza bez zmien. Pôvodný statický výnos v odpovediach má teraz krátky pohyb pred existujúcou odpoveďou hráča. Pravidlá/engine ani ostatné fázy bez zásahu.
+- Poznámka k zadaniu: aktuálne rules_demo.py/trump_demo.py neobsahujú samostatnú animáciu zbierania štichu, iba označenie víťaza. Nebola odstránená ani nahradená žiadna existujúca zberná animácia.
+- Overené: regression_card_play pri 1920x1080, 3440x1440 a 1024x768 (pôvod, otočenie, odstránenie, poradie, výsledok, oddelenie ostatných fáz); regression_focus pri rovnakých troch rozlíšeniach vrátane ovládania a presahov všetkých scén; regression_layout všetkých 15 rozlíšení OK; regression_rules_demo OK. Herná stopa regression_screen má 167 riadkov identických s predchádzajúcim stavom.
+- Vizuálne kontrolované FHD snímky classic pred zahratím, počas letu, po otočení a na výsledku; aj hlásenie a oddelenie hráčovej ruky od štichu. Kontrola vykreslením aplikácie bez viditeľného okna.
+- Zmenené: gui/rules_demo.py, gui/trump_demo.py, tester/regression_card_play.py, HANDOFF.md. Bez commitu a zmeny vetvy.
+- Návrh commit message: Zjednotiť zahrávanie kariet z viditeľných rúk v tutoriáli.
+
+## Dokončené — choreografia klasického hlásenia (Codex, 2026-10-30)
+- gui/trump_demo.py: iba päť scén variantu od 2. štichu, presná ruka, rozhodnutia, bubliny SpeechBubble a dve ukážky zberu.
+- tester/regression_classic_trump.py: udalosti, herné pravidlá, body, časovanie a reset.
+- HANDOFF.md: výsledok. Aktuálne zberný pohyb v tomto tutoriáli chýba; doplniť lokálne s existujúcimi oblúkmi, bez zmeny ostatných variantov.
+
+### Výsledok
+- Zmeny sú izolované do vetvy TrumpDemo(first_trick_trump=False). Druhý variant, Pravidlá štichov, ostatné fázy a vysvetľujúce texty zostávajú zachované.
+- 1/5: presná ruka leaf-ace, acorn-king, acorn-over, heart-ten; statická zvýraznená dvojica, bez zahrania.
+- 2/5: simulovaný výber horníka, neaktívna voľba Tromf: Žaluď, vizuálny pokus o kliknutie a herná informačná bublina. Výber aj tlačidlá sa zrušia bez aktivácie tromfu. Hráč vynesie zelené eso, počítače priznajú zeleň, hráč berie štich; od 10,5 s panel ukazuje 2 / 10.
+- 3/5: zachovaný začiatok zahrania; aktívne rozhodnutie pulzuje, simulovaný klik, od 4,5 s tlačidlá zmiznú a karta zostáva na stole; štich sa nedohráva.
+- 4/5: zachované zahranie a panel; úspech oznamuje priamo herný SpeechBubble.show_trump.
+- 5/5: žaluďové eso počítača 1 berie štich s priznaním farby; následne tento počítač začína nový štich a zahráva guľového horníka zo svojej dvojice. Až od 8,3 s sa mení tromf a zobrazuje NOVÝ TROMF! cez SpeechBubble; Hráčových 100 bodov zostáva, počítaču pribudne 60. Nový štich sa nedohráva.
+- Dĺžky klasických scén sú 11 / 16 / 11 / 11 / 14 s; reset a zastavenie na výsledku používajú existujúce časové rozhranie. Zber v ukážkach 2 a 5 používa lokálny oblúk/fade k víťazovi; ostatné existujúce pohyby a varianty sa nemenia. Simulácia nemení skutočný stav rozohratej hry.
+- Overenia: regression_classic_trump pri FHD, 3440x1440 a 1024x768 (herné pravidlá, obidva štichy, bodovanie, udalosti, reset a presahy); regression_focus OK, regression_card_play OK, regression_layout všetkých 15 rozlíšení OK, regression_rules_demo OK. regression_screen stopa 167 riadkov identická s predošlou.
+- Vizuálne skontrolovaných 12 FHD snímok zo všetkých piatich scén vrátane neaktívnej voľby, úspešného hlásenia, oboch zberov a novej farby. Kontrola vykreslením aplikácie bez viditeľného okna.
+- Zmenené v tomto kroku: gui/trump_demo.py, tester/regression_classic_trump.py, HANDOFF.md. Predchádzajúce nekomitnuté zmeny zachované. Bez commitu a zmeny vetvy.
+- Návrh commit message: Prepracovať päť scén klasického hlásenia tromfu.
+
+## Dokončené — nadväznosť klasických scén (Codex, 2026-10-30)
+- gui/trump_demo.py: fajočky dvojice, stlačenia podľa Dražby, polohy bublín, vysunutie v 3/5, odstránené eso a nadviazanie 5/5 na horníka zo 4/5.
+- tester/regression_classic_trump.py: kontinuita rúk a horníka, prázdny panel v 3/5.
+- HANDOFF.md: výsledok a overenia.
+
+### Výsledok
+- 1/5: zelené fajočky na kráľovi aj horníkovi.
+- 2/5: stlačenia majú rovnaký efekt posunu o 2 px, tieňa a zvýraznenia ako Dražba; aktívne tlačidlá využívajú priamo _RoundDemo._press. Zakázaná voľba zostáva neaktívna. Informačná bublina je nad rukou hráča.
+- 3/5: ruka už neobsahuje zelené eso; horník sa iba plynulo vysunie bez fajočky, neletí na stôl. Panel tromfu zobrazuje zatiaľ žiadny počas celej scény. Klik používa efekt Dražby.
+- 4/5: eso odstránené, zachované zahranie horníka. Bublina TROMF! je nad červenou desiatkou pri hráčovi.
+- 5/5: začína horníkom na stole a zvyšnými dvoma kartami v ruke zo 4/5. Zmizne iba fajočka; scéna sa na začiatku nerozplýva. Žaluďová sedma odstránená. Počítač 1 berie štich aj s už zahraným horníkom a následne hlási guľu. Číslo štichu nadväzuje 2 / 10 → 3 / 10. Jeho bublina je pri jeho ruke a chvost smeruje k nej.
+- Opravené prenášanie starej bubliny hráča do scény počítača; každý výučbový oznam vykresľuje iba aktuálnu bublinu.
+- Overenie: regression_classic_trump pri 1920x1080, 3440x1440 a 1024x768; doplnené overenie kontinuity rúk, prázdneho panelu, neprítomnosti esa/sedmy a horníka na stole od t=0. regression_focus OK; regression_layout všetkých 15 rozlíšení OK; regression_rules_demo OK; regression_screen 167 riadkov identických s predchádzajúcim stavom.
+- Vizuálne skontrolované FHD snímky polôh bublín, vysunutej karty, prázdneho panela a novej hlášky bez presvitania starej bubliny; vykreslením bez viditeľného okna.
+- Zmenené v tomto kroku: gui/trump_demo.py, tester/regression_classic_trump.py, HANDOFF.md. Bez commitu a zmeny vetvy.
+- Návrh commit message: Doladiť nadväznosť kariet, kliknutia a bubliny hlásenia tromfu.
+
+## Dokončené — slučky scén 2–5 (Codex)
+- gui/trump_demo.py, tester/regression_classic_trump.py, HANDOFF.md: samostatné opakovanie klasických scén 2–5 aj po ručnom výbere.
+
+- Výsledok: klasické scény 2–5 opakujú vlastný obsah bez automatického posunu na ďalšiu scénu; ručný výber spustí slučku. Pozastavenie/pokračovanie ostáva funkčné. Scéna 1 a druhý variant zachovávajú pôvodné správanie.
+- Overenie: regression_classic_trump vrátane dvoch úplných slučiek každej scény a pauzy/pokračovania OK; regression_rules_demo OK; regression_layout všetkých 15 rozlíšení OK. Iba časovač tutoriálu, herná logika a kreslenie bez zásahu.
+- Zmenené: gui/trump_demo.py, tester/regression_classic_trump.py, HANDOFF.md. Návrh commitu: Opakovať klasické scény hlásenia tromfu 2–5 v slučke.
+
+## Dokončené — opakovanie bez stmavenia (Codex)
+- gui/trump_demo.py, HANDOFF.md: odstrániť nábeh a dobeh priehľadnosti klasických scén 2–5; ponechať vnútorné animácie.
+
+- Klasické scény 2–5 zachovávajú plnú viditeľnosť pri konci aj začiatku slučky; reštart priamy, bez stmavenia celého obsahu. Dĺžky scén, vnútorný pohyb/zber kariet, navigácia a druhý variant bez zmeny.
+- Overenie: regression_classic_trump a regression_rules_demo OK; regression_layout všetkých 15 rozlíšení OK.
+- Zmenené: gui/trump_demo.py, HANDOFF.md. Návrh commitu: Odstrániť stmievanie pri opakovaní scén hlásenia tromfu.
+
+## Dokončené — kratšie slučky a bubliny pri kartách (Codex)
+- gui/trump_demo.py, HANDOFF.md: skrátiť dobeh scén 2/5 a 3/5; úspešné hlásenia ukotviť pri zahranej karte namiesto ruky.
+
+- Scéna 2 trvá 11 namiesto 16 s (reštart pol sekundy po prechode počítadla na 2/10); scéna 3 trvá 5 namiesto 11 s (reštart pol sekundy po potvrdení). Priebeh akcií bez zrýchľovania.
+- Úspešné tromfové bubliny pri žaluďovom aj guľovom horníkovi sú napravo od zahranej karty; chvost smeruje ku karte. Zakázané hlásenie zostáva nad rukou.
+- regression_classic_trump, regression_rules_demo a regression_layout (15 rozlíšení) OK. Zmenené: gui/trump_demo.py, HANDOFF.md. Návrh commitu: Skrátiť prestoje slučiek a ukotviť hlásenia pri kartách.
+
+## Dokončené — ruky počítačov v 5/5 (Codex)
+- gui/trump_demo.py, gui/rules_demo.py, tester/regression_classic_trump.py, HANDOFF.md: zachovať dve karty a pôvodné sloty po zbere, ďalší výnos zo správneho slotu.
+
+- Príčina: po zbere sa počítaču 2 kreslila pôvodná trojkartová ruka namiesto dvoch zostávajúcich kariet. Teraz zostávajú v slotoch 1 a 2 počas celého zvyšku scény. Počítač 1 vynáša guľového horníka zo slotu 2; kráľ zostáva v slote 1. Spoločný helper má voliteľný origin, predvolené správanie nezmenené.
+- Doplnený regresný test počtu a presných pozícií pri 5,9 / 6 / 6,8 / 8,4 / 12 s. regression_classic_trump, regression_rules_demo a regression_layout (15 rozlíšení) OK.
+- Zmenené: gui/trump_demo.py, gui/rules_demo.py, tester/regression_classic_trump.py, HANDOFF.md. Návrh commitu: Opraviť kontinuitu rúk počítačov pri zmene tromfu.
+
+## Dokončené — doladenie hlásenia v 1. štichu (Codex)
+- gui/trump_demo.py: vzor klasickej záložky, stabilné sloty a ubúdanie kariet počas troch štichov, bubliny, rozhodnutia, slučky.
+- tester/regression_first_trump.py: pravidlá nadväzujúcich štichov, kontinuita a počty rúk.
+- HANDOFF.md: výsledok.
+
+- V práci aj tester/regression_classic_trump.py: aktualizovať kontrolu dĺžky prvej scény druhého variantu (teraz 6 s podľa nového konceptu).
+
+### Výsledok
+- Hlásenie v 1. štichu používa klasickú záložku ako vzor: zvýraznenie dvojice s fajočkami, vysunutie karty pred rozhodnutím, rovnaké stlačenie tlačidiel z Dražby, prázdny panel pred hlásením, herné bubliny ukotvené pri zahranej karte, samostatné slučky bez stmievania a krátke dobehy.
+- Zachovaných 7 scén a všetky vysvetľujúce texty. Dĺžky sú 11/6/7/5/7/13/14 s. Hranica povinnosti 100/110 v ukážke ostáva; panel KOLO po hlásení zobrazuje chýbajúci a následne splnený štich.
+- Nadväznosť kola: horník z úvodného hlásenia je zahraný od začiatku scény získania štichu. Prvý štich berie počítač 1 žaluďovým esom; druhý začína žaluďovou osmou a hráč ho získa žaluďovou desiatkou. Potom hráč vynáša srdcovú sedmu, počítač 1 získa tretí štich srdcovým esom a vo štvrtom hlási guľu. Predchádzajúcich 100 bodov zostáva.
+- Každá ruka má pevné sloty a zoznam konkrétnych kariet; zahrané karty sa nevracajú, zvyšné nemenia miesta. Na konci zostáva hráčovi žaluďový kráľ, počítaču 1 guľový kráľ a počítaču 2 žiadna z ukážkových kariet. Ide o výučbový výrez, nie úplné desaťkartové rozdanie.
+- Klasické scény obsahovo ani choreograficky nezmenené. Ostatné fázy bez zásahu.
+- Overenia: regression_first_trump pri 1920x1080, 3440x1440, 1024x768 (legálne karty v nadväzujúcich rukách, víťazi, ubúdanie a stabilné sloty, slučky, pauza a presahy); regression_classic_trump a regression_focus OK; regression_layout všetkých 15 rozlíšení OK; regression_rules_demo OK. regression_screen stopa 167 riadkov zhodná s predchádzajúcou.
+- Vizuálne overené FHD snímky rozhodnutia, hlásenia, splnenia podmienky štichu a novej farby s ubúdajúcimi rukami; vykreslením aplikácie bez viditeľného okna.
+- Zmenené v tomto kroku: gui/trump_demo.py, tester/regression_first_trump.py, tester/regression_classic_trump.py (očakávaná dĺžka scény), HANDOFF.md. Bez commitu a zmeny vetvy.
+- Návrh commit message: Zjednotiť hlásenie v prvom štichu a zachovať kontinuitu kariet.
+
+## Dokončené — päť kariet pre každého (Codex, 2026-10-31)
+- gui/trump_demo.py, tester/regression_first_trump.py, HANDOFF.md: zjednotiť úvodné ruky variantu v 1. štichu na päť, zachovať legálnosť a stabilné sloty.
+
+- V druhom variante má každá ruka na začiatku presne päť rôznych kariet (spolu 15 unikátnych). Hráčovi doplnené zelené eso, počítaču 2 zelený kráľ a guľová deviatka; nezahrávajú sa a nemenia legálnosť troch štichov. Počítač 1 bez zmeny. Ubúdanie a pôvodné sloty zachované.
+- regression_first_trump (FHD a širokouhlé), regression_rules_demo a regression_layout (15 rozlíšení) OK.
+- Zmenené: gui/trump_demo.py, tester/regression_first_trump.py, HANDOFF.md. Návrh commitu: Zjednotiť úvodné ruky na päť kariet v hlásení prvého štichu.
+
+## Dokončené — zelený dolník ako piata karta (Codex, 2026-10-31)
+- gui/trump_demo.py, tester/regression_first_trump.py, HANDOFF.md: iba výmena piatej karty hráča v druhom variante.
+
+- Piata karta hráča v hlásení v 1. štichu je leaf-under (zelený dolník), namiesto leaf-ace. Klasický variant nezmenený. regression_first_trump, regression_rules_demo a regression_layout (15 rozlíšení) OK.
+- Zmenené: gui/trump_demo.py, tester/regression_first_trump.py, HANDOFF.md. Návrh commitu: Nahradiť piate eso zeleným dolníkom v ukážke hlásenia.
+
+## Dokončené — označenie voliteľného hlásenia (Codex, 2026-10-31)
+- gui/info_overlay.py: nový názov tretej záložky.
+- gui/trump_demo.py: upozornenie s oddeľovačom iba v paneli scény 1/7.
+- HANDOFF.md: výsledok a overenie.
+
+- Tretia záložka má názov Hlásenie v 1. štichu (voliteľné). Iba scéna 1/7 rozširuje existujúci textový panel o jemný oddeľovač a presne zadané upozornenie menším písmom; text sa zalamuje podľa šírky panela. Ostatné scény aj klasický variant bez zmeny.
+- Vizuálna kontrola FHD vykreslenia OK; regression_first_trump, regression_rules_demo a regression_layout (15 rozlíšení) OK.
+- Zmenené: gui/info_overlay.py, gui/trump_demo.py, HANDOFF.md. Návrh commitu: Označiť hlásenie v prvom štichu ako voliteľné a doplniť upozornenie.
+
+## Dokončené — globálne slučky tutoriálu (Codex, 2026-10-31)
+- gui/rules_demo.py, gui/trump_demo.py: spoločné slučky bez automatického posunu, každý ručný výber prehráva slučku, presná pauza/pokračovanie.
+- tester/regression_classic_trump.py: nové spoločné správanie prvej scény.
+- tester/regression_tutorial_loops.py: všetky scény všetkých animovaných fáz.
+- HANDOFF.md: výsledok.
+
+- Všetky animované ukážky (Pravidlá štichov, oba varianty hlásenia, Dražba, Talón, Bodovanie) dedičia spoločnú slučku aktuálnej scény. Automatický posun je odstránený aj z prvej scény. Ručný výber okamžite spúšťa opakovanie; navigácia a bodky ostávajú. Pozastavenie a pokračovanie zachová presný čas aj tesne pred koncom. Rozdanie ostáva statické.
+- regression_tutorial_loops overuje každú scénu každej ukážky cez tri cykly a pauzu na konci; regression_focus, regression_classic_trump, regression_first_trump, regression_rules_demo a regression_layout (15 rozlíšení) OK.
+- Zmenené: gui/rules_demo.py, gui/trump_demo.py, tester/regression_classic_trump.py, tester/regression_tutorial_loops.py, HANDOFF.md. Návrh commitu: Opakovať každú scénu tutoriálu bez automatického posunu.
