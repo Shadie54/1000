@@ -45,14 +45,14 @@ def main():
     d._card=original;del d._elapsed
     ticks=pygame.time.get_ticks
     try:
-        for index in range(1,7):
+        for index in range(1,6):
             pygame.time.get_ticks=lambda:0;d.select(index);duration=d.SCENE_LEN
             pygame.time.get_ticks=lambda:round(duration*2000+500)
             assert abs(d._elapsed()-.5)<.001 and d.scene==index
             d.toggle_play();assert not d.playing
             d.toggle_play();assert d.playing
     finally:pygame.time.get_ticks=ticks
-    for scene in range(7):
+    for scene in range(6):
         d.scene=scene
         for t in (0,1.5,3.5,5.9,6.1,8.5,12.5):
             d._elapsed=lambda t=t:t;d.draw((0,0))

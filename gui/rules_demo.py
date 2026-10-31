@@ -411,7 +411,10 @@ class TrickRulesDemo:
         rect = pygame.Rect(0, 0, w, h)
         rect.midtop = (self.center[0], self.stage.y + round(10 * self.k))
         if self._visible_hands():
-            rect.topright = (self.stage.right - 18, self._text_box(self.scene)[0].bottom + 18)
+            top = self._text_box(self.scene)[0].bottom + 18
+            # Dlhší text vysvetlenia nesmie panel vytlačiť pod javisko.
+            top = min(top, self.stage.bottom - round(12 * self.k) - h)
+            rect.topright = (self.stage.right - 18, top)
         c.blit(LSurf(image, w, h), rect)
 
     def _glow_seat(self, t) -> int | None:

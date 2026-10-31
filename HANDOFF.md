@@ -213,3 +213,80 @@ Posledná aktualizácia: 2026-10-30
 - Všetky animované ukážky (Pravidlá štichov, oba varianty hlásenia, Dražba, Talón, Bodovanie) dedičia spoločnú slučku aktuálnej scény. Automatický posun je odstránený aj z prvej scény. Ručný výber okamžite spúšťa opakovanie; navigácia a bodky ostávajú. Pozastavenie a pokračovanie zachová presný čas aj tesne pred koncom. Rozdanie ostáva statické.
 - regression_tutorial_loops overuje každú scénu každej ukážky cez tri cykly a pauzu na konci; regression_focus, regression_classic_trump, regression_first_trump, regression_rules_demo a regression_layout (15 rozlíšení) OK.
 - Zmenené: gui/rules_demo.py, gui/trump_demo.py, tester/regression_classic_trump.py, tester/regression_tutorial_loops.py, HANDOFF.md. Návrh commitu: Opakovať každú scénu tutoriálu bez automatického posunu.
+
+## Dokončené — dvojstĺpcový prehľad (Codex, 2026-10-31)
+- gui/info_overlay.py: šesť kapitol, predvolený Cieľ hry, obsah, pôvodné ilustrácie a samostatné otvorenie ukážky.
+- tester/regression_focus.py: dvojkrokové otvorenie a zachovanie vybranej kapitoly.
+- HANDOFF.md: výsledok.
+
+### Výsledok
+- Nové dvojstĺpcové menu: šesť zvislých položiek s pôvodnými grafickými kompozíciami, titulkom, podnadpisom a zvýraznením výberu. Cieľ hry je predvolený pri otvorení okna; používa trofej.
+- Klik na kapitolu iba mení pravý obsah. Samostatné tlačidlo otvára existujúci sústredený režim; návrat zachová kapitolu aj animačný stav. Hlavné záložky, podzáložky, slučky a navigácia zostávajú.
+- Pravý panel: hlavička s tmavým dreveným podkladom, opis, väčšia pôvodná ilustrácia, tri výučbové ciele, tri stručné údaje a otváracie tlačidlo. Cieľ hry nemá otváracie tlačidlo: obsahuje šesť prehľadných blokov základných pravidiel vrátane sekcie Čo sa naučíš.
+- Údaje vychádzajú z kódu hry: 3 hráči, 32 kariet, 10 na hráča a 2 v talóne; nesprávnych 24 kariet z referencie sa nepoužilo. Obsah vysvetľuje povinnosť, talón, štichy, tromfové hlášky a výsledok kola.
+- Ikony sú z pôvodných kompozícií, vykreslené do jednotných rámčekov bez presahov; pravé ilustrácie sa zväčšujú v rámci dostupného priestoru. Návrh kopíruje iba štruktúru referencií, používa existujúce panely, typografiu, farby a materiály hry.
+- Rozdanie stále nemá vlastnú animáciu. Tlačidlo otvorí pôvodnú statickú ukážku v rozšírenom režime; upozornenie pri tlačidle to výslovne uvádza. Nová animácia sa nevytvárala.
+- Overenie: regression_focus doplnený o nové menu, predvolený cieľ, textové hranice všetkých šiestich kapitol a návrat na vybranú kapitolu. Samostatne overené hranice pri 1920x1080, 3440x1440 a 1024x768. regression_layout všetkých 15 rozlíšení OK; regression_rules_demo OK; regression_screen stopa 167 riadkov identická.
+- Vizuálne skontrolované FHD snímky Cieľa hry, Rozdania, Dražby a Štichov, vykreslené aplikáciou bez viditeľného okna. Opravený presah malej ikony Dražby zachytený pri prvej kontrole.
+- Zmenené v tomto kroku: gui/info_overlay.py, tester/regression_focus.py, HANDOFF.md. Bez commitu a zmeny vetvy.
+- Návrh commit message: Prepracovať prehľad pravidiel na dvojstĺpcové menu kapitol.
+
+## Dokončené — finálne náhľady kapitol pravidiel (Claude, 2026-10-31)
+- gui/info_overlay.py: pravý panel kapitol (Pravidlá a bodovanie → Pravidlá) prepracovaný podľa zadania.
+
+### Výsledok
+- Odstránená sekcia „Čo sa naučíš“ aj tri spodné informačné kartičky (CHAPTER_LESSONS, CHAPTER_FACTS). Nové rozloženie: názov kapitoly, podnadpis (KAPITOLA N/5), krátky schválený opis, veľký obrázkový náhľad a pri kapitolách 1–5 tlačidlo „Otvoriť animovanú ukážku“ (pri Cieli hry sa nezobrazuje).
+- Texty kapitol (CHAPTER_DESCRIPTIONS) zodpovedajú presne zadaniu z 2026-10-31 (Cieľ hry, Rozdanie, Dražba, Talón, Štichy a tromfy, Bodovanie).
+- Obrázky zo skutočnej hry (assets/graphics/rules/): Cieľ hry a Dražba/Talón/Štichy a tromfy automaticky striedajú viac obrázkov (4 s na obrázok, 0,5 s crossfade, plynulá slučka), Rozdanie a Bodovanie sú statické. Nová kapitola → slučka vždy začína od prvého obrázka.
+- Obrázky sa škálujú bez deformácie (zachovaný pomer strán) a vycentrujú v dostupnej ploche — bez orezania. Kód skúša názov súboru aj s príponou navyše (`name.png` ako záložný pokus), takže funguje aj so súčasnými súbormi `dealing_cards.png.png` a `game_goal_round_end.png.png` na disku — odporúčam premenovať na `dealing_cards.png` a `game_goal_round_end.png` (odstrániť zdvojenú príponu), kód potom funguje rovnako.
+- Ľavá navigácia (6 kapitol, ikonky, zvýraznenie) a existujúce animácie bez zmeny; tlačidlo stále otvára príslušnú existujúcu ukážku a návrat zachováva vybranú kapitolu.
+- Overenia: regression_rules_demo, regression_focus (vrátane testu, že všetkých 6 kapitol vrátane Cieľa hry nemá textový/obrázkový presah), regression_classic_trump, regression_first_trump, regression_card_play, regression_tutorial_loops a regression_layout (15 rozlíšení) OK. Doplnená ručná kontrola obsahovania obrázka (_fit) pri strede crossfade (viac časových bodov) pre všetky kapitoly pri FHD, 1024×768, 1280×720, 2560×1600 a 3440×1440 — bez presahu. Herná stopa (regression_screen) nedotknutá, keďže zmena je len v gui/info_overlay.py (kreslenie okna Pravidlá), nie v hernom engine.
+- Vizuálne skontrolované FHD snímky všetkých šiestich kapitol a snímka v strede prechodu (crossfade) pri Dražbe — text sa nezlieva s obrázkom, tlačidlo a poznámka pri Rozdaní sú čitateľné, obrázky vyplnia väčšinu plochy bez deformácie.
+- Zmenené v tomto kroku: gui/info_overlay.py, HANDOFF.md. Bez commitu a zmeny vetvy.
+- Návrh commit message: Prepracovať pravý panel kapitol na obrázkové náhľady zo skutočnej hry.
+
+### Poznámka k obrázkom
+Dva súbory v assets/graphics/rules majú zdvojenú príponu (`dealing_cards.png.png`, `game_goal_round_end.png.png`). Kód ich nájde aj takto, ale pre poriadok odporúčam premenovať na jednoduchú príponu `.png` priamo v Exploreri — žiadna ďalšia úprava kódu nebude potrebná.
+
+## Dokončené — Rozdanie bez ukážky, zlúčenie scén a oprava presahu panela (Claude, 2026-10-31)
+- gui/info_overlay.py: kapitola Rozdanie nemá tlačidlo „Otvoriť animovanú ukážku"; opravená aj samostatná hover funkcia.
+- gui/trump_demo.py: zlúčenie scén 2+3 v variante „Hlásenie v 1. štichu (voliteľné)"; oprava presahu dvoch panelov.
+- gui/rules_demo.py: rovnaká oprava presahu panela (spoločná báza, latentná chyba, ešte nevyvolaná).
+- tester/regression_focus.py, regression_first_trump.py, regression_classic_trump.py: prispôsobené testy.
+
+### Výsledok
+- Rozdanie (kapitola 1): prehľad kapitoly (opis + galéria) teraz zaberá celú výšku pravého panela, tlačidlo a poznámka sú odstránené — všetko dôležité je vidno už v prehľade. Klik v danej oblasti teraz nič neotvára (`_chapter_open_rect` sa už nevyvoláva pre kapitolu 0).
+- Nájdená a opravená súvisiaca chyba: `_draw_chapter_hover()` je samostatné prekreslenie nezávislé od statickej vrstvy a malo vlastnú podmienku na vykreslenie tlačidla — bez opravy sa tlačidlo „duchovito" zobrazovalo aj nad galériou Rozdania. Opravené rovnakou podmienkou ako v `_draw_chapters()`.
+- Variant „Hlásenie v 1. štichu (voliteľné)": scény 2 (first) a 3 (bid) zlúčené do jednej scény „bid", keďže obe hovorili o dostatočne vysokej povinnosti a pôvodná scéna 2 samostatne nič poriadne nevysvetlila. Nový zlúčený text obsahuje konkrétny príklad (žaluďová hláška 100 → povinnosť aspoň 110). Scén je teraz 6 (bolo 7); vizuálna animácia disabled→enabled tlačidla hlásenia pri prekročení prahu zostala zachovaná.
+- Počas overovania `regression_layout.py` sa pri 4 z 15 rozlíšení (1280x720, 1600x900, 1920x1080, 2560x1080) objavil presah javiska v scénach 2–6 tejto ukážky. Príčina: dlhší zlúčený text posunul spodnú hranicu textového panela nižšie, než počítali s rezervou dva samostatné výpočty pozície vedľajšieho panela (`_round_panel`, `_classic_empty_panel` v trump_demo.py) — oba umiestňovali panel na `text_box.bottom + 18` bez kontroly proti spodku javiska. Rovnaký nechránený vzor je aj v spoločnej základnej triede (`_draw_trump_note` v rules_demo.py, zdieľaná všetkými ukážkami štichov) — opravené preventívne, aj keď ešte nebol vyvolaný. Všetky tri miesta teraz obmedzujú `top` na `min(top, stage.bottom - 12*k - výška_panela)`.
+- Overenia po oprave: regression_focus, regression_rules_demo, regression_tutorial_loops, regression_classic_trump, regression_first_trump, regression_card_play a regression_layout (všetkých 15 rozlíšení) OK. `layout_problems()` vrátil 0 problémov pri FHD aj vo všetkých rozlíšeniach v regression_layout.
+- Herná stopa (regression_screen) nedotknutá — zmeny sú výhradne v kreslení okna Pravidlá, nie v hernom engine.
+- Zmenené v tomto kroku: gui/info_overlay.py, gui/trump_demo.py, gui/rules_demo.py, tester/regression_focus.py, tester/regression_first_trump.py, tester/regression_classic_trump.py, HANDOFF.md. Bez commitu a zmeny vetvy.
+- Návrh commit message: Odstrániť animovanú ukážku z Rozdania, zlúčiť scény hlásenia v 1. štichu a opraviť presah panela.
+
+## Dokončené — galéria kapitol sa nehýbala (zamrznutá v statickej vrstve) (Claude, 2026-10-31)
+- gui/info_overlay.py: kreslenie obrázkovej galérie presunuté mimo statickej vrstvy (cache).
+
+### Výsledok
+- Nahlásené userom: v náhľadoch kapitol (Cieľ hry, Dražba, Štichy a tromfy) bol vidno len jeden statický obrázok, hoci malo ísť o automatickú slučku viacerých.
+- Príčina: celá metóda `_draw_chapters()` (vrátane volania `_draw_gallery()`) sa kreslí len z `_draw_static()`, ktorá je zabalená v `draw_static(...)` — statickej vrstve s cache kľúčom podľa záložky/kroku/kapitoly/fokusu. Kľúč sa nemení s časom, takže sa `_draw_gallery()` zavolala iba raz pri výbere kapitoly a odfotený obrázok (aktuálny v tom okamihu) zostal navždy — presne rovnaký mechanizmus, aký už predtým spôsoboval „duchovité" tlačidlo pri Rozdaní (tam to bolo opačne — niečo navyše kreslené mimo cache; tu niečo, čo *musí* byť mimo cache, bolo omylom v cache).
+- Oprava: `_draw_chapters()` teraz iba vypočíta a uloží oblasť galérie (`self._gallery_rect`), nekreslí samotný obrázok. Skutočné vykreslenie `_draw_gallery(self._gallery_rect)` sa presunulo do `draw()` vedľa `_draw_chapter_hover()` — teda mimo cache, prekresľuje sa každú snímku, takže slučka a crossfade bežia normálne. `layout_problems()` (volá `_draw_static()` priamo, nie `draw()`) dostala vlastné dokreslenie galérie hneď po `_draw_static()`, aby `_fit` kontrola presahu obrázka zostala zachovaná.
+- Overenia: ručný test cez `_gallery_state()` pri rastúcom `pygame.time.get_ticks()` potvrdil striedanie obrázkov a crossfade (predtým zamrznuté na indexe z okamihu vstupu do kapitoly). Celá sada: regression_focus, regression_rules_demo, regression_tutorial_loops, regression_classic_trump, regression_first_trump, regression_card_play, regression_layout (15 rozlíšení) OK. Herná stopa (regression_screen, 3 kolá) zhodná s ref_3kola.txt (zmena je iba v GUI kreslení, nie v engine).
+- Zmenené v tomto kroku: gui/info_overlay.py, HANDOFF.md. Bez commitu a zmeny vetvy.
+- Návrh commit message: Opraviť zamrznutú galériu náhľadov kapitol — kresliť mimo statickej vrstvy.
+
+## Dokončené — obnovenie textov kapitol a náhodná povinnosť v 1. kole (Claude, 2026-10-31)
+- gui/info_overlay.py: texty CHAPTER_DESCRIPTIONS (Cieľ hry, Dražba) podľa zadania "Obnovenie manuálne schválených textov".
+- main.py: _create_game() — povinnosť v 1. kole novej hry je teraz náhodná.
+- game/game_state.py: komentár pri obligation_index upresnený.
+- ref_3kola.txt, ref_full.txt: prepočítané referenčné stopy (zmena je zámerná — ovplyvňuje aj poradie shuffle/AI pri rovnakom seede).
+
+### Výsledok
+- Kapitola **Cieľ hry**: text teraz hovorí len o cieli hry a podmienke výhry ({WINNING_SCORE} bodov), bez zmienky o dražbe (tá je už v kapitole Dražba).
+- Kapitola **Dražba**: doplnená úvodná veta o náhodnom určení povinnosti na začiatku hry (uhradiť {MIN_BID} bodov, prednostný nárok na talón) a jej striedaní v smere hry v ďalších kolách; zvyšok textu (predbiehanie v ponukách, odstúpenie, záväzok víťaza) nezmenený.
+- Kapitoly **Talón** a **Bodovanie**: zadanie žiadalo texty, ktoré už v kóde boli — bez zmeny.
+- **Dôležité — zmena herného pravidla, nie len textu**: zadanie opisovalo náhodné určenie povinnosti v 1. kole, ale kód (`game_state.py: obligation_index = 0`) vždy začínal Hráčom — presne ten starý nevyriešený bod z archívu (17_VARIANT_TROMF_1_STICH.md). User sa pri doriešení rozhodol pre opravu kódu (nie len textu): `main._create_game()` teraz nastaví `game_state.obligation_index = random.randrange(len(game_state.players))` hneď po vytvorení `GameState`. Platí len pri novej hre (regression_screen.py ide presne touto cestou, takže ju testuje priamo); uloženie/obnova rozohratej hry (savegame) nie je týmto dotknuté — tam sa povinnosť načíta zo stavu.
+- Dôsledok: referenčné stopy `ref_3kola.txt` a `ref_full.txt` (seed 20261024) sa pri rovnakom seede teraz líšia (1. kolo: povinnosť Počítač 2, nie Hráč) — prepočítané a nahradené, je to zámerný dôsledok zmeny pravidla, nie regresia.
+- Overenia: regression_focus, regression_rules_demo, regression_layout (15 rozlíšení), regression_savegame, regression_classic_trump, regression_first_trump, regression_card_play, regression_tutorial_loops — všetko OK. Naviac ručne overené na 5 seedoch, že povinnosť v 1. kole skutočne padá na rôznych hráčov (nie vždy Hráč).
+- Zmenené v tomto kroku: gui/info_overlay.py, main.py, game/game_state.py, ref_3kola.txt, ref_full.txt, HANDOFF.md. Bez commitu a zmeny vetvy.
+- Návrh commit message: Obnoviť schválené texty kapitol a nastaviť náhodnú povinnosť v 1. kole novej hry.

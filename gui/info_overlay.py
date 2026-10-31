@@ -38,7 +38,7 @@ from gui.round_demos import BiddingDemo, TalonDemo
 from gui.trump_demo import TrumpDemo
 from config import (
     SCREEN_WIDTH, CARD_POINTS, TRUMP_POINTS, MIN_BID, BID_STEP,
-    CARD_BACK_IMAGE,
+    CARD_BACK_IMAGE, WINNING_SCORE,
 )
 
 FRAME_MARGIN_X = 60
@@ -242,6 +242,10 @@ class InfoOverlay:
         self.rules_demo = TrickRulesDemo(canvas)
         self.card_cycle = SuitCycle()             # Hodnoty kariet
         self._card_row = None                     # oblasť radu kariet
+        self.chapter = -1                        # Cieľ hry je úvodná kapitola
+        self._gallery_chapter = None             # posledná kapitola s galériou (reset pri zmene)
+        self._gallery_t0 = pygame.time.get_ticks()
+        self._gallery_rect = None                # oblasť galérie (kreslí sa mimo statickej vrstvy)
         self.step = STEP_TRICKS                   # vybraný krok Priebehu kola
         lay = self._rules_layout()
         self._demo_rect = lay["demo"]
@@ -278,6 +282,8 @@ class InfoOverlay:
             self._game_frame = None          # nový obraz hry pod oknom
             self.rules_demo.reset()          # ukážka štichov od scény 1
             self.card_cycle.reset()          # karty od zelene
+            self.chapter = -1
+            self._gallery_chapter = None     # galéria Cieľa hry od 1. obrázka
             self.step = STEP_TRICKS
             self.tricks_step.reset()         # podzáložka Pravidlá štichov
         self._visible = bool(value)
@@ -319,6 +325,7 @@ class InfoOverlay:
     def select_step(self, index: int):
         """Otvorí vybranú fázu bez straty stavu ostatných ukážok."""
         if 0 <= index < len(self.FLOW_STEPS):
+            self.chapter = index
             self.step = index
             self._set_focused(True)
 
@@ -357,10 +364,14 @@ class InfoOverlay:
                     self.active_tab = key
                     return True
             if self.active_tab == "pravidla":
-                for i, col in enumerate(self._flow_columns(self._flow_rect)):
-                    if col.collidepoint(event.pos):
-                        self.select_step(i)
+                for i, rect in enumerate(self._chapter_rects()):
+                    if rect.collidepoint(event.pos):
+                        self.chapter = i - 1
+                        if self.chapter >= 0:
+                            self.step = self.chapter
                         return True
+                if self.chapter >= 1 and self._chapter_open_rect().collidepoint(event.pos):
+                    self.select_step(self.chapter)
             return True  # blokuj klik cez okno
         return event.type in (pygame.KEYDOWN, pygame.MOUSEBUTTONUP)
 
@@ -375,7 +386,7 @@ class InfoOverlay:
         if self._game_frame is None:
             # Volá sa na konci kreslenia hernej snímky — okno ju obsahuje
             self._game_frame = c.target.copy()
-        draw_static(self, c, ("info", self.active_tab, self.step, self.focused, id(self._game_frame)),
+        draw_static(self, c, ("info", self.active_tab, self.step, self.chapter, self.focused, id(self._game_frame)),
                     self._draw_static)
         mouse = display.mouse_pos()
         if self.focused:
@@ -386,7 +397,11 @@ class InfoOverlay:
         self._draw_close(self.btn_close.collidepoint(mouse))
         if self.active_tab == "pravidla":
             if not self.focused:
-                self._draw_flow_hover(mouse)
+                self._draw_chapter_hover(mouse)
+                # Galéria náhľadu sa animuje — kreslí sa mimo statickej
+                # vrstvy (inak by zamrzla na obrázku z okamihu zmeny kapitoly).
+                if self._gallery_rect is not None:
+                    self._draw_gallery(self._gallery_rect)
             demo = self.step_demos.get(self.step)
             if self.focused and demo is not None:
                 demo.draw(mouse)
@@ -515,7 +530,7 @@ class InfoOverlay:
         """Nakreslí obe záložky a vráti zoznam presahov obsahu mimo panelov
         (text, obrázok alebo ovládací prvok mimo hraníc svojho panela)."""
         c = self.canvas
-        saved = (self.active_tab, self._game_frame, self.step)
+        saved = (self.active_tab, self._game_frame, self.step, self.chapter)
         self._game_frame = c.target.copy()
         problems = []
         pages = [("bodovanie", None)] + [("pravidla", i)
@@ -524,7 +539,13 @@ class InfoOverlay:
             self.active_tab = tab
             if step is not None:
                 self.step = step
+                if not self.focused:
+                    self.chapter = step
             self._draw_static()
+            if step is not None and not self.focused and self._gallery_rect is not None:
+                # _draw_chapters() len uloží oblasť (kreslí sa mimo cache,
+                # pozri draw()) — tu ju treba dokresliť, aby _fit zachytil presah.
+                self._draw_gallery(self._gallery_rect)
             if step == STEP_SCORING:
                 for i in range(len(self.scoring_demo.SCENES)):
                     self.scoring_demo.draw_scene(i)
@@ -563,7 +584,7 @@ class InfoOverlay:
                     where = tab if step is None else f"{tab}/krok {step + 1}"
                     problems.append(f"{where}/{name}: obsah {tuple(content)} "
                                     f"presahuje panel {tuple(panel)}")
-        self.active_tab, self._game_frame, self.step = saved
+        self.active_tab, self._game_frame, self.step, self.chapter = saved
         return problems
 
     # ------------------------------------------------------------------
@@ -861,12 +882,205 @@ class InfoOverlay:
             if self.step not in self.step_demos:
                 self._draw_step_info(lay["demo"], self.step)
             return
-        self._draw_goal(lay["goal"])
-        self._section(lay["flow"], "PRIEBEH KOLA", (
-            ("Klikni na krok — nižšie sa zobrazí jeho ukážka.", ui_style.TEXT_DIM),))
-        self._draw_flow(lay["flow"])
-        self._panel_bg(lay["demo"])     # obsah kreslí ukážka zvoleného kroku
-        self._draw_step_info(lay["demo"], self.step)
+        self._draw_chapters()
+
+    CHAPTER_SUBTITLES = (
+        "Základné pravidlá hry 1000", "Ako sa začína kolo", "Ako sa rozhoduje o hre",
+        "Príprava na hru", "Ako sa hrajú karty", "Ako sa vyhodnocuje kolo",
+    )
+    # Finálne texty náhľadov (zadanie 2026-10-31): krátky opis kapitoly,
+    # index 0 = Cieľ hry, 1…5 = FLOW_STEPS. Nahrádza bývalé „Čo sa naučíš“
+    # a informačné kartičky — pravý panel je teraz vizuálny úvod do kapitoly.
+    CHAPTER_DESCRIPTIONS = (
+        f"Tisíc je kartová hra pre troch hráčov. Cieľom je získavať body za "
+        f"vyhrané štichy a tromfové hlášky. Hráč, ktorý ako prvý dosiahne "
+        f"{WINNING_SCORE} bodov, vyhráva.",
+        "Na začiatku každého kola dostane každý z troch hráčov 10 kariet. Zvyšné "
+        "dve karty zostanú zakryté na stole a tvoria talón. O tom, kto ho získa, "
+        "rozhodne nasledujúca dražba.",
+        f"Na začiatku hry sa náhodne určí hráč s povinnosťou uhrať {MIN_BID} "
+        f"bodov, ktorý má prednostný nárok na talón. V ďalších kolách sa "
+        f"povinnosť strieda v smere hry. Hráči sa postupne predbiehajú v "
+        f"ponukách, koľko bodov dokážu v kole získať. Každý môže ponuku zvýšiť "
+        f"alebo z dražby odstúpiť. Víťaz dražby získa talón a zaväzuje sa "
+        f"uhrať vydražený počet bodov.",
+        "Víťaz dražby odkryje dve karty talónu a pridá si ich do ruky. Následne "
+        "vyberie dve karty, ktoré zahodí. Potom môže upraviť svoju povinnosť a "
+        "začína hra.",
+        "Hráči postupne vykladajú karty a snažia sa získať čo najviac bodov. "
+        "Musia dodržiavať pravidlá priznania farby a prebíjania. Hráč, ktorý má "
+        "kráľa a horníka rovnakej farby, môže za splnenia podmienok nahlásiť "
+        "tromf a získať ďalšie body.",
+        "Na konci kola sa spočítajú body za získané štichy a tromfové hlášky. "
+        "Víťaz dražby musí splniť svoju povinnosť, inak body stráca. Ostatným "
+        "hráčom sa započítajú body, ktoré sa zaokrúhlia.",
+    )
+    # Obrázkové náhľady zo skutočnej hry (assets/graphics/rules); každá
+    # kapitola má 1 (statický) alebo viac (automatická slučka s crossfade)
+    # súborov. Skúša sa aj názov s príponou navyše (súčasný stav priečinka).
+    CHAPTER_GALLERY = (
+        ("game_goal_round_end.png", "game_goal_victory.png"),
+        ("dealing_cards.png",),
+        ("bidding_raise.png", "bidding_pass.png"),
+        ("talon_reveal.png", "talon_raise_bid.png"),
+        ("trick_play.png", "trump_declaration.png", "trump_change.png"),
+        ("round_scoring.png",),
+    )
+    GALLERY_HOLD = 4.0           # s — obrázok stojí
+    GALLERY_FADE = 0.5           # s — crossfade do ďalšieho
+
+    def _chapter_areas(self):
+        area = pygame.Rect(self.x0, self.content_top, self.x1 - self.x0,
+                           self.content_bottom - self.content_top)
+        width = round(area.width * .28)
+        return (pygame.Rect(area.x, area.y, width, area.height),
+                pygame.Rect(area.x + width + 20, area.y, area.width - width - 20, area.height))
+
+    def _chapter_rects(self):
+        left, _ = self._chapter_areas()
+        gap = 10
+        height = (left.height - 5 * gap) // 6
+        return [pygame.Rect(left.x, left.y + i * (height + gap), left.width, height) for i in range(6)]
+
+    def _chapter_open_rect(self):
+        _, right = self._chapter_areas()
+        return pygame.Rect(right.x + 24, right.bottom - 74, right.width - 48, 50)
+
+    def _chapter_text(self, panel, text, x, y, width, font=None, color=None):
+        font = font or self.font_text
+        for line in self._wrap(text, font, width):
+            surf = font.render(line, True, color or ui_style.TEXT)
+            rect = surf.get_rect(topleft=(x, y))
+            self.canvas.blit(surf, rect)
+            self._fit("kapitola/text", panel, rect)
+            y += font.get_height() + 4
+        return y
+
+    def _draw_chapter_hover(self, mouse):
+        for i, rect in enumerate(self._chapter_rects()):
+            if rect.collidepoint(mouse) and i - 1 != self.chapter:
+                self.canvas.rect(ui_style.GOLD, rect, width=1, border_radius=12)
+        if self.chapter >= 1:
+            ui_style.draw_button(self.canvas, self._chapter_open_rect(), "Otvoriť animovanú ukážku",
+                                 self.font_tab, 1, hover=self._chapter_open_rect().collidepoint(mouse), shadow=False)
+
+    def _chapter_illustration(self, step, area):
+        # Pôvodná kompozícia v jednotnom rámčeku; bez presahu ikon do textu.
+        from gui.canvas import Canvas
+        factor = min(area.width / 220, area.height / 150) * .94
+        w, h = max(1, round(220 * factor)), max(1, round(150 * factor))
+        original = self.canvas
+        surface = pygame.Surface((max(1, round(w * original.s)),
+                                  max(1, round(h * original.s))), pygame.SRCALPHA)
+        try:
+            self.canvas = Canvas(surface, original.s * factor)
+            self._flow_illustration(step, pygame.Rect(0, 0, 220, 150), max_h=120)
+        finally:
+            self.canvas = original
+        original.blit(LSurf(surface, w, h), pygame.Rect(0, 0, w, h).move(
+            area.centerx - w // 2, area.centery - h // 2))
+
+    def _gallery_image(self, name: str, area: pygame.Rect):
+        """Obrázok náhľadu, zväčšený na oblasť bez deformácie (zachová
+        pôvodný pomer strán, bez orezania — _fit nižšie hlási presah)."""
+        for candidate in (name, name + ".png"):
+            path = os.path.join("assets", "graphics", "rules", candidate)
+            if not os.path.exists(path):
+                continue
+            try:
+                iw, ih = self.canvas.image_size(path)
+                factor = min(area.width / iw, area.height / ih)
+                w, h = max(1, round(iw * factor)), max(1, round(ih * factor))
+                return self.canvas.image(path, (w, h))
+            except pygame.error:
+                return None
+        return None
+
+    def _gallery_state(self, n: int) -> tuple[int, float]:
+        """(index aktuálneho obrázka, podiel prelínania do ďalšieho 0…1)."""
+        if n <= 1:
+            return 0, 0.0
+        period = self.GALLERY_HOLD + self.GALLERY_FADE
+        t = (pygame.time.get_ticks() - self._gallery_t0) / 1000.0 % (n * period)
+        i = int(t // period)
+        f = t - i * period - self.GALLERY_HOLD
+        a = 0.0 if f <= 0 else min(1.0, f / self.GALLERY_FADE)
+        a = a * a * (3 - 2 * a)                     # smoothstep — bez trhnutia
+        return i, a
+
+    def _draw_gallery(self, rect: pygame.Rect):
+        """Obrázkový náhľad kapitoly — jeden statický obrázok, alebo
+        automatická slučka viacerých so stmievaním (podľa CHAPTER_GALLERY).
+        Pri zmene kapitoly začína od prvého obrázka."""
+        self._panel_bg(rect)
+        if self._gallery_chapter != self.chapter:
+            self._gallery_chapter = self.chapter
+            self._gallery_t0 = pygame.time.get_ticks()
+        names = self.CHAPTER_GALLERY[self.chapter + 1]
+        inner = rect.inflate(-16, -16)
+        if inner.width <= 1 or inner.height <= 1:
+            return
+        i, a = self._gallery_state(len(names))
+        img = self._gallery_image(names[i], inner)
+        if img is not None:
+            pos = img.get_rect(center=inner.center)
+            self.canvas.blit(img, pos.topleft)
+            self._fit("galéria/obrázok", rect, pos)
+        if a > 0:
+            nxt = self._gallery_image(names[(i + 1) % len(names)], inner)
+            if nxt is not None:
+                nxt.set_alpha(round(255 * a))
+                pos2 = nxt.get_rect(center=inner.center)
+                self.canvas.blit(nxt, pos2.topleft)
+                nxt.set_alpha(None)
+                self._fit("galéria/obrázok", rect, pos2)
+
+    def _draw_chapters(self):
+        c = self.canvas
+        _, right = self._chapter_areas()
+        for i, rect in enumerate(self._chapter_rects()):
+            self._panel_bg(rect)
+            active = i - 1 == self.chapter
+            if active:
+                c.overlay(rect, (255, 214, 140, 22), border_radius=12)
+                c.rect(ui_style.GOLD, rect, width=2, border_radius=12)
+            icon = pygame.Rect(rect.x + 14, rect.centery - 36, 88, 72)
+            if i == 0:
+                image = self._image("trophy.png", 64)
+                if image:
+                    c.blit(image, image.get_rect(center=icon.center))
+            else:
+                self._chapter_illustration(i - 1, icon)
+            title = "Cieľ hry" if i == 0 else f"{i}. {self.FLOW_STEPS[i - 1][0]}"
+            x = rect.x + 116
+            y = rect.centery - 32
+            self._chapter_text(rect, title, x, y, rect.width - 148, self.font_section, ui_style.GOLD)
+            self._chapter_text(rect, self.CHAPTER_SUBTITLES[i], x, y + 38,
+                               rect.width - 148, self.font_small, ui_style.TEXT_DIM)
+            arrow = self.font_tab.render("›", True, ui_style.GOLD_SOFT)
+            c.blit(arrow, arrow.get_rect(midright=(rect.right - 15, rect.centery)))
+        self._panel_bg(right)
+        goal = self.chapter < 0
+        title = "Cieľ hry" if goal else self.FLOW_STEPS[self.chapter][0]
+        x, y = right.x + 28, right.y + 22
+        width = right.width - 56
+        label = "ZÁKLADNÉ PRAVIDLÁ" if goal else f"KAPITOLA {self.chapter + 1} / 5"
+        y = self._chapter_text(right, label, x, y, width, self.font_small, ui_style.TEXT_DIM) + 6
+        y = self._chapter_text(right, title, x, y, width, c.font(36), ui_style.GOLD) + 8
+        description = self.CHAPTER_DESCRIPTIONS[self.chapter + 1]
+        y = self._chapter_text(right, description, x, y, width, self.font_text) + 16
+        if goal or self.chapter == 0:
+            # Cieľ hry aj Rozdanie nemajú animovanú ukážku — celý zvyšný
+            # priestor patrí náhľadu, prehľad kapitoly stačí.
+            gallery = pygame.Rect(x, y, width, right.bottom - 24 - y)
+        else:
+            button = self._chapter_open_rect()
+            gallery = pygame.Rect(x, y, width, max(80, button.y - 14 - y))
+            ui_style.draw_button(c, button, "Otvoriť animovanú ukážku", self.font_tab, 1, shadow=False)
+        # Galéria sa nekreslí tu — táto metóda beží len v statickej vrstve
+        # (draw_static), takže by slučka obrázkov zamrzla. Rozloženie sa
+        # uloží a obrázok sa dokresľuje mimo cache v draw()/layout_problems().
+        self._gallery_rect = gallery
 
     def _draw_goal(self, rect: pygame.Rect):
         c = self.canvas

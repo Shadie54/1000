@@ -8,8 +8,10 @@ HAND = ("heart-seven", *PAIR, "acorn-ten")
 TEXTS = {
     "pair": ("Kráľ a horník", "Tromf môžeš nahlásiť, ak máš v ruke kráľa a horníka rovnakej farby."),
     "classic": ("Kedy môžeš hlásiť tromf?", "Tromf môžeš zahlásiť najskôr v 2. štichu, keď ho začínaš ty."),
-    "first": ("Hlásenie už v prvom štichu", "Víťaz dražby môže nahlásiť tromf už v prvom štichu, ak má dostatočne vysokú povinnosť."),
-    "bid": ("Povinnosť musí byť vyššia", "Ak chceš nahlásiť tromf v prvom štichu, tvoja povinnosť musí byť aspoň o 10 bodov vyššia než hodnota hlášky."),
+    "bid": ("Hlásenie už v prvom štichu",
+            "Víťaz dražby môže nahlásiť tromf už v prvom štichu, ak má dostatočne vysokú "
+            "povinnosť — aspoň o 10 bodov vyššiu, než je hodnota hlášky. Napríklad pri "
+            "žaluďovej hláške (100 bodov) musí byť povinnosť aspoň 110."),
     "declare": ("Ako nahlásiť tromf?", "Začni štich kráľom alebo horníkom z dvojice. Potom potvrď hlásenie tromfu alebo zahraj bez neho."),
     "effect": ("Tromf je nahlásený!", "Nahlásená farba sa okamžite stáva tromfovou a za hlášku získavaš príslušné body."),
     "win": ("Musíš získať aspoň jeden štich", "Ak nahlásiš tromf už v prvom štichu, musíš počas kola získať aspoň jeden štich. Nemusí to však byť hneď ten prvý."),
@@ -37,7 +39,7 @@ class TrumpDemo(TrickRulesDemo):
     def SCENE_LEN(self):
         if not self.first_trick_trump:
             return {"pair": 11., "classic": 11., "declare": 5., "effect": 11., "change": 14.}[self.keys[self.scene]]
-        return {"pair": 11., "first": 6., "bid": 7., "declare": 5.,
+        return {"pair": 11., "bid": 9., "declare": 5.,
                 "effect": 7., "win": 13., "change": 14.}[self.keys[self.scene]]
 
     @property
@@ -46,7 +48,7 @@ class TrumpDemo(TrickRulesDemo):
 
     def __init__(self, canvas, first_trick_trump=False):
         self.first_trick_trump = first_trick_trump
-        self.keys = (("pair", "first", "bid", "declare", "effect", "win", "change")
+        self.keys = (("pair", "bid", "declare", "effect", "win", "change")
                      if first_trick_trump else ("pair", "classic", "declare", "effect", "change"))
         self.SCENES = tuple(TEXTS[key] for key in self.keys)
         super().__init__(canvas)
@@ -166,7 +168,10 @@ class TrumpDemo(TrickRulesDemo):
         rect.bottomleft = (self.stage.x + round(16 * self.k),
                            self.stage.bottom - round(12 * self.k))
         if self._visible_hands():
-            rect.topleft = (self.text_x, self._text_box(self.scene)[0].bottom + 18)
+            top = self._text_box(self.scene)[0].bottom + 18
+            # Dlhší text vysvetlenia nesmie panel vytlačiť pod javisko.
+            top = min(top, self.stage.bottom - round(12 * self.k) - h)
+            rect.topleft = (self.text_x, top)
         elif getattr(self, "focus_layout", False):
             top = self._text_box(self.scene)[0].bottom + 18
             # Pri nízkom širokouhlom okne zostane panel na stole;
@@ -281,14 +286,12 @@ class TrumpDemo(TrickRulesDemo):
         self._draw_labels(1 if key == "change" and t >= 3.5 else 0)
         self._draw_trump_note(1)
         empty = (set(), set(), set())
-        if key in ("pair", "first", "bid", "declare"):
+        if key in ("pair", "bid", "declare"):
             self._first_hands(empty, 1,
                               selected=_ease((t - 1) / .4) if key == "declare" else False,
                               marks=key == "pair")
-            if key in ("first", "bid", "declare"):
+            if key in ("bid", "declare"):
                 self._classic_empty_panel()
-            if key == "first" and 1 <= t < 4:
-                self._classic_choice(1.5)
             if key == "bid":
                 self._classic_choice(1.5, disabled=t < 5)
             if key == "declare" and 1 <= t < 4.5:
@@ -382,7 +385,10 @@ class TrumpDemo(TrickRulesDemo):
             panel._draw_trump_panel(SimpleNamespace(trump_suit=None))
             self._empty_panel_size, self._empty_panel_image = size, surface
         rect = pygame.Rect(0, 0, w, h)
-        rect.topright = (self.stage.right - 18, self._text_box(self.scene)[0].bottom + 18)
+        top = self._text_box(self.scene)[0].bottom + 18
+        # Dlhší text vysvetlenia nesmie panel vytlačiť pod javisko.
+        top = min(top, self.stage.bottom - round(12 * self.k) - h)
+        rect.topright = (self.stage.right - 18, top)
         c.blit(LSurf(self._empty_panel_image, w, h), rect)
 
     def _classic_bubble(self, player, t, start, end, text=None, suit=None, is_new=False):

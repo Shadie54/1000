@@ -126,10 +126,10 @@ def main():
     d._card=original;del d._elapsed
     d.reset();assert d.scene==0 and d.playing
     assert len(d.SCENES)==5
-    assert len(o.first_trump_demo.SCENES)==7
+    assert len(o.first_trump_demo.SCENES)==6
     # Ruky a stav druhého variantu sa nezmenili.
     o.first_trump_demo.scene=1
-    assert o.first_trump_demo.SCENE_LEN==6
+    assert o.first_trump_demo.SCENE_LEN==9
     errors=o.layout_problems();assert not errors,'\n'.join(errors)
     print('OK: karty, poradie, hlásenia, body, časové udalosti, reset a presahy.')
 

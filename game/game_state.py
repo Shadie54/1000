@@ -16,7 +16,8 @@ class GameState:
             for i, name in enumerate(player_names)
         ]
         self.human_index = human_index
-        self.obligation_index: int = 0      # index hráča s povinnosťou
+        self.obligation_index: int = 0      # index hráča s povinnosťou (1. kolo
+                                            # novej hry: náhodne nastaví main._create_game)
         self.round_number: int = 0          # číslo aktuálneho kola
         self.current_round: Round | None = None
         self.round_history: list[dict] = [] # história kôl pre scoresheet

@@ -12,6 +12,7 @@ except Exception:
     except Exception:
         pass
 
+import random
 import sys
 
 # Pracovný priečinok = priečinok s hrou. Cesty k obrázkom a zvukom sú
@@ -70,6 +71,8 @@ def _create_game(settings: dict) -> tuple:
     player_names = ["Hráč", "Počítač 1", "Počítač 2"]
     human_index = 0
     game_state = GameState(player_names, human_index)
+    # Povinnosť v 1. kole novej hry je náhodná (Pravidlá, kapitola Dražba).
+    game_state.obligation_index = random.randrange(len(game_state.players))
     # Variant pravidiel platí pre celú hru (uloží sa aj do savegame)
     game_state.first_trick_trump = bool(settings.get("first_trick_trump", False))
     ai_players = []

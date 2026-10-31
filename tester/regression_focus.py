@@ -22,9 +22,24 @@ def main():
     o.show()
     o.active_tab = 'pravidla'
     original_height = o.rules_demo.stage.height
-    assert not o.focused
+    assert not o.focused and o.chapter==-1
+    # Všetkých šesť kapitol má text vo svojich paneloch, vrátane úvodného cieľa.
+    for chapter in range(-1,5):
+        o.chapter=chapter
+        o._checks=[]
+        o._draw_rules()
+        assert all(panel.inflate(-8,-8).contains(content)
+                   for name,panel,content in o._checks)
+    o.chapter=-1
     for i in range(5):
-        click(o, o._flow_columns(o._flow_rect)[i])
+        click(o, o._chapter_rects()[i+1])
+        assert not o.focused and o.chapter==i
+        click(o, o._chapter_open_rect())
+        if i == 0:
+            # Rozdanie nemá animovanú ukážku — tlačidlo sa nezobrazuje,
+            # klik v tej oblasti (teraz súčasť galérie) nič neotvorí.
+            assert not o.focused and o.chapter == i
+            continue
         assert o.focused and o.step == i
         assert o.rules_demo.stage.height > original_height + 200
         o.draw()
@@ -48,12 +63,14 @@ def main():
                 assert item.playing == playing
             scene = demos[-1].scene
         click(o, o.btn_back)
-        assert not o.focused and o.visible
-        click(o, o._flow_columns(o._flow_rect)[i])
+        assert not o.focused and o.visible and o.chapter==i
+        click(o, o._chapter_rects()[i+1])
+        assert not o.focused and o.chapter==i
+        click(o, o._chapter_open_rect())
         if d:
             assert demos[-1].scene == scene
         o.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE))
-        assert not o.focused and o.visible
+        assert not o.focused and o.visible and o.chapter==i
     click(o, o.tab_rects['bodovanie'])
     assert o.active_tab == 'bodovanie'
     click(o, o.tab_rects['pravidla'])
