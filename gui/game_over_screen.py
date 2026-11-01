@@ -10,6 +10,7 @@ from gui import display
 
 from gui.canvas import draw_static
 from gui import ui_style
+from gui.achievement_popup import AchievementPopup
 from config import SCREEN_WIDTH, FONT_SIZE_MEDIUM, FONT_SIZE_LARGE, WINNING_SCORE
 
 # Vzhľad (grafický rework 2026-10-28, gui/ui_style.py)
@@ -23,7 +24,7 @@ ROW_H, ROW_GAP, ROW_PAD = 84, 12, 22
 
 class GameOverScreen:
     def __init__(self, screen: pygame.Surface, players: list,
-                 winner, round_number: int):
+                 winner, round_number: int, achievement_tracker=None):
         # `screen` (logický povrch) sa už nepoužíva — kreslí sa cez Canvas.
         self.canvas = display.canvas()
         self.H = display.logical_height()
@@ -31,6 +32,14 @@ class GameOverScreen:
         self.winner = winner
         self.round_number = round_number
         self.clock = pygame.time.Clock()
+
+        # Trofeje odomknuté priamo koncom hry (Začíname, Fénix, Smoliar...)
+        # sa odomkli skôr, než vznikla táto obrazovka (main._show_game_over
+        # volá on_game_finished pred vytvorením GameOverScreen) — bez tohto
+        # popupu by sa nikdy nezobrazili, len ticho uložili.
+        self.achievement_popup = AchievementPopup(self.canvas)
+        if achievement_tracker:
+            self.achievement_popup.add(achievement_tracker.pop_notifications())
 
         self.font_title  = self.canvas.font(84)
         self.font_large  = self.canvas.font(FONT_SIZE_LARGE)       # 32
@@ -63,6 +72,8 @@ class GameOverScreen:
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
+                if self.achievement_popup.handle_event(event):
+                    continue
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
                         return "menu"
@@ -72,7 +83,9 @@ class GameOverScreen:
                     if self.btn_menu.collidepoint(event.pos):
                         return "menu"
 
+            self.achievement_popup.update()
             self._draw(mouse_pos)
+            self.achievement_popup.draw()
             display.present()
 
     # ------------------------------------------------------------------

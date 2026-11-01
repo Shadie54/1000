@@ -18,12 +18,22 @@ class AchievementTracker:
         self.game_was_bidder: bool = False
         self.game_trump_declarations: int = 0
         self.game_no_trump_streak: int = 0  # ← NOVÉ
+        # ← NOVÉ (2026-11-01): skóre na začiatku posledne odohraného kola —
+        # pre "Kto sa smeje naposledy" (porovnanie pred rozhodujúcim kolom)
+        self.game_round_start_human_score: int | None = None
+        self.game_round_start_opponent_scores: list[int] | None = None
 
         self.round_trumps_declared: set[str] = set()
         self.round_tricks_won_by_human: int = 0
         self.round_human_bid: bool = False
         self.round_human_card_points: int = 0
         self.round_all_trump_declarations: int = 0  # ← NOVÉ: všetky (aj AI) v kole
+        # ← NOVÉ (2026-11-01): poradie hlášok v kole (pre "Dva kohúty..."
+        # a "Posledné slovo") — "human" alebo player_index súpera
+        self.round_trump_order: list = []
+        # ← NOVÉ (2026-11-01): poradie (1-indexované) human-ovej PRVEJ
+        # hlášky v kole, pre "Posledné slovo"
+        self.round_human_first_trump_position: int | None = None
 
     # ------------------------------------------------------------------
     # Reset stavu
@@ -34,6 +44,8 @@ class AchievementTracker:
         self.game_was_bidder = False
         self.game_trump_declarations = 0
         self.game_no_trump_streak = 0  # ← NOVÉ
+        self.game_round_start_human_score = None
+        self.game_round_start_opponent_scores = None
         self.newly_unlocked = []
 
     def reset_round(self):
@@ -43,6 +55,8 @@ class AchievementTracker:
         self.round_human_card_points = 0
         self.round_all_trump_declarations = 0
         self.round_had_ace_at_start = True  # ← NOVÉ
+        self.round_trump_order = []
+        self.round_human_first_trump_position = None
 
     # ------------------------------------------------------------------
     # Odomykanie — jadro
@@ -70,12 +84,16 @@ class AchievementTracker:
 
     def on_trump_declared(self, suit: str, trick_number: int,
                           hand_cards: list, is_new_trump: bool,
-                          is_human: bool = True):
+                          is_human: bool = True, player_index: int | None = None):
         """
         is_human: True ak tromf hlási human hráč (False pre AI — voláme len
-                  kvôli počítaniu poradia pre 'last_word')
+                  kvôli počítaniu poradia pre 'last_word'/'two_roosters')
+        player_index: index hráča, ktorý hlási (human aj AI) — identifikuje
+                      KTORÝ súper hlási, pre 'two_roosters' ("human" pre
+                      human sa ukladá vždy, nech sa pozná od AI indexov)
         """
         self.round_all_trump_declarations += 1
+        self.round_trump_order.append("human" if is_human else player_index)
 
         if not is_human:
             return  # zvyšok metódy sleduje len human achievementy
@@ -94,17 +112,40 @@ class AchievementTracker:
         if is_new_trump:
             self._unlock("trump_override")
 
-        # ← NOVÉ: Posledné slovo — human je 3. alebo ďalší v poradí
-        if self.round_all_trump_declarations >= 3:
-            self._unlock("last_word")
+        # Posledné slovo — poradie PRVEJ human hlášky v kole si len
+        # zapamätáme (1-indexovane); samotné odomknutie je v
+        # on_round_finished, kedy už vieme, či bola aj posledná v kole.
+        if self.round_human_first_trump_position is None:
+            self.round_human_first_trump_position = self.round_all_trump_declarations
+
+        # Dva kohúty na jednom smetisku — human, potom 1-2 hlášky JEDNÉHO
+        # súpera, potom opäť human (vyhodnotí sa vždy pri human hláške).
+        self._check_two_roosters()
 
         if trick_number == 8:
             self._unlock("last_chance_trump")
 
-        if not self.round_had_ace_at_start:
+        # Bez poistky sa nepočíta pri hlásení v 1. štichu (nový variant) —
+        # tam je riziko iné (hlásiš bez zabezpečeného štichu, nie bez esa).
+        if not self.round_had_ace_at_start and trick_number != 0:
             self._unlock("no_safety_net")
 
         self._save()
+
+    def _check_two_roosters(self):
+        """'Dva kohúty na jednom smetisku': human hlási, potom JEDEN
+        konkrétny súper hlási 1 alebo 2 tromfy, a human hlási znova."""
+        seq = self.round_trump_order
+        if len(seq) < 3 or seq[-1] != "human":
+            return
+        opp = seq[-2]
+        if opp == "human" or opp is None:
+            return
+        if seq[-3] == "human":
+            self._unlock("two_roosters")
+            return
+        if len(seq) >= 4 and seq[-3] == opp and seq[-4] == "human":
+            self._unlock("two_roosters")
 
     # ------------------------------------------------------------------
     # Event: hráč pasoval v dražbe (na konci dražby)
@@ -172,9 +213,17 @@ class AchievementTracker:
                 self._unlock("bid_250")
             if human_bid >= 300:
                 self._unlock("bid_300")
-            # Na doraz — presne bid, žiadne body navyše
-            if human_round_points == human_bid:
+            # Na doraz — presne bid, žiadne body navyše (len od povinnosti
+            # 60+, aby sa neprekrývala so "Skromný víťaz" pri 50)
+            if human_bid >= 60 and human_round_points == human_bid:
                 self._unlock("barely_made_it")  # nie "on_the_edge"
+
+        # Posledné slovo — human zahlásil svoju PRVÚ hlášku kola ako 3. či
+        # 4. v poradí A nikto (ani on sám) po nej už v tomto kole nehlásil.
+        if (self.round_human_first_trump_position in (3, 4)
+                and self.round_human_first_trump_position
+                    == self.round_all_trump_declarations):
+            self._unlock("last_word")
 
         self._save()
 
@@ -185,6 +234,17 @@ class AchievementTracker:
     def on_score_updated(self, human_total_score: int):
         if human_total_score < self.game_min_score:
             self.game_min_score = human_total_score
+
+    # ------------------------------------------------------------------
+    # Event: nové kolo začína (volať PRED rozdaním, so skóre PRED kolom)
+    # ------------------------------------------------------------------
+
+    def on_round_started(self, human_score: int, opponent_scores: list[int]):
+        """Zapamätá skóre na začiatku kola — prepisuje sa každé kolo, takže
+        na konci hry obsahuje skóre pred POSLEDNÝM (rozhodujúcim) kolom.
+        Pre 'Kto sa smeje naposledy'."""
+        self.game_round_start_human_score = human_score
+        self.game_round_start_opponent_scores = list(opponent_scores)
 
     # ------------------------------------------------------------------
     # Event: Máme tromf či eso v ruke
@@ -206,6 +266,14 @@ class AchievementTracker:
 
     def on_discard(self, discarded_cards: list):
         """Volať keď human zahodí karty do talonu."""
+        # ← NOVÉ (2026-11-01): body zahodených kariet sa víťazovi dražby
+        # reálne počítajú (game/round.py: discard_cards → add_trick_points),
+        # takže musia ísť aj do počítadla pre "Každý bod sa počíta" — inak
+        # bolo nedosiahnuteľné, keď sa do talonu zahodila čo i len jedna
+        # bodovaná karta (kráľ/horník/dolník; eso a desiatka sa zahodiť
+        # nedajú).
+        self.round_human_card_points += sum(c.points for c in discarded_cards)
+
         suits_discarded = {}
         for card in discarded_cards:
             if card.rank in ("king", "over"):
@@ -214,8 +282,8 @@ class AchievementTracker:
         for suit, ranks in suits_discarded.items():
             if "king" in ranks and "over" in ranks:
                 self._unlock("pretty_but_useless")
-                self._save()
-                return
+
+        self._save()
 
     def on_talon_received(self, talon_cards: list):
         """Volať keď human dostane karty z talonu (pred zahodením)."""
@@ -232,9 +300,6 @@ class AchievementTracker:
             is_lucky = True
         # 2x desiatka
         elif ranks.count("ten") == 2:
-            is_lucky = True
-        # eso + desiatka (v ľubovoľnom poradí)
-        elif set(ranks) == {"ace", "ten"}:
             is_lucky = True
         # kompletný tromfový pár (king + over rovnakej farby)
         elif set(ranks) == {"king", "over"} and suits[0] == suits[1]:
@@ -275,13 +340,10 @@ class AchievementTracker:
                 self._unlock("unbeatable_bronze")
             if streak >= 5:
                 self._unlock("unbeatable_silver")
-            if streak >= 10:
+            if streak >= 7:
                 self._unlock("unbeatable_gold")
 
-            if not self.game_was_bidder:
-                self._unlock("passivist")
-
-            if self.game_min_score <= -200:
+            if self.game_min_score <= -100:
                 self._unlock("comeback")
 
             if human_final_score == 1000:
@@ -289,6 +351,15 @@ class AchievementTracker:
 
             if 1 <= self.game_trump_declarations <= 3:
                 self._unlock("discreet")
+
+            # Kto sa smeje naposledy — pred posledným (rozhodujúcim) kolom
+            # mal aspoň jeden súper viac bodov než human, a napriek tomu
+            # human vyhral celú hru.
+            if (self.game_round_start_opponent_scores
+                    and self.game_round_start_human_score is not None
+                    and any(s > self.game_round_start_human_score
+                            for s in self.game_round_start_opponent_scores)):
+                self._unlock("last_laugh")
 
         else:
             self.data["stats"]["win_streak_current"] = 0

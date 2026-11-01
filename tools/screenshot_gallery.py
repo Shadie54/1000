@@ -261,11 +261,11 @@ class Gallery:
         screen.info_overlay.active_tab = "bodovanie"
         self.frame(screen)
         self.shot("game_11_pravidla_bodovanie")
-        # Hodnoty kariet striedajú farbu — stojaci žaluď (2. farba cyklu)
-        cyc = screen.info_overlay.card_cycle
-        cyc._t0 = self.pygame.time.get_ticks() - int((cyc.HOLD + cyc.FADE + 1.0) * 1000)
+        # Dvojstĺpcová navigácia (redizajn 2026-11-01) — sekcia Povinnosť
+        screen.info_overlay.scoring_section = 2
         self.frame(screen)
-        self.shot("game_11b_bodovanie_karty_zalud")
+        self.shot("game_11b_bodovanie_povinnost")
+        screen.info_overlay.scoring_section = 0
         screen.info_overlay.active_tab = "pravidla"
         self.frame(screen)
         self.shot("game_12_pravidla_pravidla")

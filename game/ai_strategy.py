@@ -298,7 +298,18 @@ class AIStrategy:
             ]
 
         if guaranteed_playable:
-            card = max(guaranteed_playable, key=lambda c: c.points)
+            # Ak sú isté kráľ aj horník tej istej (nezahlásenej) farby,
+            # hlási sa horníkom — zaužívaná konvencia, nie pravidlo
+            # (user 2026-11-01); kráľ sa odohrá inokedy.
+            paired_suits = {
+                c.suit for c in guaranteed_playable
+                if c.suit != trump_suit and c.rank == "king" and any(
+                    cc.suit == c.suit and cc.rank == "over"
+                    for cc in guaranteed_playable)
+            }
+            candidates = [c for c in guaranteed_playable
+                         if not (c.rank == "king" and c.suit in paired_suits)]
+            card = max(candidates, key=lambda c: c.points)
             self._log(SC.CERTAIN_TRICK, f"{card}")
             return card
 
@@ -320,10 +331,12 @@ class AIStrategy:
                 has_over = any(c.suit == suit and c.rank == "over" for c in hand)
                 has_king = any(c.suit == suit and c.rank == "king" for c in hand)
                 if has_over and has_king:
+                    # Zaužívané hlásenie horníkom (kráľ je rovnako platný,
+                    # ale "patrí sa" hlásiť horníkom — user 2026-11-01).
                     trump_card = next(
-                        (c for c in playable
-                         if c.suit == suit and c.rank in ("king", "over")),
-                        None
+                        (c for c in playable if c.suit == suit and c.rank == "over"),
+                        next((c for c in playable
+                              if c.suit == suit and c.rank == "king"), None)
                     )
                     if trump_card:
                         self._log(SC.TRUMP_DECLARE,
@@ -396,8 +409,18 @@ class AIStrategy:
         guaranteed_playable = [c for c in guaranteed if c in playable]
 
         if guaranteed_playable:
-            # Zahraj istý štich s najvyššími bodmi
-            return max(guaranteed_playable, key=lambda c: c.points)
+            # Zahraj istý štich s najvyššími bodmi — ale ak sú isté kráľ aj
+            # horník tej istej nezahlásenej farby, hlási sa horníkom (rovnaká
+            # konvencia ako S1/S5, user 2026-11-01); kráľ sa odohrá inokedy.
+            paired_suits = {
+                c.suit for c in guaranteed_playable
+                if c.suit != trump_suit and c.rank == "king" and any(
+                    cc.suit == c.suit and cc.rank == "over"
+                    for cc in guaranteed_playable)
+            }
+            candidates = [c for c in guaranteed_playable
+                         if not (c.rank == "king" and c.suit in paired_suits)]
+            return max(candidates, key=lambda c: c.points)
 
         # Ak nemám istý štich — zahraj najnižšiu kartu
         # (v koncovke nechceme riskovať)
@@ -753,4 +776,4 @@ class AIStrategy:
         return None
 
     def __repr__(self) -> str:
-        return f"AIStrategy(difficulty={self.difficulty})"
+        return f"AIStrategy(difficulty={self.difficulty})"

@@ -1,17 +1,24 @@
 # gui/info_overlay.py
 #
 # Okno "Pravidlá a bodovanie" (tlačidlo Pravidlá v hre). Grafický rework
-# 2026-10-28 podľa konceptu usera (ChatGPT) a štruktúry okna v hre CHUJ:
-#   Prehľad bodovania — hodnoty kariet (karty cyklicky menia farbu —
-#               SuitCycle), tromfové hlášky, povinnosť, ostatní hráči,
+# 2026-10-28 podľa konceptu usera (ChatGPT) a štruktúry okna v hre CHUJ,
+# záložka Prehľad bodovania redizajnovaná 2026-11-01 (zadanie usera) na
+# rovnaký dvojstĺpcový princíp ako Pravidlá:
+#   Prehľad bodovania — vľavo navigácia so 4 sekciami (_scoring_rects),
+#               vpravo obsah vybranej sekcie (hodnoty kariet, tromfové
+#               hlášky, povinnosť, ostatní hráči); bodové hodnoty sú text,
+#               žiadne medailóny ani animácie (karty v Hodnotách kariet sa
+#               kreslia pevne vo farbe VALUE_CARD_SUIT).
 #   Pravidlá  — cieľ hry, priebeh kola v 5 krokoch = navigácia (klik na
 #               krok vyberie obsah veľkého panela: Štichy a tromfy =
 #               podzáložky Pravidlá štichov (gui/rules_demo.py) a Hlásenie
-#               tromfu (gui/trump_demo.py), Bodovanie = ukážka
-#               bodovania gui/scoring_demo.py z blokov Prehľadu bodovania,
-#               Dražba a Talón = gui/round_demos.py, Rozdanie zatiaľ
-#               obrázok a popis); ukážka má celú šírku pod Priebehom kola.
-# Medailóny s bodmi sú zlaté (v CHUJ červené = trestné).
+#               tromfu (gui/trump_demo.py), Bodovanie = tlačidlo prepína na
+#               záložku Prehľad bodovania (vlastnú animovanú ukážku
+#               gui/scoring_demo.py už z Pravidiel neotvára — zdieľané
+#               kresliace metódy ňou stále prechádzajú, ukážka ostáva
+#               funkčná pre regresné testy), Dražba a Talón =
+#               gui/round_demos.py, Rozdanie zatiaľ obrázok a popis);
+#               ukážka má celú šírku pod Priebehom kola.
 #
 # Všetky texty zodpovedajú logike hry (game/hand.py, game/round.py,
 # game/player.py, config.py) — príklady štichov overuje
@@ -19,8 +26,7 @@
 #
 # Výkon: statický obsah okna (vrátane obrazu hry pod ním z chvíle otvorenia)
 # sa kreslí raz do vrstvy (canvas.draw_static), každú snímku sa kreslí len
-# hover záložiek a krížika, animovaná ukážka štichov a rad kariet v Hodnotách
-# kariet (hotové obrázky radu pre každú farbu, prelínanie).
+# hover záložiek, krížika a navigácie a animovaná ukážka štichov.
 #
 # Terminológia (user 2026-10-29): „Prehľad bodovania“ = záložka, „Tromfové
 # hlášky“ = body za kráľa a horníka, „Hlásenie tromfu“ = úkon hráča.
@@ -52,14 +58,6 @@ CARD_RATIO = 181 / 293
 
 GOOD = (122, 200, 110)           # splnená povinnosť
 BAD = (232, 112, 84)             # nesplnená povinnosť
-# Zlatý medailón s bodmi (rozhodnutie usera 2026-10-28; v CHUJ červený)
-MEDAL_RIM = (120, 82, 26)
-MEDAL_DARK = (176, 128, 44)
-MEDAL_LIGHT = (222, 172, 64)
-MEDAL_TEXT = (48, 28, 8)
-# Medailón s nulou — tmavý, tlmený
-ZERO_RIM = (98, 76, 46)
-ZERO_FILL = (30, 22, 14)
 
 RANK_NAMES = (("ace", "Eso"), ("ten", "Desiatka"), ("king", "Kráľ"),
               ("over", "Horník"), ("under", "Dolník"), ("nine", "Deviatka"),
@@ -67,6 +65,14 @@ RANK_NAMES = (("ace", "Eso"), ("ten", "Desiatka"), ("king", "Kráľ"),
 TRUMP_ORDER = (("acorn", "ŽALUĎ"), ("leaf", "ZELEŇ"), ("bell", "GUĽA"),
                ("heart", "SRDCE"))
 TAB_LABELS = {"bodovanie": "Prehľad bodovania", "pravidla": "Pravidlá"}
+# Dvojstĺpcová navigácia záložky Prehľad bodovania (redizajn 2026-11-01,
+# zadanie usera) — rovnaký princíp ako kapitoly v Pravidlách (_chapter_areas).
+SCORING_SECTIONS = (
+    ("Hodnoty kariet", "Bodové hodnoty jednotlivých kariet"),
+    ("Tromfové hlášky", "Body za kráľa a horníka"),
+    ("Povinnosť", "Splnenie a nesplnenie povinnosti"),
+    ("Ostatní hráči", "Bodovanie a zaokrúhľovanie"),
+)
 
 
 class SuitCycle:
@@ -75,14 +81,14 @@ class SuitCycle:
     a body ostávajú). Bodová hodnota závisí od karty, nie od farby.
 
     Obrázok radu pre každú farbu sa pripraví raz (pozadie zo statickej
-    vrstvy + karty + medailóny) — každú snímku sa kreslí len hotový obrázok,
-    pri prechode dva cez seba. Kreslí sa len keď je záložka viditeľná
-    (volá ho draw() okna), takže na pozadí nebeží. Dá sa použiť aj inde
-    (napr. krok Bodovanie v Pravidlách): stačí oblasť a funkcia, ktorá
-    nakreslí rad v danej farbe."""
+    vrstvy + karty + bodové hodnoty) — každú snímku sa kreslí len hotový
+    obrázok, pri prechode dva cez seba. Používa ho len animovaná ukážka
+    bodovania v Pravidlách (gui/scoring_demo.py) — záložka Prehľad
+    bodovania od redizajnu 2026-11-01 kreslí Hodnoty kariet staticky,
+    bez striedania farby (zadanie usera: žiadne animácie)."""
 
-    SUITS = ("leaf", "acorn", "bell", "heart")
-    HOLD = 3.0          # s — farba stojí
+    SUITS = ("acorn", "leaf", "bell", "heart")
+    HOLD = 2.0          # s — farba stojí (user 2026-11-01, priamo na PC)
     FADE = 0.9          # s — plynulé prelínanie do ďalšej
 
     def __init__(self):
@@ -240,8 +246,13 @@ class InfoOverlay:
 
         self._checks: list = []           # presahy obsahu (layout_problems)
         self.rules_demo = TrickRulesDemo(canvas)
-        self.card_cycle = SuitCycle()             # Hodnoty kariet
-        self._card_row = None                     # oblasť radu kariet
+        self.scoring_section = 0                  # navigácia Prehľadu bodovania
+        # Karty v Hodnotách kariet menia farbu v slučke (zadanie usera
+        # 2026-11-01: „ako kedysi“) — geometria sa ukladá v _draw_values_section,
+        # kreslenie kariet beží mimo statickej vrstvy (_draw_values_live).
+        self.values_cycle = SuitCycle()
+        self._values_items = None
+        self._values_row = None
         self.chapter = -1                        # Cieľ hry je úvodná kapitola
         self._gallery_chapter = None             # posledná kapitola s galériou (reset pri zmene)
         self._gallery_t0 = pygame.time.get_ticks()
@@ -281,7 +292,8 @@ class InfoOverlay:
             self._focus_left_at = pygame.time.get_ticks()
             self._game_frame = None          # nový obraz hry pod oknom
             self.rules_demo.reset()          # ukážka štichov od scény 1
-            self.card_cycle.reset()          # karty od zelene
+            self.scoring_section = 0         # Hodnoty kariet od začiatku
+            self.values_cycle.reset()        # farby kariet od zeleni
             self.chapter = -1
             self._gallery_chapter = None     # galéria Cieľa hry od 1. obrázka
             self.step = STEP_TRICKS
@@ -359,8 +371,6 @@ class InfoOverlay:
                 if rect.collidepoint(event.pos):
                     if key == "pravidla" and self.active_tab != key:
                         self.rules_demo.reset()
-                    if key == "bodovanie" and self.active_tab != key:
-                        self.card_cycle.reset()
                     self.active_tab = key
                     return True
             if self.active_tab == "pravidla":
@@ -371,7 +381,19 @@ class InfoOverlay:
                             self.step = self.chapter
                         return True
                 if self.chapter >= 1 and self._chapter_open_rect().collidepoint(event.pos):
-                    self.select_step(self.chapter)
+                    if self.chapter == STEP_SCORING:
+                        # „Prejsť na prehľad bodovania“ — kapitola Bodovanie
+                        # nemá vlastnú animovanú ukážku, prepne záložku.
+                        self.active_tab = "bodovanie"
+                    else:
+                        self.select_step(self.chapter)
+            elif self.active_tab == "bodovanie":
+                for i, rect in enumerate(self._scoring_rects()):
+                    if rect.collidepoint(event.pos):
+                        self.scoring_section = i
+                        if i == 0:
+                            self.values_cycle.reset()
+                        return True
             return True  # blokuj klik cez okno
         return event.type in (pygame.KEYDOWN, pygame.MOUSEBUTTONUP)
 
@@ -386,7 +408,8 @@ class InfoOverlay:
         if self._game_frame is None:
             # Volá sa na konci kreslenia hernej snímky — okno ju obsahuje
             self._game_frame = c.target.copy()
-        draw_static(self, c, ("info", self.active_tab, self.step, self.chapter, self.focused, id(self._game_frame)),
+        draw_static(self, c, ("info", self.active_tab, self.step, self.chapter,
+                              self.scoring_section, self.focused, id(self._game_frame)),
                     self._draw_static)
         mouse = display.mouse_pos()
         if self.focused:
@@ -405,10 +428,13 @@ class InfoOverlay:
             demo = self.step_demos.get(self.step)
             if self.focused and demo is not None:
                 demo.draw(mouse)
-        elif self._card_row is not None:
-            rect, row = self._card_row
-            self.card_cycle.draw(self.canvas, row,
-                                 lambda suit: self._draw_card_row(rect, suit))
+        else:
+            self._draw_scoring_hover(mouse)
+            if self.scoring_section == 0:
+                # Karty menia farbu v slučke — kreslí sa mimo statickej
+                # vrstvy (inak by zamrzli na farbe z okamihu prekreslenia),
+                # rovnako ako _draw_gallery pre galériu kapitol.
+                self._draw_values_live()
 
     def _draw_static(self):
         c = self.canvas
@@ -591,42 +617,261 @@ class InfoOverlay:
     # Záložka BODOVANIE
     # ------------------------------------------------------------------
 
+    # Redizajn 2026-11-01 (zadanie usera): rovnaký dvojstĺpcový princíp ako
+    # kapitoly v Pravidlách — vľavo navigácia so 4 sekciami (_scoring_rects,
+    # geometria zdieľaná s kapitolami cez _chapter_areas), vpravo obsah len
+    # vybranej sekcie na celú výšku/šírku panela. Žiadne medailóny — bodové
+    # hodnoty sú vždy text. Rad kariet už nestrieda farbu (bola to animácia,
+    # zadanie ju vylučuje) — kreslí sa pevne vo farbe VALUE_CARD_SUIT.
+
+    def _scoring_rects(self):
+        left, _ = self._chapter_areas()
+        gap = 10
+        n = len(SCORING_SECTIONS)
+        height = (left.height - (n - 1) * gap) // n
+        return [pygame.Rect(left.x, left.y + i * (height + gap), left.width, height)
+                for i in range(n)]
+
+    def _draw_scoring_nav(self):
+        c = self.canvas
+        for i, rect in enumerate(self._scoring_rects()):
+            self._panel_bg(rect)
+            active = i == self.scoring_section
+            if active:
+                c.overlay(rect, (255, 214, 140, 22), border_radius=12)
+                c.rect(ui_style.GOLD, rect, width=2, border_radius=12)
+            icon = pygame.Rect(rect.x + 14, rect.centery - 36, 88, 72)
+            self._scoring_nav_icon(i, icon)
+            title, subtitle = SCORING_SECTIONS[i]
+            x = rect.x + 116
+            y = rect.centery - 22
+            self._chapter_text(rect, title, x, y, rect.width - 148, self.font_section, ui_style.GOLD)
+            self._chapter_text(rect, subtitle, x, y + 36, rect.width - 148, self.font_small, ui_style.TEXT_DIM)
+            arrow = self.font_tab.render("›", True, ui_style.GOLD_SOFT)
+            c.blit(arrow, arrow.get_rect(midright=(rect.right - 15, rect.centery)))
+
+    def _scoring_nav_icon(self, index: int, area: pygame.Rect):
+        """Ikona v ľavej navigácii Prehľadu bodovania namiesto čísla
+        (zadanie usera 2026-11-01) — existujúci herný prvok danej sekcie:
+        mierne prekryté eso a desiatka / kráľ a horník tej istej farby /
+        zelené +100 a červené −100 / ikonka zápisníka (ako pri kroku
+        Bodovanie v Priebehu kola, _flow_illustration)."""
+        if index == 0:
+            self._nav_card_pair(area, f"{self.VALUE_CARD_SUIT}-ace",
+                                f"{self.VALUE_CARD_SUIT}-ten")
+        elif index == 1:
+            suit = TRUMP_ORDER[0][0]
+            self._nav_card_pair(area, f"{suit}-king", f"{suit}-over")
+        elif index == 2:
+            self._nav_obligation_badges(area)
+        else:
+            icon = self._image("scoresheet.png", min(area.height, 64))
+            if icon:
+                self.canvas.blit(icon, icon.get_rect(center=area.center))
+
+    def _nav_card_pair(self, area: pygame.Rect, back_name: str, front_name: str):
+        """Dve mierne prekryté karty — náhľad sekcie v ľavej navigácii."""
+        h = min(area.height, 72)
+        w = round(h * CARD_RATIO)
+        dx, dy = round(w * 0.46), round(h * 0.16)
+        total_w, total_h = w + dx, h + dy
+        x0 = area.centerx - total_w // 2
+        y0 = area.centery - total_h // 2
+        self._card(back_name, (x0, y0), (w, h))
+        self._card(front_name, (x0 + dx, y0 + dy), (w, h))
+
+    def _nav_obligation_badges(self, area: pygame.Rect):
+        """Zelená +100 a červená −100 značka — náhľad sekcie Povinnosť."""
+        bw, bh = 58, 28
+        dx, dy = 20, 18
+        total_w, total_h = bw + dx, bh + dy
+        x0 = area.centerx - total_w // 2
+        y0 = area.centery - total_h // 2
+        self._pill(pygame.Rect(x0, y0, bw, bh), "+100", GOOD)
+        self._pill(pygame.Rect(x0 + dx, y0 + dy, bw, bh), "−100", BAD)
+
+    def _draw_scoring_hover(self, mouse):
+        """Zvýraznenie najetej (nie aktívnej) položky — kreslí sa mimo
+        statickej vrstvy, rovnako ako _draw_chapter_hover pre kapitoly."""
+        for i, rect in enumerate(self._scoring_rects()):
+            if rect.collidepoint(mouse) and i != self.scoring_section:
+                self.canvas.rect(ui_style.GOLD, rect, width=1, border_radius=12)
+
     def _draw_scoring(self):
-        x0, x1 = self.x0, self.x1
-        top, bottom = self.content_top, self.content_bottom
-        gap = 18
-        w_left = round((x1 - x0 - gap) * 0.55)
-        w_right = x1 - x0 - gap - w_left
-        # Spodný rad dostane toľko, koľko potrebuje jeho text; zvyšok sa
-        # rozdelí medzi karty (rad 1) a tromfy (rad 2).
-        h3 = max(self._obligation_height(w_left), self._others_height(w_right))
-        avail = bottom - top - 2 * gap - h3
-        h1 = round(avail * 0.47)
-        h2 = avail - h1
+        self._draw_scoring_nav()
+        _, right = self._chapter_areas()
+        self._panel_bg(right)
+        title, _subtitle = SCORING_SECTIONS[self.scoring_section]
+        x, y = right.x + 28, right.y + 22
+        width = right.width - 56
+        label = f"SEKCIA {self.scoring_section + 1} / {len(SCORING_SECTIONS)}"
+        y = self._chapter_text(right, label, x, y, width, self.font_small, ui_style.TEXT_DIM) + 6
+        y = self._chapter_text(right, title.upper(), x, y, width, self.canvas.font(36), ui_style.GOLD) + 10
+        content = pygame.Rect(right.x + 12, y, right.width - 24, right.bottom - 16 - y)
+        sections = (self._draw_values_section, self._draw_trumps_section,
+                    self._draw_obligation_section, self._draw_others_section)
+        sections[self.scoring_section](content)
 
-        r1 = pygame.Rect(x0, top, x1 - x0, h1)
-        self._section(r1, "1. HODNOTY KARIET", (
-            ("Každá karta má svoju bodovú hodnotu.", ui_style.TEXT_DIM),
-            ("Desiatka je druhá najsilnejšia karta, hneď po ese.", ui_style.TEXT)))
-        self._card_row = (pygame.Rect(r1), self._draw_card_values(r1))
+    # --- 1. Hodnoty kariet (nová záložka) --------------------------------
 
-        r2 = pygame.Rect(x0, r1.bottom + gap, x1 - x0, h2)
-        self._section(r2, "2. TROMFOVÉ HLÁŠKY", (
-            ("Ak máš kráľa a horníka rovnakej farby, môžeš nahlásiť tromf "
-             "a získať body navyše.", ui_style.TEXT_DIM),))
-        self._draw_trump_values(r2)
+    VALUE_CARD_SUIT = "leaf"          # pôvodná pevná farba — nepoužíva sa už
+                                       # na kreslenie (nahradil SuitCycle),
+                                       # ostáva ako farba ikon v navigácii
+    VALUE_POINT_RANKS = RANK_NAMES[0:5]    # eso … dolník — s bodovou hodnotou
+    VALUE_ZERO_RANKS = RANK_NAMES[5:8]     # deviatka, osmička, sedmička — bez bodov
+    VALUE_GROUP_LABELS = ("KARTY S BODOVOU HODNOTOU", "KARTY BEZ BODOVEJ HODNOTY")
+    # Finálne znenie pre záložku Prehľad bodovania (zadanie usera 2026-11-01).
+    NEW_VALUES_INTRO = (
+        "Každá karta má svoju bodovú hodnotu. Najviac bodov prinášajú eso "
+        "(11) a desiatka (10), ktorá je druhou najsilnejšou kartou. "
+        "Deviatka, osmička a sedmička sú bezbodové.")
 
-        y3 = r2.bottom + gap
-        r3 = pygame.Rect(x0, y3, w_left, bottom - y3)
-        r4 = pygame.Rect(r3.right + gap, y3, x1 - r3.right - gap, bottom - y3)
-        self._section(r3, "3. POVINNOSŤ")
-        self._draw_obligation(r3)
-        self._section(r4, "4. OSTATNÍ HRÁČI")
-        self._draw_others(r4)
+    def _values_layout(self, rect: pygame.Rect, y: int):
+        """Rozloženie Hodnôt kariet od `y` nadol: dve skupiny (karty s/bez
+        bodovej hodnoty) oddelené nadpismi a deliacou čiarou (nový koncept
+        usera 2026-11-01). Vráti (items, label1_y, divider_y, label2_y, row)
+        — items je zoznam (rank, name, pts, card_rect) pre všetkých 8 kariet,
+        row je obalový obdĺžnik pre SuitCycle (karty menia farbu v slučke,
+        „ako kedysi“). Čisto geometria, bez kreslenia — používa ju statický
+        aj živý (farbu meniaci) priechod, aby boli vždy presne zarovnané."""
+        label_h = self.font_small.get_height()
+        name_h = self.font_text.get_height()
+        text_h = 2 * (name_h + 2) + 6         # meno + bodová hodnota
+        gap_label = 10
+        gap_group = 20
+        fixed = 2 * (label_h + gap_label) + 2 * text_h + gap_group + 10
+        avail_cards = max(40, rect.bottom - y - fixed)
+        ch1 = avail_cards * 0.62
+        ch2 = avail_cards * 0.38
+
+        def row(ranks, card_h, top, gap):
+            n = len(ranks)
+            card_w = round(card_h * CARD_RATIO)
+            max_w = (rect.width - 20 - (n - 1) * gap) // n
+            if card_w > max_w:
+                card_w = max_w
+                card_h = round(card_w / CARD_RATIO)
+            total_w = n * card_w + (n - 1) * gap
+            x0 = rect.centerx - total_w // 2
+            out = []
+            for i, (rank, name) in enumerate(ranks):
+                card = pygame.Rect(x0 + i * (card_w + gap), round(top), card_w, round(card_h))
+                out.append((rank, name, CARD_POINTS[rank], card))
+            return out
+
+        label1_y = y
+        row1_top = label1_y + label_h + gap_label
+        items1 = row(self.VALUE_POINT_RANKS, ch1, row1_top, 40)
+        row1_bottom = row1_top + max(c.height for *_, c in items1) + text_h
+
+        divider_y = row1_bottom + gap_group // 2
+        label2_y = divider_y + gap_group // 2 + 6
+        row2_top = label2_y + label_h + gap_label
+        items2 = row(self.VALUE_ZERO_RANKS, ch2, row2_top, 26)
+        row2_bottom = row2_top + max(c.height for *_, c in items2) + text_h
+
+        items = items1 + items2
+        row_rect = pygame.Rect(rect.x, label1_y, rect.width, row2_bottom - label1_y)
+        return items, label1_y, divider_y, label2_y, row_rect
+
+    def _draw_values_section(self, rect: pygame.Rect):
+        c = self.canvas
+        y = rect.y + 8
+        y = self._paragraph(self.NEW_VALUES_INTRO, rect.x + 10, y,
+                            rect.width - 20, self.font_text, ui_style.TEXT,
+                            rect, "hodnoty kariet")
+        y += 14
+
+        items, label1_y, divider_y, label2_y, row_rect = self._values_layout(rect, y)
+        self._values_items, self._values_row = items, row_rect
+
+        l1 = self.font_small.render(self.VALUE_GROUP_LABELS[0], True, ui_style.TEXT_DIM)
+        c.blit(l1, (rect.x + 10, label1_y))
+        l2 = self.font_small.render(self.VALUE_GROUP_LABELS[1], True, ui_style.TEXT_DIM)
+        c.blit(l2, (rect.x + 10, label2_y))
+        c.line(DIVIDER, (rect.x + 10, divider_y), (rect.right - 10, divider_y), 1)
+        self._fit("hodnoty kariet/nadpisy", rect,
+                  pygame.Rect(rect.x + 10, label1_y, rect.width - 20,
+                              label2_y + self.font_small.get_height() - label1_y))
+
+        for rank, name, pts, card in items:
+            color = ui_style.GOLD if pts else ui_style.TEXT_DIM
+            s_name = self.font_text.render(name, True, ui_style.TEXT)
+            s_pts = self.font_text.render(f"{pts} bodov" if pts else "0 bodov",
+                                          True, color)
+            r1 = s_name.get_rect(centerx=card.centerx, top=card.bottom + 6)
+            c.blit(s_name, r1)
+            r2 = s_pts.get_rect(centerx=card.centerx, top=r1.bottom + 2)
+            c.blit(s_pts, r2)
+            self._fit("hodnoty kariet/karta", rect, card.union(r1).union(r2))
+
+    def _draw_values_cards(self, items, suit: str):
+        """Karty v danej farbe (kreslí ich SuitCycle každú snímku) — len
+        obrázky, popisky pod nimi sú súčasťou statickej vrstvy."""
+        for rank, _name, _pts, card in items:
+            self._card(f"{suit}-{rank}", card.topleft, card.size)
+
+    def _draw_values_live(self):
+        """Karty v Hodnotách kariet menia farbu v slučke (zadanie usera
+        2026-11-01: „ako kedysi“) — kreslí sa mimo statickej vrstvy nad už
+        vykreslenými popiskami, rovnako ako _draw_gallery pre galériu."""
+        items = getattr(self, "_values_items", None)
+        row_rect = getattr(self, "_values_row", None)
+        if not items or row_rect is None:
+            return
+        self.values_cycle.draw(self.canvas, row_rect,
+                               lambda suit: self._draw_values_cards(items, suit))
+
+    # --- 2. Tromfové hlášky (nová záložka) -------------------------------
+
+    # Finálne znenie pre záložku Prehľad bodovania (zadanie usera 2026-11-01).
+    NEW_TRUMPS_INTRO = (
+        "Kráľ a horník rovnakej farby tvoria tromfovú hlášku. Jej hodnota "
+        "závisí od farby a po úspešnom nahlásení sa pripočíta k bodom za "
+        "získané štichy.")
+
+    def _draw_trumps_section(self, rect: pygame.Rect):
+        c = self.canvas
+        y = rect.y + 8
+        y = self._paragraph(self.NEW_TRUMPS_INTRO, rect.x + 10, y, rect.width - 20,
+                            self.font_text, ui_style.TEXT, rect, "tromfové hlášky")
+        y += 18
+        gap_x, gap_y = 30, 24
+        box_w = (rect.width - gap_x) // 2
+        box_h = (rect.bottom - y - gap_y) // 2
+        for i, (suit, label) in enumerate(TRUMP_ORDER):
+            col, row = i % 2, i // 2
+            box = pygame.Rect(rect.x + col * (box_w + gap_x), y + row * (box_h + gap_y),
+                              box_w, box_h)
+            c.overlay(box, SUBSECTION_FILL, border_radius=10)
+            c.rect(DIVIDER, box, width=1, border_radius=10)
+            icon = self._suit_icon(suit, 32)
+            t = self.font_section.render(label, True, ui_style.GOLD)
+            total = (icon.get_width() + 10 if icon else 0) + t.get_width()
+            hx = box.centerx - total // 2
+            hy = box.y + 12 + t.get_height() // 2
+            if icon:
+                c.blit(icon, icon.get_rect(midleft=(hx, hy)))
+                hx += icon.get_width() + 10
+            c.blit(t, t.get_rect(midleft=(hx, hy)))
+            pts_h = self.font_section.get_height()
+            ctop = box.y + 12 + t.get_height() + 14
+            card_h = box.bottom - 16 - pts_h - 10 - ctop
+            card_w = round(card_h * CARD_RATIO)
+            g = 16
+            if 2 * card_w + g > box_w - 36:
+                card_w = (box_w - 36 - g) // 2
+                card_h = round(card_w / CARD_RATIO)
+            self._card(f"{suit}-king", (box.centerx - card_w - g // 2, ctop), (card_w, card_h))
+            self._card(f"{suit}-over", (box.centerx + g // 2, ctop), (card_w, card_h))
+            pts = self.font_section.render(f"{TRUMP_POINTS[suit]} bodov", True, ui_style.GOLD)
+            c.blit(pts, pts.get_rect(centerx=box.centerx, top=ctop + card_h + 10))
+            self._fit("tromfové hlášky/box", rect, box)
 
     def _card_values_geometry(self, rect: pygame.Rect):
-        """Rozloženie radu Hodnoty kariet v paneli `rect`: zoznam
-        (rank, názov, obdĺžnik karty, stred medailónu), polomer medailónu."""
+        """Rozloženie radu Hodnoty kariet v paneli `rect` (ukážka Bodovania,
+        gui/scoring_demo.py): zoznam (rank, názov, obdĺžnik karty, stred
+        bodovej hodnoty), polovica výšky textového pásu pod kartou."""
         top = self._content_top(rect)
         name_h = self.font_text.get_height()
         medal_r = 24
@@ -649,13 +894,16 @@ class InfoOverlay:
         return items, medal_r
 
     def _draw_card_row(self, rect: pygame.Rect, suit: str):
-        """Karty a medailóny s bodmi v danej farbe (kreslí SuitCycle každú
-        snímku). Tiene kariet a názvy sa nemenia — sú v statickej vrstve."""
+        """Karty a bodové hodnoty (text) v danej farbe (kreslí SuitCycle
+        každú snímku). Tiene kariet a názvy sa nemenia — sú v statickej
+        vrstve."""
         items, medal_r = self._card_values_geometry(rect)
-        for rank, _name, card, medal in items:
+        for rank, _name, card, pos in items:
             self._card(f"{suit}-{rank}", card.topleft, card.size, shadow=False)
             pts = CARD_POINTS[rank]
-            self._medal(medal, medal_r, str(pts), None, zero=pts == 0)
+            color = ui_style.GOLD if pts else ui_style.TEXT_DIM
+            s = self.font_section.render(str(pts), True, color)
+            self.canvas.blit(s, s.get_rect(center=pos))
 
     def _draw_card_values(self, rect: pygame.Rect):
         c = self.canvas
@@ -708,21 +956,33 @@ class InfoOverlay:
             self._card(f"{suit}-king", (box.centerx - card_w - g // 2, ctop), (card_w, card_h))
             self._card(f"{suit}-over", (box.centerx + g // 2, ctop), (card_w, card_h))
             my = ctop + card_h + 2
-            self._medal((box.centerx, my), medal_r, str(TRUMP_POINTS[suit]), "bodov")
+            pts = self.font_section.render(f"{TRUMP_POINTS[suit]} bodov", True, ui_style.GOLD)
+            c.blit(pts, pts.get_rect(centerx=box.centerx, top=my))
             self._fit("tromfové hlášky", rect,
-                      pygame.Rect(box.x, box.y, box.width, my + medal_r - box.y))
+                      pygame.Rect(box.x, box.y, box.width, my + pts.get_height() - box.y))
 
     # --- 3. Povinnosť -----------------------------------------------------
 
-    OBLIGATION_INTRO = ("Vyhral si dražbu? Musíš uhrať aspoň toľko bodov, koľko si "
-                        "vydražil. Počítajú sa štichy aj tromfové hlášky.")
+    OBLIGATION_INTRO = ("Vyhral si dražbu? Musíš splniť svoju povinnosť — uhrať "
+                        "aspoň toľko bodov, koľko si sa zaviazal. Počítajú sa "
+                        "štichy aj tromfové hlášky.")
     OBLIGATION_BOXES = (
         (True, "Splnená povinnosť",
-         "Uhral si dosť bodov. Pripíše sa ti vydražená hodnota.",
-         "Vydražil si 100, uhral 112", "+100 bodov"),
+         "Uhral si dosť bodov. Povinnosť sa ti pripíše.",
+         "Povinnosť 100, uhral 112", "+100 bodov"),
         (False, "Nesplnená povinnosť",
-         "Neuhral si dosť bodov. Vydražená hodnota sa ti odpočíta.",
-         "Vydražil si 100, uhral 70", "−100 bodov"),
+         "Neuhral si dosť bodov. Povinnosť sa ti odpočíta.",
+         "Povinnosť 100, uhral 70", "−100 bodov"),
+    )
+    # Finálne znenie pre záložku Prehľad bodovania (zadanie usera 2026-11-01)
+    # — samostatný text a dvojica príkladov s trojicou riadkov podľa spec.
+    NEW_OBLIGATION_INTRO = (
+        "Hráč, ktorý získa talón, sa zaväzuje uhrať určitý počet bodov. Pred "
+        "začiatkom môže svoju povinnosť ešte zvýšiť. Ak ju splní, pripíše sa "
+        "mu jej hodnota. Ak nie, rovnaká hodnota sa mu odpočíta.")
+    OBLIGATION_EXAMPLES = (
+        (True, "Splnená povinnosť", 100, 112, "+100"),
+        (False, "Nesplnená povinnosť", 100, 70, "−100"),
     )
     PILL_H = 38
 
@@ -816,6 +1076,95 @@ class InfoOverlay:
                 ly = round(ry + i * row_h)
                 c.line(DIVIDER, (box.x + 12, ly), (box.right - 12, ly), 1)
         self._fit("ostatní hráči", rect, box)
+
+    # --- 3. Povinnosť — sekcia v novej záložke Prehľad bodovania --------
+
+    def _obligation_section_box_h(self) -> int:
+        """Kompaktná výška karty Povinnosti — ikona+nadpis, dva zarovnané
+        riadky (Povinnosť, Uhrané body), deliaca čiara a výrazný Výsledok
+        kola — nezávisle od výšky panela (zadanie usera 2026-11-01:
+        kompaktnejšie karty namiesto panela na celú výšku)."""
+        icon_h = 40
+        row_lh = self.font_text.get_height() + 12
+        result_h = self.canvas.font(32).get_height()
+        return 18 + icon_h + 22 + 2 * row_lh + 10 + 1 + 14 + result_h + 18
+
+    def _draw_obligation_section(self, rect: pygame.Rect):
+        c = self.canvas
+        y = rect.y + 8
+        y = self._paragraph(self.NEW_OBLIGATION_INTRO, rect.x + 10, y, rect.width - 20,
+                            self.font_text, ui_style.TEXT, rect, "povinnosť")
+        y += 26
+        gap = 30
+        bw = (rect.width - gap) // 2
+        bh = self._obligation_section_box_h()
+        result_font = self.canvas.font(32)
+        for j, (ok, title, oblig, earned, result) in enumerate(self.OBLIGATION_EXAMPLES):
+            color = GOOD if ok else BAD
+            box = pygame.Rect(rect.x + j * (bw + gap), y, bw, bh)
+            c.overlay(box, SUBSECTION_FILL, border_radius=10)
+            c.rect(color, box, width=2, border_radius=10)
+            icon = self._status_icon(ok, 40)
+            ix, iy = box.x + 20, box.y + 18
+            if icon:
+                c.blit(icon, (ix, iy))
+            t = self.font_section.render(title, True, color)
+            c.blit(t, (ix + 50, iy + (40 - t.get_height()) // 2))
+            ly = iy + 40 + 22
+            lh = self.font_text.get_height() + 12
+            for label, value in (("Povinnosť", str(oblig)), ("Uhrané body", str(earned))):
+                s = self.font_text.render(label, True, ui_style.TEXT_DIM)
+                c.blit(s, (box.x + 20, ly))
+                v = self.font_text.render(value, True, ui_style.TEXT)
+                c.blit(v, v.get_rect(right=box.right - 20, top=ly))
+                ly += lh
+            ly += 10
+            c.line(DIVIDER, (box.x + 20, ly), (box.right - 20, ly), 1)
+            ly += 14
+            s = self.font_section.render("Výsledok kola", True, color)
+            c.blit(s, (box.x + 20, ly + (result_font.get_height() - s.get_height()) // 2))
+            v = result_font.render(result, True, color)
+            c.blit(v, v.get_rect(right=box.right - 20, top=ly))
+            self._fit("povinnosť/box", rect, box)
+
+    # --- 4. Ostatní hráči — sekcia v novej záložke Prehľad bodovania ----
+
+    # Finálne znenie pre záložku Prehľad bodovania (zadanie usera 2026-11-01)
+    # — samostatný text a príklady so zjednotenou terminológiou; OTHERS_INTRO/
+    # OTHERS_ROWS zostávajú nezmenené pre animovanú ukážku v Pravidlách.
+    NEW_OTHERS_INTRO = (
+        "Hráči, ktorí nevyhrali dražbu, získavajú body za svoje štichy a "
+        "tromfové hlášky. Súčet sa zaokrúhli na najbližšiu desiatku, pričom "
+        "hodnoty končiace na 5 sa zaokrúhľujú nahor.")
+    OTHERS_EXAMPLES = (
+        ("Body za štichy 33 + Tromfová hláška 40 = 73", "70 bodov"),
+        ("Body za štichy 25", "30 bodov"),
+        ("Body za štichy 14", "10 bodov"),
+    )
+
+    def _draw_others_section(self, rect: pygame.Rect):
+        c = self.canvas
+        y = rect.y + 8
+        y = self._paragraph(self.NEW_OTHERS_INTRO, rect.x + 10, y, rect.width - 20,
+                            self.font_text, ui_style.TEXT, rect, "ostatní hráči")
+        y += 22
+        gap = 14
+        n = len(self.OTHERS_EXAMPLES)
+        avail = rect.bottom - 10 - y
+        card_h = min(84, (avail - (n - 1) * gap) // n)
+        big = self.canvas.font(28)
+        for i, (calc, result) in enumerate(self.OTHERS_EXAMPLES):
+            box = pygame.Rect(rect.x + 10, y, rect.width - 20, card_h)
+            c.overlay(box, SUBSECTION_FILL, border_radius=10)
+            c.rect(DIVIDER, box, width=1, border_radius=10)
+            s = self.font_section.render(calc, True, ui_style.TEXT)
+            c.blit(s, s.get_rect(midleft=(box.x + 22, box.centery)))
+            r = big.render(result, True, GOOD)
+            rr = r.get_rect(midright=(box.right - 26, box.centery))
+            c.blit(r, rr)
+            self._arrow(rr.left - 44, box.centery, 28, GOOD)
+            self._fit("ostatní hráči/karta", rect, box)
+            y += card_h + gap
 
     # ------------------------------------------------------------------
     # Záložka PRAVIDLÁ
@@ -961,7 +1310,9 @@ class InfoOverlay:
             if rect.collidepoint(mouse) and i - 1 != self.chapter:
                 self.canvas.rect(ui_style.GOLD, rect, width=1, border_radius=12)
         if self.chapter >= 1:
-            ui_style.draw_button(self.canvas, self._chapter_open_rect(), "Otvoriť animovanú ukážku",
+            label = ("Prejsť na prehľad bodovania" if self.chapter == STEP_SCORING
+                    else "Otvoriť animovanú ukážku")
+            ui_style.draw_button(self.canvas, self._chapter_open_rect(), label,
                                  self.font_tab, 1, hover=self._chapter_open_rect().collidepoint(mouse), shadow=False)
 
     def _chapter_illustration(self, step, area):
@@ -1076,7 +1427,9 @@ class InfoOverlay:
         else:
             button = self._chapter_open_rect()
             gallery = pygame.Rect(x, y, width, max(80, button.y - 14 - y))
-            ui_style.draw_button(c, button, "Otvoriť animovanú ukážku", self.font_tab, 1, shadow=False)
+            label = ("Prejsť na prehľad bodovania" if self.chapter == STEP_SCORING
+                    else "Otvoriť animovanú ukážku")
+            ui_style.draw_button(c, button, label, self.font_tab, 1, shadow=False)
         # Galéria sa nekreslí tu — táto metóda beží len v statickej vrstve
         # (draw_static), takže by slučka obrázkov zamrzla. Rozloženie sa
         # uloží a obrázok sa dokresľuje mimo cache v draw()/layout_problems().
@@ -1262,33 +1615,6 @@ class InfoOverlay:
             self._fit(name, panel, s.get_rect(topleft=(x, y)))
             y += lh
         return y
-
-    def _medal(self, center, r: int, number: str, unit: str | None,
-               zero: bool = False):
-        """Okrúhly medailón s bodmi: zlatý s tmavším lemom (body), alebo
-        tmavý tlmený (0 bodov)."""
-        c = self.canvas
-        cx, cy = center
-        c.circle((0, 0, 0), (cx + 2, cy + 4), r)
-        if zero:
-            c.circle(ZERO_FILL, (cx, cy), r)
-            c.circle(ZERO_RIM, (cx, cy), r, width=2)
-            color = ui_style.TEXT_DIM
-        else:
-            c.circle(MEDAL_RIM, (cx, cy), r)
-            c.circle(MEDAL_DARK, (cx, cy), r - 4)
-            c.circle(MEDAL_LIGHT, (cx, cy - r // 6), r - 10)
-            c.circle(MEDAL_DARK, (cx, cy + r // 3), max(1, r - 16))
-            c.circle((236, 190, 96), (cx, cy), r - 4, width=1)
-            color = MEDAL_TEXT
-        if unit:
-            big = c.font(round(r * 0.8)).render(number, True, color)
-            small = c.font(round(r * 0.36)).render(unit, True, color)
-            c.blit(big, big.get_rect(centerx=cx, bottom=cy + r * 0.22))
-            c.blit(small, small.get_rect(centerx=cx, top=cy + r * 0.16))
-        else:
-            s = c.font(round(r * 1.05)).render(number, True, color)
-            c.blit(s, s.get_rect(center=(cx, cy)))
 
     def _pill(self, rect: pygame.Rect, text: str, color):
         c = self.canvas

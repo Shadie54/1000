@@ -42,7 +42,8 @@ def test_lucky_pickup():
 
     t = fresh_tracker()
     t.on_talon_received([Card("heart", "ace"), Card("bell", "ten")])
-    check("eso + desiatka", "lucky_pickup" in t.newly_unlocked)
+    check("NEMA byt: eso + desiatka (2026-11-01 sprisnene)",
+          "lucky_pickup" not in t.newly_unlocked)
 
     t = fresh_tracker()
     t.on_talon_received([Card("heart", "king"), Card("heart", "over")])
@@ -81,16 +82,6 @@ def test_trump_declarations():
     check("Tromfovy kral II. (3 farby)", "trump_king_3" in t.newly_unlocked)
 
     t = fresh_tracker()
-    t.on_trump_declared(suit="heart", trick_number=1, hand_cards=[], is_new_trump=False, is_human=False)
-    t.on_trump_declared(suit="bell", trick_number=2, hand_cards=[], is_new_trump=True, is_human=False)
-    t.on_trump_declared(suit="leaf", trick_number=3, hand_cards=[], is_new_trump=True, is_human=True)
-    check("Posledne slovo (3. v poradi)", "last_word" in t.newly_unlocked)
-
-    t = fresh_tracker()
-    t.on_trump_declared(suit="heart", trick_number=1, hand_cards=[], is_new_trump=False, is_human=True)
-    check("NEMA byt: Posledne slovo pri 1. hlaseni", "last_word" not in t.newly_unlocked)
-
-    t = fresh_tracker()
     t.on_trump_declared(suit="heart", trick_number=8, hand_cards=[], is_new_trump=False)
     check("Lepsie neskoro ako nikdy (trick_number=8)", "last_chance_trump" in t.newly_unlocked)
 
@@ -107,6 +98,94 @@ def test_trump_declarations():
     t.round_had_ace_at_start = True
     t.on_trump_declared(suit="heart", trick_number=1, hand_cards=[], is_new_trump=False)
     check("NEMA byt: Bez poistky ak mal eso", "no_safety_net" not in t.newly_unlocked)
+
+    t = fresh_tracker()
+    t.round_had_ace_at_start = False
+    t.on_trump_declared(suit="heart", trick_number=0, hand_cards=[], is_new_trump=False)
+    check("NEMA byt: Bez poistky pri hlaseni v 1. stichu (2026-11-01)",
+          "no_safety_net" not in t.newly_unlocked)
+
+
+# ------------------------------------------------------------------
+# Posledne slovo (vyhodnocuje sa az na konci kola)
+# ------------------------------------------------------------------
+
+def test_last_word():
+    print("\n--- Posledne slovo ---")
+
+    t = fresh_tracker()
+    t.on_trump_declared(suit="heart", trick_number=1, hand_cards=[], is_new_trump=False, is_human=False, player_index=1)
+    t.on_trump_declared(suit="bell", trick_number=2, hand_cards=[], is_new_trump=True, is_human=False, player_index=2)
+    t.on_trump_declared(suit="leaf", trick_number=3, hand_cards=[], is_new_trump=True, is_human=True, player_index=0)
+    t.on_round_finished(human_is_bidder=False, human_bid=0, human_round_points=0,
+                        human_fulfilled=False, human_card_points_only=0)
+    check("Posledne slovo (3. a zaroven posledna)", "last_word" in t.newly_unlocked)
+
+    t = fresh_tracker()
+    t.on_trump_declared(suit="heart", trick_number=1, hand_cards=[], is_new_trump=False, is_human=False, player_index=1)
+    t.on_trump_declared(suit="bell", trick_number=2, hand_cards=[], is_new_trump=True, is_human=False, player_index=2)
+    t.on_trump_declared(suit="leaf", trick_number=3, hand_cards=[], is_new_trump=True, is_human=True, player_index=0)
+    t.on_trump_declared(suit="acorn", trick_number=4, hand_cards=[], is_new_trump=True, is_human=False, player_index=1)
+    t.on_round_finished(human_is_bidder=False, human_bid=0, human_round_points=0,
+                        human_fulfilled=False, human_card_points_only=0)
+    check("NEMA byt: 3. ale NIE posledna (hlasil este AI)", "last_word" not in t.newly_unlocked)
+
+    t = fresh_tracker()
+    t.on_trump_declared(suit="heart", trick_number=1, hand_cards=[], is_new_trump=False, is_human=True, player_index=0)
+    t.on_round_finished(human_is_bidder=False, human_bid=0, human_round_points=0,
+                        human_fulfilled=False, human_card_points_only=0)
+    check("NEMA byt: Posledne slovo pri 1. hlaseni (aj ked posledna)",
+          "last_word" not in t.newly_unlocked)
+
+    t = fresh_tracker()
+    t.on_trump_declared(suit="heart", trick_number=1, hand_cards=[], is_new_trump=False, is_human=False, player_index=1)
+    t.on_trump_declared(suit="bell", trick_number=2, hand_cards=[], is_new_trump=True, is_human=True, player_index=0)
+    t.on_round_finished(human_is_bidder=False, human_bid=0, human_round_points=0,
+                        human_fulfilled=False, human_card_points_only=0)
+    check("NEMA byt: 2. v poradi (nie 3. ani 4.)", "last_word" not in t.newly_unlocked)
+
+
+# ------------------------------------------------------------------
+# Dva kohuty na jednom smetisku
+# ------------------------------------------------------------------
+
+def test_two_roosters():
+    print("\n--- Dva kohuty na jednom smetisku ---")
+
+    t = fresh_tracker()
+    t.on_trump_declared(suit="heart", trick_number=1, hand_cards=[], is_new_trump=False, is_human=True, player_index=0)
+    t.on_trump_declared(suit="bell", trick_number=2, hand_cards=[], is_new_trump=True, is_human=False, player_index=1)
+    t.on_trump_declared(suit="leaf", trick_number=3, hand_cards=[], is_new_trump=True, is_human=True, player_index=0)
+    check("H -> AI1 -> H", "two_roosters" in t.newly_unlocked)
+
+    t = fresh_tracker()
+    t.on_trump_declared(suit="heart", trick_number=1, hand_cards=[], is_new_trump=False, is_human=True, player_index=0)
+    t.on_trump_declared(suit="bell", trick_number=2, hand_cards=[], is_new_trump=True, is_human=False, player_index=2)
+    t.on_trump_declared(suit="leaf", trick_number=3, hand_cards=[], is_new_trump=True, is_human=False, player_index=2)
+    t.on_trump_declared(suit="acorn", trick_number=4, hand_cards=[], is_new_trump=True, is_human=True, player_index=0)
+    check("H -> AI2 -> AI2 -> H", "two_roosters" in t.newly_unlocked)
+
+    t = fresh_tracker()
+    t.on_trump_declared(suit="heart", trick_number=1, hand_cards=[], is_new_trump=False, is_human=True, player_index=0)
+    t.on_trump_declared(suit="bell", trick_number=2, hand_cards=[], is_new_trump=True, is_human=True, player_index=0)
+    t.on_trump_declared(suit="leaf", trick_number=3, hand_cards=[], is_new_trump=True, is_human=False, player_index=1)
+    t.on_trump_declared(suit="acorn", trick_number=4, hand_cards=[], is_new_trump=True, is_human=True, player_index=0)
+    check("H -> H -> AI1 -> H", "two_roosters" in t.newly_unlocked)
+
+    t = fresh_tracker()
+    t.on_trump_declared(suit="heart", trick_number=1, hand_cards=[], is_new_trump=False, is_human=True, player_index=0)
+    t.on_trump_declared(suit="bell", trick_number=2, hand_cards=[], is_new_trump=True, is_human=False, player_index=1)
+    t.on_trump_declared(suit="leaf", trick_number=3, hand_cards=[], is_new_trump=True, is_human=False, player_index=2)
+    t.on_trump_declared(suit="acorn", trick_number=4, hand_cards=[], is_new_trump=True, is_human=True, player_index=0)
+    check("NEMA byt: H -> AI1 -> AI2 -> H (rozni superi)", "two_roosters" not in t.newly_unlocked)
+
+    t = fresh_tracker()
+    t.on_trump_declared(suit="heart", trick_number=1, hand_cards=[], is_new_trump=False, is_human=True, player_index=0)
+    t.on_trump_declared(suit="bell", trick_number=2, hand_cards=[], is_new_trump=True, is_human=False, player_index=1)
+    t.on_trump_declared(suit="leaf", trick_number=3, hand_cards=[], is_new_trump=True, is_human=False, player_index=1)
+    t.on_trump_declared(suit="acorn", trick_number=4, hand_cards=[], is_new_trump=True, is_human=False, player_index=1)
+    t.on_trump_declared(suit="heart", trick_number=5, hand_cards=[], is_new_trump=True, is_human=True, player_index=0)
+    check("NEMA byt: blok 3 hlasok (prilis vela)", "two_roosters" not in t.newly_unlocked)
 
 
 # ------------------------------------------------------------------
@@ -155,6 +234,27 @@ def test_discard():
     t = fresh_tracker()
     t.on_discard([Card("heart", "king"), Card("heart", "seven")])
     check("NEMA byt: len kral bez hornika", "pretty_but_useless" not in t.newly_unlocked)
+
+    # 2026-11-01: body zahodenych kariet sa pocitaju do round_human_card_points
+    # (inak "Kazdy bod sa pocita" bolo nedosiahnutelne pri akomkolvek discarde
+    # s bodovou kartou)
+    t = fresh_tracker()
+    t.on_discard([Card("heart", "king"), Card("heart", "over")])  # 4+3=7b
+    check("Zahodene body sa pocitaju (kral+hornik=7b)",
+          t.round_human_card_points == 7)
+
+    t = fresh_tracker()
+    t.on_discard([Card("heart", "under"), Card("heart", "seven")])  # 2+0=2b
+    check("Zahodene body sa pocitaju (dolnik+sedmicka=2b)",
+          t.round_human_card_points == 2)
+
+    t = fresh_tracker()
+    t.round_human_card_points = 113  # 120 - 7 (zahodeny kral+hornik)
+    t.on_discard([Card("heart", "king"), Card("heart", "over")])
+    t.on_round_finished(human_is_bidder=False, human_bid=0, human_round_points=0,
+                        human_fulfilled=False, human_card_points_only=t.round_human_card_points)
+    check("Kazdy bod sa pocita je teraz dosiahnutelny aj so zahodenymi bodmi",
+          "greedy" in t.newly_unlocked)
 
 
 # ------------------------------------------------------------------
@@ -220,7 +320,21 @@ def test_round_finished():
     t.on_round_finished(human_is_bidder=True, human_bid=50,
                         human_round_points=50, human_fulfilled=True,
                         human_card_points_only=0)
-    check("S odretymi usami (presne na bid)", "barely_made_it" in t.newly_unlocked)
+    check("NEMA byt S odretymi usami pri bid=50 (2026-11-01, prekryv so Skromny vitaz)",
+          "barely_made_it" not in t.newly_unlocked)
+
+    t = fresh_tracker()
+    t.on_round_finished(human_is_bidder=True, human_bid=60,
+                        human_round_points=60, human_fulfilled=True,
+                        human_card_points_only=0)
+    check("S odretymi usami (presne na bid=60)", "barely_made_it" in t.newly_unlocked)
+
+    t = fresh_tracker()
+    t.on_round_finished(human_is_bidder=True, human_bid=90,
+                        human_round_points=90, human_fulfilled=True,
+                        human_card_points_only=0)
+    check("S odretymi usami (presne na bid=90, akakolvek povinnost >=60)",
+          "barely_made_it" in t.newly_unlocked)
 
     t = fresh_tracker()
     t.on_round_finished(human_is_bidder=True, human_bid=200,
@@ -256,16 +370,6 @@ def test_game_finished():
     check("Zaciname (prva vyhra)", "first_win" in t.newly_unlocked)
 
     t = fresh_tracker()
-    t.game_was_bidder = False
-    t.on_game_finished(human_won=True, human_final_score=1000, opponent_scores=[500, 400])
-    check("Kto mlci vyhrava (nikdy nedrazil)", "passivist" in t.newly_unlocked)
-
-    t = fresh_tracker()
-    t.game_was_bidder = True
-    t.on_game_finished(human_won=True, human_final_score=1000, opponent_scores=[500, 400])
-    check("NEMA byt Kto mlci vyhrava ak drazil", "passivist" not in t.newly_unlocked)
-
-    t = fresh_tracker()
     t.game_min_score = -250
     t.on_game_finished(human_won=True, human_final_score=1000, opponent_scores=[500, 400])
     check("Fenix (comeback z -250)", "comeback" in t.newly_unlocked)
@@ -273,7 +377,13 @@ def test_game_finished():
     t = fresh_tracker()
     t.game_min_score = -100
     t.on_game_finished(human_won=True, human_final_score=1000, opponent_scores=[500, 400])
-    check("NEMA byt Fenix (len -100)", "comeback" not in t.newly_unlocked)
+    check("Fenix (comeback z -100, 2026-11-01 znizene z -200)",
+          "comeback" in t.newly_unlocked)
+
+    t = fresh_tracker()
+    t.game_min_score = -80
+    t.on_game_finished(human_won=True, human_final_score=1000, opponent_scores=[500, 400])
+    check("NEMA byt Fenix (len -80)", "comeback" not in t.newly_unlocked)
 
     t = fresh_tracker()
     t.on_game_finished(human_won=True, human_final_score=1000, opponent_scores=[500, 400])
@@ -314,6 +424,25 @@ def test_game_finished():
     t.on_game_finished(human_won=False, human_final_score=800, opponent_scores=[980, 700])
     check("NEMA byt Smoliar (prehra o 180b)", "unlucky" not in t.newly_unlocked)
 
+    # Kto sa smeje naposledy
+    t = fresh_tracker()
+    t.on_round_started(human_score=400, opponent_scores=[450, 300])
+    t.on_game_finished(human_won=True, human_final_score=1000, opponent_scores=[700, 650])
+    check("Kto sa smeje naposledy (super mal viac pred poslednym kolom)",
+          "last_laugh" in t.newly_unlocked)
+
+    t = fresh_tracker()
+    t.on_round_started(human_score=900, opponent_scores=[800, 700])
+    t.on_game_finished(human_won=True, human_final_score=1000, opponent_scores=[500, 400])
+    check("NEMA byt Kto sa smeje naposledy (human uz vedol pred poslednym kolom)",
+          "last_laugh" not in t.newly_unlocked)
+
+    t = fresh_tracker()
+    t.on_round_started(human_score=400, opponent_scores=[450, 300])
+    t.on_game_finished(human_won=False, human_final_score=900, opponent_scores=[980, 700])
+    check("NEMA byt Kto sa smeje naposledy (human neprehral=nevyhral hru)",
+          "last_laugh" not in t.newly_unlocked)
+
 
 # ------------------------------------------------------------------
 # Spustenie vsetkych testov
@@ -322,6 +451,8 @@ def test_game_finished():
 if __name__ == "__main__":
     test_lucky_pickup()
     test_trump_declarations()
+    test_last_word()
+    test_two_roosters()
     test_silent_watcher()
     test_discard()
     test_too_late_now()

@@ -41,11 +41,11 @@ TABS = (("hra", "Hra"), ("pravidla", "Pravidlá"), ("zobrazenie", "Zobrazenie"))
 # zobrať aspoň jeden štich, inak má povinnosť nesplnenú.
 TRUMP_MODES = ((False, "Od 2. štichu (klasika)"), (True, "Aj v 1. štichu"))
 TRUMP_HINTS = {
-    False: ("Tromf môžeš zahlásiť najskôr v 2. štichu",),
-    True: ("Tromf môžeš zahlásiť aj v 1. štichu,",
-        "ak je tvoja povinnosť aspoň o 10 bodov vyššia ako hodnota hlášky.",
-        "Počas kola musíš zároveň získať aspoň jeden štich, ",
-        "inak povinnosť nesplníš."),
+    False: ("Tromf je možné hlásiť najskôr v 2. štichu.",),
+    True: ("Víťaz dražby smie hlásiť tromf už v 1. štichu, ak sú splnené",
+           "tieto podmienky: nastavená povinnosť musí byť aspoň o 10 vyššia",
+           "ako hodnota hlášky (napr. zeleň = 80 bodov, povinnosť minimálne 90)",
+           "a hráč musí počas kola zobrať aspoň jeden štich."),
 }
 _last_tab = "hra"
 
@@ -157,24 +157,61 @@ class SettingsScreen:
         self.ai2_buttons = self.ai_rows[1][2]
 
         # --------------------------------------------------------------
-        # Záložka Pravidlá — Smer hry, Hlásenie tromfu
+        # Záložka Pravidlá — jeden spoločný panel (redizajn 2026-11-01,
+        # zadanie usera podľa referenčného obrázka): SMER HRY a HLÁSENIE
+        # TROMFU ako dve sekcie oddelené deliacou čiarou, dole samostatný
+        # informačný pás. `panel_dir`/`panel_trump` zostávajú ako logické
+        # oblasti jednotlivých sekcií (kvôli regression_layout — prekryv
+        # a hranice obrazovky), vizuálne orámovaný je len `panel_rules`.
         # --------------------------------------------------------------
-        self.panel_dir = pygame.Rect(panel_x, CONTENT_TOP, self.panel_width, 125)
         dw, dh, dgap = 440, 48, 30
         dx0 = center_x - (2 * dw + dgap) // 2
+        head_h = 44              # ikona + nadpis + deliaca čiara pod ním
+        head_gap = 22            # medzera medzi deliacou čiarou a tlačidlami
+        section_gap = 26         # medzera okolo medzidelu dvoch sekcií
+        hint_gap = 18            # medzera medzi tlačidlami a vysvetlením
+        hint_line_h = self.font_small.get_height() + 4
+        hint_lines_max = max(len(v) for v in TRUMP_HINTS.values())
+        hint_block_h = hint_lines_max * hint_line_h   # pevná výška (najdlhší variant — bez skákania)
+        info_gap = 24             # medzera pred informačným pásom
+        info_pad = 16             # vnútorné odsadenie informačného pása
+
+        y = CONTENT_TOP + 22
+        self._rules_head1_cy = y + 20
+        self._rules_div1_y = y + head_h
+        dir_top = self._rules_div1_y + head_gap
+        self.panel_dir = pygame.Rect(panel_x, y, self.panel_width, dir_top + dh - y)
         self.dir_buttons = [
             {"value": value, "label": label, "hover": False,
-             "rect": pygame.Rect(dx0 + i * (dw + dgap), self.panel_dir.top + 64, dw, dh)}
+             "rect": pygame.Rect(dx0 + i * (dw + dgap), dir_top, dw, dh)}
             for i, (value, label) in enumerate(DIRECTIONS)
         ]
 
+        self._rules_div_mid_y = self.panel_dir.bottom + section_gap
+        y2 = self._rules_div_mid_y + section_gap
+        self._rules_head2_cy = y2 + 20
+        self._rules_div2_y = y2 + head_h
+        trump_top = self._rules_div2_y + head_gap
+        self._rules_hint_top = trump_top + dh + hint_gap
+        self._rules_hint_block_h = hint_block_h
+        self._rules_hint_line_h = hint_line_h
         self.panel_trump = pygame.Rect(
-            panel_x, self.panel_dir.bottom + PANEL_GAP, self.panel_width, 232)
+            panel_x, y2, self.panel_width,
+            self._rules_hint_top + hint_block_h - y2)
         self.trump_buttons = [
             {"value": value, "label": label, "hover": False,
-             "rect": pygame.Rect(dx0 + i * (dw + dgap), self.panel_trump.top + 64, dw, dh)}
+             "rect": pygame.Rect(dx0 + i * (dw + dgap), trump_top, dw, dh)}
             for i, (value, label) in enumerate(TRUMP_MODES)
         ]
+
+        self._rules_info_div_y = self.panel_trump.bottom + info_gap
+        info_text_h = self.font_small.get_height()
+        self._rules_info_rect = pygame.Rect(
+            panel_x, self._rules_info_div_y + 1, self.panel_width,
+            2 * info_pad + info_text_h)
+        self.panel_rules = pygame.Rect(
+            panel_x, CONTENT_TOP, self.panel_width,
+            self._rules_info_rect.bottom + 18 - CONTENT_TOP)
 
         # --------------------------------------------------------------
         # Panel 2 — Rýchlosť animácií (posuvník)
@@ -598,27 +635,67 @@ class SettingsScreen:
     # --- záložka Pravidlá ------------------------------------------------
 
     def _draw_rules_tab(self):
-        self._draw_panel(self.panel_dir, "SMER HRY")
+        """Jeden spoločný panel: SMER HRY a HLÁSENIE TROMFU ako dve sekcie
+        oddelené deliacou čiarou, dole samostatný informačný pás (redizajn
+        2026-11-01, zadanie usera)."""
+        c = self.canvas
+        self._draw_panel(self.panel_rules, None)
+
+        self._draw_section_head(self._rules_head1_cy, self._rules_div1_y,
+                                "SMER HRY")
         current = self.settings.get("play_direction", PLAY_DIRECTION_DEFAULT)
         for btn in self.dir_buttons:
             self._draw_choice(btn["rect"], btn["label"],
                               selected=btn["value"] == current,
                               hover=btn["hover"], enabled=True)
-        self._draw_panel(self.panel_trump, "HLÁSENIE TROMFU")
+
+        c.line(DIVIDER, (self.panel_rules.left + 24, self._rules_div_mid_y),
+               (self.panel_rules.right - 24, self._rules_div_mid_y), width=1)
+
+        self._draw_section_head(self._rules_head2_cy, self._rules_div2_y,
+                                "HLÁSENIE TROMFU")
         current = bool(self.settings.get("first_trick_trump", False))
         for btn in self.trump_buttons:
             self._draw_choice(btn["rect"], btn["label"],
                               selected=btn["value"] == current,
                               hover=btn["hover"], enabled=True)
-        y = self.trump_buttons[0]["rect"].bottom + 18
-        for line in TRUMP_HINTS[current]:
+        lines = TRUMP_HINTS[current]
+        y = self._rules_hint_top + (self._rules_hint_block_h
+                                     - len(lines) * self._rules_hint_line_h) // 2
+        for line in lines:
             s = self.font_small.render(line, True, ui_style.TEXT)
-            self.canvas.blit(s, s.get_rect(centerx=self.center_x, top=y))
-            y += s.get_height() + 4
+            c.blit(s, s.get_rect(centerx=self.center_x, top=y))
+            y += self._rules_hint_line_h
+
+        # Informačný pás — tlmené pozadie, jemne oddelené, platí pre obe sekcie
+        c.line(DIVIDER, (self.panel_rules.left + 24, self._rules_info_div_y),
+               (self.panel_rules.right - 24, self._rules_info_div_y), width=1)
+        strip = self._rules_info_rect
+        c.overlay(strip, (0, 0, 0, 40))
         note = self.font_small.render(
             "Zmena pravidiel platí od novej hry.", True, ui_style.TEXT_DIM)
-        self.canvas.blit(note, note.get_rect(centerx=self.center_x,
-                                             top=self.panel_trump.bottom + 18))
+        icon_r, gap = 11, 12
+        total_w = 2 * icon_r + gap + note.get_width()
+        icon_cx = strip.centerx - total_w // 2 + icon_r
+        self._draw_info_icon((icon_cx, strip.centery), icon_r)
+        c.blit(note, note.get_rect(midleft=(icon_cx + icon_r + gap, strip.centery)))
+
+    def _draw_section_head(self, title_cy: int, divider_y: int, title: str):
+        """Zlatý nadpis sekcie a deliaca čiara pod ním (v rámci jedného
+        spoločného panela `panel_rules` — bez vlastného rámu a bez ikony)."""
+        c = self.canvas
+        left = self.panel_rules.left
+        label = self.font_medium.render(title, True, ui_style.GOLD)
+        c.blit(label, label.get_rect(midleft=(left + 24, title_cy)))
+        c.line(DIVIDER, (left + 24, divider_y), (self.panel_rules.right - 24, divider_y),
+               width=1)
+
+    def _draw_info_icon(self, center, r: int):
+        c = self.canvas
+        cx, cy = center
+        c.circle(ui_style.GOLD, (cx, cy), r, width=2)
+        s = self.font_small.render("i", True, ui_style.GOLD)
+        c.blit(s, s.get_rect(center=(cx, cy + 1)))
 
     def _draw_ai_rows(self):
         c = self.canvas

@@ -121,6 +121,26 @@ def draw_screen_title(c, text: str, font, center: tuple[int, int],
     c.polygon(GOLD, [(cx, y - 7), (cx + 8, y), (cx, y + 7), (cx - 8, y)])
 
 
+def draw_divider_label(c, text: str, font, center: tuple[int, int],
+                       half_w: int, gap: int = 18, color=GOLD,
+                       line_color=None):
+    """Vodorovný oddeľovač s popiskom v strede — tenká zlatá čiara
+    s medzerou na text (rovnaký motív ako draw_screen_title, len
+    vodorovne okolo textu namiesto pod ním)."""
+    if line_color is None:
+        line_color = GOLD_SOFT
+    cx, cy = center
+    label = font.render(text, True, color)
+    label_rect = label.get_rect(center=center)
+    left_end, right_end = cx - half_w, cx + half_w
+    lx1, lx2 = label_rect.left - gap, label_rect.right + gap
+    if lx1 > left_end:
+        c.line(line_color, (left_end, cy), (lx1, cy), width=1)
+    if lx2 < right_end:
+        c.line(line_color, (lx2, cy), (right_end, cy), width=1)
+    c.blit(label, label_rect)
+
+
 def draw_backdrop(c, center_shade: bool = True, extra_dim: int = 0):
     """Pozadie obrazoviek mimo hry: stôl „cover" cez celé okno (aj pásma),
     stmavenie, vinetácia, teplé svetlo hore a voliteľne mäkké stmavenie

@@ -123,7 +123,8 @@ def _show_game_over(window, game_state, achievement_tracker) -> str:
         window,
         game_state.players,
         game_state.winner,
-        game_state.round_number
+        game_state.round_number,
+        achievement_tracker=achievement_tracker
     )
     return game_over.run()
 

@@ -43,7 +43,7 @@ class AchievementPopup:
         self.slide_duration = 350
 
         self.trophy_icons = {}
-        for tier_name in ("bronze", "silver", "gold"):
+        for tier_name in ("bronze", "silver", "gold", "platinum"):
             path = f"assets/graphics/trophy_{tier_name}.png"
             try:
                 self.trophy_icons[tier_name] = canvas.image(

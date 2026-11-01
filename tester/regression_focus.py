@@ -40,6 +40,11 @@ def main():
             # klik v tej oblasti (teraz súčasť galérie) nič neotvorí.
             assert not o.focused and o.chapter == i
             continue
+        if i == 4:
+            # Bodovanie: tlačidlo „Prejsť na prehľad bodovania“ neotvára
+            # ukážku, len prepne záložku (redizajn 2026-11-01).
+            assert not o.focused and o.active_tab == 'bodovanie' and o.chapter == i
+            continue
         assert o.focused and o.step == i
         assert o.rules_demo.stage.height > original_height + 200
         o.draw()

@@ -59,16 +59,23 @@ vždy z toho istého PC (fonty).
   štich (`gui/last_trick_overlay.py`, z CHUJ) a Pravidlá a bodovanie
   (`gui/info_overlay.py` + animovaná ukážka štichov `gui/rules_demo.py` —
   príklady musia prejsť regression_rules_demo; texty pravidiel musia
-  zodpovedať logike v game/; záložka Prehľad bodovania — karty v Hodnotách
-  kariet striedajú farbu cez `SuitCycle`; názvy: „Tromfové hlášky“ = body,
-  „Hlásenie tromfu“ = úkon; v Pravidlách je Priebeh kola navigácia — krok
-  vyberie obsah veľkého panela: Dražba a Talón = `gui/round_demos.py`
-  (stav dražby prehráva skutočná `Bidding`, overuje regression_rules_demo),
-  Štichy a tromfy = podzáložky Pravidlá štichov (rules_demo) a Hlásenie
-  tromfu (`gui/trump_demo.py`, zatiaľ zástupný obsah) — `TricksTrumpStep`
-  v info_overlay.py, Bodovanie = `gui/scoring_demo.py` (scény kreslia
-  bloky Prehľadu bodovania tým istým kódom, žiadne kópie), Rozdanie zatiaľ
-  obrázok a popis; všetky ukážky = podtriedy `TrickRulesDemo`; panel ukážky
+  zodpovedať logike v game/; záložka Prehľad bodovania — redizajn
+  2026-11-01 (zadanie usera): rovnaký dvojstĺpcový princíp ako Pravidlá,
+  vľavo navigácia so 4 sekciami (`_scoring_rects`, geometria zdieľaná
+  s kapitolami cez `_chapter_areas`), vpravo obsah len vybranej sekcie;
+  bodové hodnoty sú vždy text, žiadne medailóny (`_medal` zrušená) ani
+  animácie — karty v Hodnotách kariet sa kreslia staticky vo farbe
+  `VALUE_CARD_SUIT`; názvy: „Tromfové hlášky“ = body, „Hlásenie tromfu“ =
+  úkon; v Pravidlách je Priebeh kola navigácia — krok vyberie obsah
+  veľkého panela: Dražba a Talón = `gui/round_demos.py` (stav dražby
+  prehráva skutočná `Bidding`, overuje regression_rules_demo), Štichy
+  a tromfy = podzáložky Pravidlá štichov (rules_demo) a Hlásenie tromfu
+  (`gui/trump_demo.py`, zatiaľ zástupný obsah) — `TricksTrumpStep`
+  v info_overlay.py, Bodovanie = tlačidlo „Prejsť na prehľad bodovania“
+  prepne záložku (vlastnú animovanú ukážku `gui/scoring_demo.py` už
+  z Pravidiel neotvára, ale zdieľané kresliace metódy ňou stále
+  prechádzajú — ukážka ostáva funkčná pre layout_problems), Rozdanie
+  zatiaľ obrázok a popis; všetky ukážky = podtriedy `TrickRulesDemo`; panel ukážky
   je na celú šírku pod Priebehom kola — pravé textové panely sú zrušené, ich
   texty (`BID_BULLETS`, `TRUMP_BULLETS…`) sú podklad pre ďalšie scény;
   ovládanie má vlastný pás pod javiskom — layout_problems kontroluje, že

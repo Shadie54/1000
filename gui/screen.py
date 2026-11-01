@@ -303,6 +303,12 @@ class Screen:
         """Začne nové kolo a inicializuje AI pamäť."""
         if self.achievement_tracker:
             self.achievement_tracker.reset_round()
+            # ← NOVÉ: skóre PRED týmto kolom (pre "Kto sa smeje naposledy")
+            human_idx = self.game_state.human_index
+            human_score = self.game_state.players[human_idx].total_score
+            opponent_scores = [p.total_score for i, p in
+                               enumerate(self.game_state.players) if i != human_idx]
+            self.achievement_tracker.on_round_started(human_score, opponent_scores)
 
         self.game_state.start_new_round()
         self.game_state.current_round.start_bidding()
@@ -726,7 +732,8 @@ class Screen:
                     trick_number=current_round.trick_number,
                     hand_cards=self.game_state.players[player_index].hand.cards,
                     is_new_trump=is_new,
-                    is_human = True  # ← NOVÉ
+                    is_human = True,  # ← NOVÉ
+                    player_index=player_index
                 )
 
             for ai in self.ai_players:
@@ -1019,7 +1026,8 @@ class Screen:
                         trick_number=current_round.trick_number,
                         hand_cards=[],  # nepoužije sa pri is_human=False
                         is_new_trump=is_new,
-                        is_human=False
+                        is_human=False,
+                        player_index=player_index
                     )
 
                 self.speech_bubble.show_trump(player_index, trump_suit, is_new=is_new)
