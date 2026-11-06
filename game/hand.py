@@ -48,6 +48,13 @@ class Hand:
         # Má karty v hranej farbe
         same_suit = self.get_cards_of_suit(lead_suit)
         if same_suit:
+            # Ak je štich už prebitý tromfom, karta v hranej farbe ho aj tak
+            # nemôže vyhrať — povinnosť prebiť v rámci lead_suit vtedy odpadá
+            # a hráč môže podliezť (priznať farbu akoukoľvek kartou).
+            if trump_suit and lead_suit != trump_suit and \
+                    any(card.suit == trump_suit for _, card in played):
+                return same_suit
+
             # Povinnosť prebiť len v rámci lead_suit
             best_order = self._best_played_order(lead_suit, trump_suit, played)
             higher = [c for c in same_suit if c.rank_order > best_order] if best_order is not None else []
